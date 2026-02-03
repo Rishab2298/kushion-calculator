@@ -202,8 +202,7 @@ CushionCalculator.prototype.getFilteredFabricTiesOptions = function(pieceConfig)
   if (!pieceConfig || !pieceConfig.allowedFabricTiesIds) return opts;
   var allowed = this.parseAllowedIds(pieceConfig.allowedFabricTiesIds);
   if (!Array.isArray(allowed) || allowed.length === 0) return opts;
-    return opts.filter(function(ft) { return allowed.includes(ft.id); });
-  } catch (e) { return opts; }
+  return opts.filter(function(ft) { return allowed.includes(ft.id); });
 };
 
 CushionCalculator.prototype.getFilteredRodPocketOptions = function(pieceConfig) {
