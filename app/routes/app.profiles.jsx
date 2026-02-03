@@ -440,6 +440,7 @@ export default function Profiles() {
     data.append("additionalPercent", form.additionalPercent.toString());
     data.append("enableMultiPiece", form.enableMultiPiece.toString());
     data.append("piecesLabel", form.piecesLabel);
+    data.append("enableWeatherproof", form.enableWeatherproof.toString());
     // Convert pieces array with proper JSON stringified arrays for allowedIds
     const piecesForSubmit = form.pieces.map(p => ({
       ...p,
