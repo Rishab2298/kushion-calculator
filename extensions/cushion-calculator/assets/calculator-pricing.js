@@ -110,7 +110,7 @@ CushionCalculator.prototype.calculatePrice = function() {
   var shippingPct = this.config.settings && this.config.settings.shippingPercent != null ? this.config.settings.shippingPercent : 100;
   var labourPct = this.config.settings && this.config.settings.labourPercent != null ? this.config.settings.labourPercent : 100;
   var tiesInShippingLabour = this.config.settings && this.config.settings.tiesIncludeInShippingLabour != null ? this.config.settings.tiesIncludeInShippingLabour : true;
-  var shippingLabourBase = tiesInShippingLabour ? subtotalAfterAddons : (subtotalAfterAddons - tiesCost);
+  var shippingLabourBase = tiesInShippingLabour ? subtotalAfterAddons : (subtotalAfterAddons - tiesCost - fabricTiesCost);
   var shippingCost = shippingLabourBase * (shippingPct / 100);
   var labourCost = shippingLabourBase * (labourPct / 100);
 
@@ -235,8 +235,8 @@ CushionCalculator.prototype.calculateMultiPiecePrice = function() {
     var pieceProfileCost = pieceSubtotal * (profilePct / 100);
     var pieceAfterProfile = pieceSubtotal + pieceProfileCost;
 
-    // 2. Shipping/Labour base (optionally exclude ties)
-    var pieceShippingLabourBase = tiesInShippingLabour ? pieceAfterProfile : (pieceAfterProfile - tiesCost);
+    // 2. Shipping/Labour base (optionally exclude ties and fabric ties)
+    var pieceShippingLabourBase = tiesInShippingLabour ? pieceAfterProfile : (pieceAfterProfile - tiesCost - fabricTiesCost);
     var pieceShippingCost = pieceShippingLabourBase * (shippingPct / 100);
     var pieceLabourCost = pieceShippingLabourBase * (labourPct / 100);
 
