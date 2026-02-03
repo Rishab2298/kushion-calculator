@@ -80,20 +80,20 @@
         <span class="kraft2026zion-header-arrow">&#9662;</span>
       </div>
       <div class="kraft2026zion-accordion-content" id="content-dimensions-{{ block.id }}">
+        <!-- Panels input for 2D shapes - at top of dimensions section -->
+        <div class="kraft2026zion-panels-input-container" id="panels-input-container-{{ block.id }}" style="display: none; margin-bottom: 16px;">
+          <div class="kraft2026zion-dim-field">
+            <label for="panels-input-{{ block.id }}">Number of Panels</label>
+            <input type="number" id="panels-input-{{ block.id }}" min="1" max="10" step="1" value="1">
+            <span class="kraft2026zion-dim-unit">panels</span>
+          </div>
+        </div>
         <div class="kraft2026zion-dimensions-scroll-container" id="dimensions-scroll-container-{{ block.id }}">
           <button type="button" class="kraft2026zion-scroll-arrow kraft2026zion-scroll-arrow-left kraft2026zion-dimensions-scroll-arrow" id="dimensions-scroll-left-{{ block.id }}" aria-label="Scroll left" style="display: none;">&#8249;</button>
           <div class="kraft2026zion-dimensions-scroll-wrapper" id="dimensions-scroll-wrapper-{{ block.id }}">
             <div class="kraft2026zion-dimensions-form" id="dimensions-form-{{ block.id }}"></div>
           </div>
           <button type="button" class="kraft2026zion-scroll-arrow kraft2026zion-scroll-arrow-right kraft2026zion-dimensions-scroll-arrow" id="dimensions-scroll-right-{{ block.id }}" aria-label="Scroll right" style="display: none;">&#8250;</button>
-        </div>
-        <!-- Panels input for 2D shapes -->
-        <div class="kraft2026zion-panels-input-container" id="panels-input-container-{{ block.id }}" style="display: none; margin-top: 16px;">
-          <div class="kraft2026zion-dim-field">
-            <label for="panels-input-{{ block.id }}">Number of Panels</label>
-            <input type="number" id="panels-input-{{ block.id }}" min="1" max="10" step="1" value="1">
-            <span class="kraft2026zion-dim-unit">panels</span>
-          </div>
         </div>
       </div>
     </div>
@@ -763,7 +763,7 @@
   }
 
   /* Panels input container */
-  .kraft2026zion-panels-input-container { margin-top: 16px; }
+  .kraft2026zion-panels-input-container { margin-bottom: 16px; }
 </style>
 
 
