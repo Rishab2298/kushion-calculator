@@ -133,80 +133,75 @@ CushionCalculator.prototype.initMultiPieceMode = function() {
   this.calculatePrice();
 };
 
+// Helper to parse allowed IDs (handles both array and JSON string)
+CushionCalculator.prototype.parseAllowedIds = function(val) {
+  if (!val) return null;
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string') {
+    try { return JSON.parse(val); } catch (e) { return null; }
+  }
+  return null;
+};
+
 // Filtered option helpers
 CushionCalculator.prototype.getFilteredShapes = function(pieceConfig) {
   if (!pieceConfig || !pieceConfig.allowedShapeIds) return this.config.shapes;
-  try {
-    var allowed = JSON.parse(pieceConfig.allowedShapeIds);
-    if (!Array.isArray(allowed) || allowed.length === 0) return this.config.shapes;
-    return this.config.shapes.filter(function(s) { return allowed.includes(s.id); });
-  } catch (e) { return this.config.shapes; }
+  var allowed = this.parseAllowedIds(pieceConfig.allowedShapeIds);
+  if (!Array.isArray(allowed) || allowed.length === 0) return this.config.shapes;
+  return this.config.shapes.filter(function(s) { return allowed.includes(s.id); });
 };
 
 CushionCalculator.prototype.getFilteredFillTypes = function(pieceConfig) {
   if (!pieceConfig || !pieceConfig.allowedFillIds) return this.config.fillTypes;
-  try {
-    var allowed = JSON.parse(pieceConfig.allowedFillIds);
-    if (!Array.isArray(allowed) || allowed.length === 0) return this.config.fillTypes;
-    return this.config.fillTypes.filter(function(f) { return allowed.includes(f.id); });
-  } catch (e) { return this.config.fillTypes; }
+  var allowed = this.parseAllowedIds(pieceConfig.allowedFillIds);
+  if (!Array.isArray(allowed) || allowed.length === 0) return this.config.fillTypes;
+  return this.config.fillTypes.filter(function(f) { return allowed.includes(f.id); });
 };
 
 CushionCalculator.prototype.getFilteredPipingOptions = function(pieceConfig) {
   if (!pieceConfig || !pieceConfig.allowedPipingIds) return this.config.pipingOptions;
-  try {
-    var allowed = JSON.parse(pieceConfig.allowedPipingIds);
-    if (!Array.isArray(allowed) || allowed.length === 0) return this.config.pipingOptions;
-    return this.config.pipingOptions.filter(function(p) { return allowed.includes(p.id); });
-  } catch (e) { return this.config.pipingOptions; }
+  var allowed = this.parseAllowedIds(pieceConfig.allowedPipingIds);
+  if (!Array.isArray(allowed) || allowed.length === 0) return this.config.pipingOptions;
+  return this.config.pipingOptions.filter(function(p) { return allowed.includes(p.id); });
 };
 
 CushionCalculator.prototype.getFilteredButtonOptions = function(pieceConfig) {
   var opts = this.config.buttonStyleOptions || [];
   if (!pieceConfig || !pieceConfig.allowedButtonIds) return opts;
-  try {
-    var allowed = JSON.parse(pieceConfig.allowedButtonIds);
-    if (!Array.isArray(allowed) || allowed.length === 0) return opts;
-    return opts.filter(function(b) { return allowed.includes(b.id); });
-  } catch (e) { return opts; }
+  var allowed = this.parseAllowedIds(pieceConfig.allowedButtonIds);
+  if (!Array.isArray(allowed) || allowed.length === 0) return opts;
+  return opts.filter(function(b) { return allowed.includes(b.id); });
 };
 
 CushionCalculator.prototype.getFilteredAntiSkidOptions = function(pieceConfig) {
   var opts = this.config.antiSkidOptions || [];
   if (!pieceConfig || !pieceConfig.allowedAntiSkidIds) return opts;
-  try {
-    var allowed = JSON.parse(pieceConfig.allowedAntiSkidIds);
-    if (!Array.isArray(allowed) || allowed.length === 0) return opts;
-    return opts.filter(function(a) { return allowed.includes(a.id); });
-  } catch (e) { return opts; }
+  var allowed = this.parseAllowedIds(pieceConfig.allowedAntiSkidIds);
+  if (!Array.isArray(allowed) || allowed.length === 0) return opts;
+  return opts.filter(function(a) { return allowed.includes(a.id); });
 };
 
 CushionCalculator.prototype.getFilteredTiesOptions = function(pieceConfig) {
   var opts = this.config.tiesOptions || [];
   if (!pieceConfig || !pieceConfig.allowedTiesIds) return opts;
-  try {
-    var allowed = JSON.parse(pieceConfig.allowedTiesIds);
-    if (!Array.isArray(allowed) || allowed.length === 0) return opts;
-    return opts.filter(function(t) { return allowed.includes(t.id); });
-  } catch (e) { return opts; }
+  var allowed = this.parseAllowedIds(pieceConfig.allowedTiesIds);
+  if (!Array.isArray(allowed) || allowed.length === 0) return opts;
+  return opts.filter(function(t) { return allowed.includes(t.id); });
 };
 
 CushionCalculator.prototype.getFilteredDesignOptions = function(pieceConfig) {
   var opts = this.config.designOptions || [];
   if (!pieceConfig || !pieceConfig.allowedDesignIds) return opts;
-  try {
-    var allowed = JSON.parse(pieceConfig.allowedDesignIds);
-    if (!Array.isArray(allowed) || allowed.length === 0) return opts;
-    return opts.filter(function(d) { return allowed.includes(d.id); });
-  } catch (e) { return opts; }
+  var allowed = this.parseAllowedIds(pieceConfig.allowedDesignIds);
+  if (!Array.isArray(allowed) || allowed.length === 0) return opts;
+  return opts.filter(function(d) { return allowed.includes(d.id); });
 };
 
 CushionCalculator.prototype.getFilteredFabricTiesOptions = function(pieceConfig) {
   var opts = this.config.fabricTiesOptions || [];
   if (!pieceConfig || !pieceConfig.allowedFabricTiesIds) return opts;
-  try {
-    var allowed = JSON.parse(pieceConfig.allowedFabricTiesIds);
-    if (!Array.isArray(allowed) || allowed.length === 0) return opts;
+  var allowed = this.parseAllowedIds(pieceConfig.allowedFabricTiesIds);
+  if (!Array.isArray(allowed) || allowed.length === 0) return opts;
     return opts.filter(function(ft) { return allowed.includes(ft.id); });
   } catch (e) { return opts; }
 };
@@ -214,11 +209,9 @@ CushionCalculator.prototype.getFilteredFabricTiesOptions = function(pieceConfig)
 CushionCalculator.prototype.getFilteredRodPocketOptions = function(pieceConfig) {
   var opts = this.config.rodPocketOptions || [];
   if (!pieceConfig || !pieceConfig.allowedRodPocketIds) return opts;
-  try {
-    var allowed = JSON.parse(pieceConfig.allowedRodPocketIds);
-    if (!Array.isArray(allowed) || allowed.length === 0) return opts;
-    return opts.filter(function(rp) { return allowed.includes(rp.id); });
-  } catch (e) { return opts; }
+  var allowed = this.parseAllowedIds(pieceConfig.allowedRodPocketIds);
+  if (!Array.isArray(allowed) || allowed.length === 0) return opts;
+  return opts.filter(function(rp) { return allowed.includes(rp.id); });
 };
 
 CushionCalculator.prototype.renderPieceTabs = function() {

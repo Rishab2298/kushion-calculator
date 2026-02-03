@@ -277,91 +277,83 @@
       calculatePrice();
     }
 
+    // Helper to parse allowed IDs - handles both array and JSON string formats
+    function parseAllowedIds(val) {
+      if (!val) return null;
+      if (Array.isArray(val)) return val;
+      if (typeof val === 'string') {
+        try { return JSON.parse(val); } catch (e) { return null; }
+      }
+      return null;
+    }
+
     function getFilteredShapes(pieceConfig) {
       if (!pieceConfig || !pieceConfig.allowedShapeIds) return config.shapes;
-      try {
-        var allowed = JSON.parse(pieceConfig.allowedShapeIds);
-        if (!Array.isArray(allowed) || allowed.length === 0) return config.shapes;
-        return config.shapes.filter(function(s) { return allowed.includes(s.id); });
-      } catch (e) { return config.shapes; }
+      var allowed = parseAllowedIds(pieceConfig.allowedShapeIds);
+      if (!Array.isArray(allowed) || allowed.length === 0) return config.shapes;
+      return config.shapes.filter(function(s) { return allowed.includes(s.id); });
     }
 
     function getFilteredFillTypes(pieceConfig) {
       if (!pieceConfig || !pieceConfig.allowedFillIds) return config.fillTypes;
-      try {
-        var allowed = JSON.parse(pieceConfig.allowedFillIds);
-        if (!Array.isArray(allowed) || allowed.length === 0) return config.fillTypes;
-        return config.fillTypes.filter(function(f) { return allowed.includes(f.id); });
-      } catch (e) { return config.fillTypes; }
+      var allowed = parseAllowedIds(pieceConfig.allowedFillIds);
+      if (!Array.isArray(allowed) || allowed.length === 0) return config.fillTypes;
+      return config.fillTypes.filter(function(f) { return allowed.includes(f.id); });
     }
 
     function getFilteredPipingOptions(pieceConfig) {
       if (!pieceConfig || !pieceConfig.allowedPipingIds) return config.pipingOptions;
-      try {
-        var allowed = JSON.parse(pieceConfig.allowedPipingIds);
-        if (!Array.isArray(allowed) || allowed.length === 0) return config.pipingOptions;
-        return config.pipingOptions.filter(function(p) { return allowed.includes(p.id); });
-      } catch (e) { return config.pipingOptions; }
+      var allowed = parseAllowedIds(pieceConfig.allowedPipingIds);
+      if (!Array.isArray(allowed) || allowed.length === 0) return config.pipingOptions;
+      return config.pipingOptions.filter(function(p) { return allowed.includes(p.id); });
     }
 
     function getFilteredButtonOptions(pieceConfig) {
       var opts = config.buttonStyleOptions || [];
       if (!pieceConfig || !pieceConfig.allowedButtonIds) return opts;
-      try {
-        var allowed = JSON.parse(pieceConfig.allowedButtonIds);
-        if (!Array.isArray(allowed) || allowed.length === 0) return opts;
-        return opts.filter(function(b) { return allowed.includes(b.id); });
-      } catch (e) { return opts; }
+      var allowed = parseAllowedIds(pieceConfig.allowedButtonIds);
+      if (!Array.isArray(allowed) || allowed.length === 0) return opts;
+      return opts.filter(function(b) { return allowed.includes(b.id); });
     }
 
     function getFilteredAntiSkidOptions(pieceConfig) {
       var opts = config.antiSkidOptions || [];
       if (!pieceConfig || !pieceConfig.allowedAntiSkidIds) return opts;
-      try {
-        var allowed = JSON.parse(pieceConfig.allowedAntiSkidIds);
-        if (!Array.isArray(allowed) || allowed.length === 0) return opts;
-        return opts.filter(function(a) { return allowed.includes(a.id); });
-      } catch (e) { return opts; }
+      var allowed = parseAllowedIds(pieceConfig.allowedAntiSkidIds);
+      if (!Array.isArray(allowed) || allowed.length === 0) return opts;
+      return opts.filter(function(a) { return allowed.includes(a.id); });
     }
 
     function getFilteredTiesOptions(pieceConfig) {
       var opts = config.tiesOptions || [];
       if (!pieceConfig || !pieceConfig.allowedTiesIds) return opts;
-      try {
-        var allowed = JSON.parse(pieceConfig.allowedTiesIds);
-        if (!Array.isArray(allowed) || allowed.length === 0) return opts;
-        return opts.filter(function(t) { return allowed.includes(t.id); });
-      } catch (e) { return opts; }
+      var allowed = parseAllowedIds(pieceConfig.allowedTiesIds);
+      if (!Array.isArray(allowed) || allowed.length === 0) return opts;
+      return opts.filter(function(t) { return allowed.includes(t.id); });
     }
 
     function getFilteredDesignOptions(pieceConfig) {
       var opts = config.designOptions || [];
       if (!pieceConfig || !pieceConfig.allowedDesignIds) return opts;
-      try {
-        var allowed = JSON.parse(pieceConfig.allowedDesignIds);
-        if (!Array.isArray(allowed) || allowed.length === 0) return opts;
-        return opts.filter(function(d) { return allowed.includes(d.id); });
-      } catch (e) { return opts; }
+      var allowed = parseAllowedIds(pieceConfig.allowedDesignIds);
+      if (!Array.isArray(allowed) || allowed.length === 0) return opts;
+      return opts.filter(function(d) { return allowed.includes(d.id); });
     }
 
     function getFilteredFabricTiesOptions(pieceConfig) {
       var opts = config.fabricTiesOptions || [];
       if (!pieceConfig || !pieceConfig.allowedFabricTiesIds) return opts;
-      try {
-        var allowed = JSON.parse(pieceConfig.allowedFabricTiesIds);
-        if (!Array.isArray(allowed) || allowed.length === 0) return opts;
-        return opts.filter(function(ft) { return allowed.includes(ft.id); });
-      } catch (e) { return opts; }
+      var allowed = parseAllowedIds(pieceConfig.allowedFabricTiesIds);
+      if (!Array.isArray(allowed) || allowed.length === 0) return opts;
+      return opts.filter(function(ft) { return allowed.includes(ft.id); });
     }
 
     function getFilteredRodPocketOptions(pieceConfig) {
       var opts = config.rodPocketOptions || [];
       if (!pieceConfig || !pieceConfig.allowedRodPocketIds) return opts;
-      try {
-        var allowed = JSON.parse(pieceConfig.allowedRodPocketIds);
-        if (!Array.isArray(allowed) || allowed.length === 0) return opts;
-        return opts.filter(function(rp) { return allowed.includes(rp.id); });
-      } catch (e) { return opts; }
+      var allowed = parseAllowedIds(pieceConfig.allowedRodPocketIds);
+      if (!Array.isArray(allowed) || allowed.length === 0) return opts;
+      return opts.filter(function(rp) { return allowed.includes(rp.id); });
     }
 
     function renderPieceTabs() {
