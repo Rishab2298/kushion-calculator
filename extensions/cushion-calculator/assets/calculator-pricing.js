@@ -62,9 +62,9 @@ CushionCalculator.prototype.calculatePrice = function() {
   var effectiveTies = this.selectedTies;
   var effectiveFabricTies = this.selectedFabricTies;
 
-  if (visibility.showFillSection === false && hidden.fillType) effectiveFill = hidden.fillType;
-  if (visibility.showFabricSection === false && hidden.fabric) effectiveFabric = hidden.fabric;
-  if (visibility.showDesignSection === false && hidden.design) effectiveDesign = hidden.design;
+  if (visibility.showFillSection === false) effectiveFill = hidden.fillType || null;
+  if (visibility.showFabricSection === false) effectiveFabric = hidden.fabric || null;
+  if (visibility.showDesignSection === false) effectiveDesign = hidden.design || null;
   if (visibility.showPipingSection === false) effectivePiping = hidden.piping || null;
   if (visibility.showButtonSection === false) effectiveButton = hidden.button || null;
   if (visibility.showAntiSkidSection === false) effectiveAntiSkid = hidden.antiSkid || null;
@@ -72,7 +72,7 @@ CushionCalculator.prototype.calculatePrice = function() {
   if (visibility.showTiesSection === false) effectiveTies = hidden.ties || null;
   if (visibility.showFabricTiesSection === false) effectiveFabricTies = hidden.fabricTies || null;
 
-  if (!this.selectedShape || !effectiveFill || !effectiveFabric) { this.updatePriceDisplay({}); return; }
+  if (!this.selectedShape || !effectiveFabric) { this.updatePriceDisplay({}); return; }
 
   var dimensions = this.dimensions;
   var allDimensionsSet = this.selectedShape.inputFields.filter(function(f) { return f.required; }).every(function(f) { return dimensions[f.key] && dimensions[f.key] > 0; });
@@ -88,7 +88,7 @@ CushionCalculator.prototype.calculatePrice = function() {
 
   var conversionMultiplier = 1 + ((this.config.settings && this.config.settings.conversionPercent != null ? this.config.settings.conversionPercent : 0) / 100);
   var fabricCost = surfaceArea * (parseFloat(effectiveFabric.pricePerSqInch) || 0) * conversionMultiplier;
-  var fillCost = volume * (parseFloat(effectiveFill.pricePerCubicInch) || 0) * conversionMultiplier;
+  var fillCost = effectiveFill ? volume * (parseFloat(effectiveFill.pricePerCubicInch) || 0) * conversionMultiplier : 0;
   var tiesCost = effectiveTies ? (parseFloat(effectiveTies.price) || 0) * conversionMultiplier : 0;
   var fabricTiesCost = effectiveFabricTies ? (parseFloat(effectiveFabricTies.price) || 0) * conversionMultiplier : 0;
 
@@ -170,9 +170,11 @@ CushionCalculator.prototype.calculateMultiPiecePrice = function() {
     return;
   }
 
-  // Check if all pieces have required selections
+  // Check if all pieces have required selections (fill only required if section visible)
   var allPiecesComplete = this.pieces.every(function(piece) {
-    return piece.shape && piece.fill && self.hasRequiredDimensions(piece);
+    var pc = piece.config || {};
+    var fillRequired = pc.showFillSection !== false;
+    return piece.shape && (!fillRequired || piece.fill) && self.hasRequiredDimensions(piece);
   });
 
   if (!allPiecesComplete) {
@@ -205,10 +207,11 @@ CushionCalculator.prototype.calculateMultiPiecePrice = function() {
     var volume = self.evaluateFormula(piece.shape.volumeFormula, piece.dimensions);
 
     var fabricCost = surfaceArea * (parseFloat(self.selectedFabric.pricePerSqInch) || 0) * conversionMultiplier;
-    var fillCost = volume * (parseFloat(piece.fill.pricePerCubicInch) || 0) * conversionMultiplier;
+    var fillCost = (fillVisible && piece.fill) ? volume * (parseFloat(piece.fill.pricePerCubicInch) || 0) * conversionMultiplier : 0;
 
     // Check piece-level visibility before including costs (multi-piece is piece-dependent)
     var pc = piece.config || {};
+    var fillVisible = pc.showFillSection !== false;
     var designVisible = pc.showDesignSection !== false;
     var pipingVisible = pc.showPipingSection !== false;
     var buttonVisible = pc.showButtonSection !== false;
@@ -260,13 +263,13 @@ CushionCalculator.prototype.calculateMultiPiecePrice = function() {
     var pieceTotalBeforeDeductions = piecePreMargin + pieceMarginAmt;
 
     // 4. Covers only check (30% deduction from raw material cost)
-    var isCoversOnly = piece.fill && piece.fill.name &&
+    var isCoversOnly = fillVisible && piece.fill && piece.fill.name &&
       piece.fill.name.toLowerCase().indexOf('covers only') !== -1;
     var rawMaterialCost = fabricCost + fillCost;
     var coversOnlyDeduction = isCoversOnly ? rawMaterialCost * 0.30 : 0;
 
     // 5. Apply discounts (fabric discount from shared fabric, fill discount per piece)
-    var fillDiscountPct = (piece.fill && piece.fill.discountEnabled) ? (parseFloat(piece.fill.discountPercent) || 0) : 0;
+    var fillDiscountPct = (fillVisible && piece.fill && piece.fill.discountEnabled) ? (parseFloat(piece.fill.discountPercent) || 0) : 0;
     var pieceFabricDiscountAmt = pieceTotalBeforeDeductions * (fabricDiscountPct / 100);
     var pieceFillDiscountAmt = pieceTotalBeforeDeductions * (fillDiscountPct / 100);
 
