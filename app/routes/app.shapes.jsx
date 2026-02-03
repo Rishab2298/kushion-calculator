@@ -33,6 +33,7 @@ export const action = async ({ request }) => {
       name: formData.get("name"),
       imageUrl: formData.get("imageUrl") || null,
       surfaceAreaFormula: formData.get("surfaceAreaFormula"),
+      surfaceAreaWithoutBaseFormula: formData.get("surfaceAreaWithoutBaseFormula") || null,
       volumeFormula: formData.get("volumeFormula"),
       isActive: formData.get("isActive") === "true",
       isDefault: formData.get("isDefault") === "true",
@@ -118,6 +119,7 @@ export default function Shapes() {
     name: "",
     imageUrl: "",
     surfaceAreaFormula: "",
+    surfaceAreaWithoutBaseFormula: "",
     volumeFormula: "",
     isActive: true,
     isDefault: false,
@@ -135,6 +137,7 @@ export default function Shapes() {
       name: "",
       imageUrl: "",
       surfaceAreaFormula: "",
+      surfaceAreaWithoutBaseFormula: "",
       volumeFormula: "",
       isActive: true,
       isDefault: false,
@@ -154,6 +157,7 @@ export default function Shapes() {
       name: shape.name,
       imageUrl: shape.imageUrl || "",
       surfaceAreaFormula: shape.surfaceAreaFormula,
+      surfaceAreaWithoutBaseFormula: shape.surfaceAreaWithoutBaseFormula || "",
       volumeFormula: shape.volumeFormula,
       isActive: shape.isActive,
       isDefault: shape.isDefault,
@@ -320,6 +324,14 @@ export default function Shapes() {
                 onChange={(e) => setFormData({ ...formData, surfaceAreaFormula: e.target.value })}
                 placeholder="length*width*2 + length*thickness*2 + width*thickness*2"
                 helpText="Used for fabric cost calculation"
+              />
+
+              <s-text-field
+                label="Surface Area Without Base Formula (Weatherproof)"
+                value={formData.surfaceAreaWithoutBaseFormula}
+                onChange={(e) => setFormData({ ...formData, surfaceAreaWithoutBaseFormula: e.target.value })}
+                placeholder="length*width + length*thickness*2 + width*thickness*2"
+                helpText="Used when Weatherproof mode is enabled in profile (no bottom coverage)"
               />
 
               <s-text-field

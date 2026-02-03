@@ -56,6 +56,7 @@ export const action = async ({ request }) => {
         additionalPercent: parseFloat(formData.get("additionalPercent")) || 0,
         enableMultiPiece: formData.get("enableMultiPiece") === "true",
         piecesLabel: formData.get("piecesLabel") || null,
+        enableWeatherproof: formData.get("enableWeatherproof") === "true",
         showShapeSection: formData.get("showShapeSection") === "true",
         showDimensionsSection: formData.get("showDimensionsSection") === "true",
         showFillSection: formData.get("showFillSection") === "true",
@@ -159,6 +160,7 @@ export const action = async ({ request }) => {
         additionalPercent: parseFloat(formData.get("additionalPercent")) || 0,
         enableMultiPiece: formData.get("enableMultiPiece") === "true",
         piecesLabel: formData.get("piecesLabel") || null,
+        enableWeatherproof: formData.get("enableWeatherproof") === "true",
         showShapeSection: formData.get("showShapeSection") === "true",
         showDimensionsSection: formData.get("showDimensionsSection") === "true",
         showFillSection: formData.get("showFillSection") === "true",
@@ -258,6 +260,7 @@ export default function Profiles() {
     additionalPercent: 0,
     enableMultiPiece: false,
     piecesLabel: "",
+    enableWeatherproof: false,
     pieces: [],
     showShapeSection: true,
     showDimensionsSection: true,
@@ -349,6 +352,7 @@ export default function Profiles() {
       additionalPercent: profile.additionalPercent || 0,
       enableMultiPiece: profile.enableMultiPiece || false,
       piecesLabel: profile.piecesLabel || "",
+      enableWeatherproof: profile.enableWeatherproof || false,
       pieces: (profile.pieces || []).map(p => ({
         id: p.id,
         name: p.name,
@@ -959,6 +963,16 @@ export default function Profiles() {
                     </s-stack>
                   </s-stack>
                 )}
+              </s-stack>
+
+              {/* Weatherproof Configuration */}
+              <s-stack direction="block" gap="base">
+                <s-text fontWeight="semibold">Weatherproof Configuration</s-text>
+                <s-text tone="subdued">Enable this for weatherproof covers that don't cover the base (uses "Surface Area Without Base" formula)</s-text>
+                <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <input type="checkbox" checked={form.enableWeatherproof} onChange={(e) => setForm({ ...form, enableWeatherproof: e.target.checked })} />
+                  Enable Weatherproof Mode
+                </label>
               </s-stack>
 
               {/* Section Visibility */}

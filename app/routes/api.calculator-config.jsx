@@ -434,6 +434,7 @@ export const loader = async ({ request }) => {
         additionalPercent: profileAdditionalPercent,
         allowedCategoryIds: profile.allowedCategoryIds ? JSON.parse(profile.allowedCategoryIds) : null,
         enableMultiPiece: profile.enableMultiPiece || false,
+        enableWeatherproof: profile.enableWeatherproof || false,
         piecesLabel: profile.piecesLabel || "Pieces",
         pieces: (profile.pieces || []).map(p => ({
           id: p.id,
@@ -483,6 +484,7 @@ export const loader = async ({ request }) => {
           name: hiddenShape.name,
           imageUrl: hiddenShape.imageUrl,
           surfaceAreaFormula: hiddenShape.surfaceAreaFormula,
+          surfaceAreaWithoutBaseFormula: hiddenShape.surfaceAreaWithoutBaseFormula || null,
           volumeFormula: hiddenShape.volumeFormula,
           is2D: hiddenShape.is2D || false,
           enablePanels: hiddenShape.enablePanels || false,
@@ -554,6 +556,7 @@ export const loader = async ({ request }) => {
         name: shape.name,
         imageUrl: shape.imageUrl,
         surfaceAreaFormula: shape.surfaceAreaFormula,
+        surfaceAreaWithoutBaseFormula: shape.surfaceAreaWithoutBaseFormula || null,
         volumeFormula: shape.volumeFormula,
         isDefault: shape.isDefault,
         is2D: shape.is2D || false,

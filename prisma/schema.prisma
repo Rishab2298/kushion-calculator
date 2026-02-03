@@ -91,8 +91,9 @@ model Shape {
   imageUrl String?
 
   // Formulas stored as strings (e.g., "length*width*2 + length*thickness*2 + width*thickness*2")
-  surfaceAreaFormula String
-  volumeFormula      String
+  surfaceAreaFormula            String
+  surfaceAreaWithoutBaseFormula String? // Used for weatherproof covers (no bottom)
+  volumeFormula                 String
 
   isActive  Boolean @default(true)
   isDefault Boolean @default(false)
@@ -453,6 +454,9 @@ model CalculatorProfile {
   // Multi-piece configuration
   enableMultiPiece Boolean @default(false)
   piecesLabel      String? // e.g., "Cushion Components"
+
+  // Weatherproof mode - uses surface area without base formula
+  enableWeatherproof Boolean @default(false)
 
   // Section visibility toggles (used for single-piece mode or as defaults)
   showShapeSection      Boolean @default(true)

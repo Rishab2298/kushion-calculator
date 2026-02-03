@@ -78,7 +78,12 @@ CushionCalculator.prototype.calculatePrice = function() {
   var allDimensionsSet = this.selectedShape.inputFields.filter(function(f) { return f.required; }).every(function(f) { return dimensions[f.key] && dimensions[f.key] > 0; });
   if (!allDimensionsSet) { this.updatePriceDisplay({}); return; }
 
-  var surfaceArea = this.evaluateFormula(this.selectedShape.surfaceAreaFormula, dimensions);
+  // Use weatherproof formula (surface area without base) if enabled and available
+  var isWeatherproof = this.config.profile && this.config.profile.enableWeatherproof;
+  var surfaceAreaFormula = (isWeatherproof && this.selectedShape.surfaceAreaWithoutBaseFormula)
+    ? this.selectedShape.surfaceAreaWithoutBaseFormula
+    : this.selectedShape.surfaceAreaFormula;
+  var surfaceArea = this.evaluateFormula(surfaceAreaFormula, dimensions);
   var volume = this.evaluateFormula(this.selectedShape.volumeFormula, dimensions);
 
   var conversionMultiplier = 1 + ((this.config.settings && this.config.settings.conversionPercent != null ? this.config.settings.conversionPercent : 0) / 100);
@@ -191,7 +196,12 @@ CushionCalculator.prototype.calculateMultiPiecePrice = function() {
   var totalPiecesSubtotal = 0;
 
   this.pieces.forEach(function(piece) {
-    var surfaceArea = self.evaluateFormula(piece.shape.surfaceAreaFormula, piece.dimensions);
+    // Use weatherproof formula (surface area without base) if enabled and available
+    var isWeatherproof = self.config.profile && self.config.profile.enableWeatherproof;
+    var surfaceAreaFormula = (isWeatherproof && piece.shape.surfaceAreaWithoutBaseFormula)
+      ? piece.shape.surfaceAreaWithoutBaseFormula
+      : piece.shape.surfaceAreaFormula;
+    var surfaceArea = self.evaluateFormula(surfaceAreaFormula, piece.dimensions);
     var volume = self.evaluateFormula(piece.shape.volumeFormula, piece.dimensions);
 
     var fabricCost = surfaceArea * (parseFloat(self.selectedFabric.pricePerSqInch) || 0) * conversionMultiplier;
