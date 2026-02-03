@@ -8,11 +8,15 @@ export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
   const shop = session.shop;
 
+  console.log("[SHAPES LOADER] Shop:", shop);
+
   const shapes = await prisma.shape.findMany({
     where: { shop },
     include: { inputFields: { orderBy: { sortOrder: "asc" } } },
     orderBy: { sortOrder: "asc" },
   });
+
+  console.log("[SHAPES LOADER] Found shapes:", shapes.map(s => ({ id: s.id, name: s.name, isActive: s.isActive })));
 
   return { shapes, shop };
 };
@@ -42,6 +46,7 @@ export const action = async ({ request }) => {
     const inputFields = inputFieldsJson ? JSON.parse(inputFieldsJson) : [];
 
     if (intent === "create") {
+      console.log("[SHAPES CREATE] Creating shape for shop:", shop, "Data:", JSON.stringify(data));
       const shape = await prisma.shape.create({
         data: {
           ...data,
@@ -59,6 +64,7 @@ export const action = async ({ request }) => {
           },
         },
       });
+      console.log("[SHAPES CREATE] Created shape:", shape.id, shape.name, "isActive:", shape.isActive);
       return { success: true, shape };
     } else {
       const id = formData.get("id");

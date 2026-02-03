@@ -38,6 +38,9 @@ export const loader = async ({ request }) => {
     });
   }
 
+  // Always log for debugging
+  console.log("[CALC-CONFIG] Shop:", shop, "ProfileId:", profileId);
+
   // Check cache first
   const cacheKey = `${shop}-${profileId || "default"}`;
   if (!noCache) {
@@ -158,6 +161,16 @@ export const loader = async ({ request }) => {
         where: { shop, isActive: true },
       }), 0),
     ]);
+
+    // Always log shapes and profile info
+    console.log("[CALC-CONFIG] Shapes found:", shapes.length, shapes.map(s => ({ id: s.id, name: s.name, isActive: s.isActive })));
+    console.log("[CALC-CONFIG] Profile found:", profile?.id, profile?.name);
+
+    // If no shapes found, check without isActive filter
+    if (shapes.length === 0) {
+      const allShapes = await prisma.shape.findMany({ where: { shop }, select: { id: true, name: true, isActive: true } });
+      console.log("[CALC-CONFIG] All shapes (no isActive filter):", allShapes);
+    }
 
     // Apply profile filtering
     let filteredShapes = shapes;

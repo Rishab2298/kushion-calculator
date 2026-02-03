@@ -65,12 +65,12 @@ CushionCalculator.prototype.calculatePrice = function() {
   if (visibility.showFillSection === false && hidden.fillType) effectiveFill = hidden.fillType;
   if (visibility.showFabricSection === false && hidden.fabric) effectiveFabric = hidden.fabric;
   if (visibility.showDesignSection === false && hidden.design) effectiveDesign = hidden.design;
-  if (visibility.showPipingSection === false && hidden.piping) effectivePiping = hidden.piping;
-  if (visibility.showButtonSection === false && hidden.button) effectiveButton = hidden.button;
-  if (visibility.showAntiSkidSection === false && hidden.antiSkid) effectiveAntiSkid = hidden.antiSkid;
-  if (visibility.showRodPocketSection === false && hidden.rodPocket) effectiveRodPocket = hidden.rodPocket;
-  if (visibility.showTiesSection === false && hidden.ties) effectiveTies = hidden.ties;
-  if (visibility.showFabricTiesSection === false && hidden.fabricTies) effectiveFabricTies = hidden.fabricTies;
+  if (visibility.showPipingSection === false) effectivePiping = hidden.piping || null;
+  if (visibility.showButtonSection === false) effectiveButton = hidden.button || null;
+  if (visibility.showAntiSkidSection === false) effectiveAntiSkid = hidden.antiSkid || null;
+  if (visibility.showRodPocketSection === false) effectiveRodPocket = hidden.rodPocket || null;
+  if (visibility.showTiesSection === false) effectiveTies = hidden.ties || null;
+  if (visibility.showFabricTiesSection === false) effectiveFabricTies = hidden.fabricTies || null;
 
   if (!this.selectedShape || !effectiveFill || !effectiveFabric) { this.updatePriceDisplay({}); return; }
 
