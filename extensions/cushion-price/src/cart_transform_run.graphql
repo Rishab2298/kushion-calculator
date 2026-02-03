@@ -1,0 +1,17 @@
+query CartTransformRunInput {
+  cart {
+    lines {
+      id
+      quantity
+      cost {
+        amountPerQuantity {
+          amount
+          currencyCode
+        }
+      }
+      calculatedPrice: attribute(key: "_calculated_price") {
+        value
+      }
+    }
+  }
+}

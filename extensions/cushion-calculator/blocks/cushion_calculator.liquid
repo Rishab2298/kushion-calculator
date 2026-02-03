@@ -1,0 +1,793 @@
+{% comment %}
+  Cushion Price Calculator - Accordion Style v5.1
+  All class names prefixed with kraft2026zion- to prevent CSS conflicts
+{% endcomment %}
+
+<div id="cushion-calc-{{ block.id }}" class="kraft2026zion-calc"
+  data-block-id="{{ block.id }}"
+  data-shop="{{ shop.permanent_domain }}"
+  data-profile-id="{{ product.metafields.custom.cushion_calculator_profile_id | default: '' }}"
+  data-variant-id="{{ product.selected_or_first_available_variant.id }}"
+  data-product-id="{{ product.id }}"
+  data-product-title="{{ product.title | escape }}"
+  data-product-handle="{{ product.handle }}">
+  <div class="kraft2026zion-calc-loading" id="calc-loading-{{ block.id }}">
+    <div class="kraft2026zion-loading-spinner"></div>
+    <p>Loading calculator...</p>
+  </div>
+
+  <div class="kraft2026zion-calc-container" id="calc-container-{{ block.id }}" style="display: none;">
+    <!-- Live Price Display -->
+    <div class="kraft2026zion-price-display" id="price-display-{{ block.id }}">
+      <div class="kraft2026zion-price-label">Estimated Price</div>
+      <div class="kraft2026zion-price-value" id="live-price-{{ block.id }}">$0.00</div>
+    </div>
+
+    <!-- Multi-Piece Container (hidden by default, shown when enableMultiPiece) -->
+    <div id="multi-piece-container-{{ block.id }}" class="kraft2026zion-multi-piece-container" style="display: none;">
+      <div class="kraft2026zion-multi-piece-tabs-wrapper">
+        <div class="kraft2026zion-pieces-header">
+          <span class="kraft2026zion-pieces-label" id="pieces-label-{{ block.id }}">Pieces</span>
+        </div>
+        <div class="kraft2026zion-pieces-tabs" id="pieces-tabs-{{ block.id }}">
+          <!-- Dynamically populated with piece tabs -->
+        </div>
+      </div>
+      <div class="kraft2026zion-pieces-content" id="pieces-content-{{ block.id }}">
+        <!-- Dynamically populated with per-piece sections (uses kraft2026zion-accordion-section classes) -->
+      </div>
+    </div>
+
+    <!-- Shared Fabric Section (for multi-piece mode) -->
+    <div id="shared-fabric-container-{{ block.id }}" class="kraft2026zion-shared-fabric-container" style="display: none;">
+      <div class="kraft2026zion-accordion-section" data-section="shared-fabric">
+        <div class="kraft2026zion-accordion-header" id="header-shared-fabric-{{ block.id }}">
+          <span class="kraft2026zion-header-title">Select Fabric (Shared)</span>
+          <span class="kraft2026zion-header-value" id="value-shared-fabric-{{ block.id }}">Not selected</span>
+          <span class="kraft2026zion-header-arrow">&#9662;</span>
+        </div>
+        <div class="kraft2026zion-accordion-content" id="content-shared-fabric-{{ block.id }}">
+          <div class="kraft2026zion-fabric-categories" id="shared-fabric-categories-{{ block.id }}"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Single-Piece Mode Container -->
+    <div id="single-piece-container-{{ block.id }}" class="kraft2026zion-single-piece-container">
+    <!-- Section 1: Shape -->
+    <div class="kraft2026zion-accordion-section" data-section="shape">
+      <div class="kraft2026zion-accordion-header" id="header-shape-{{ block.id }}">
+        <span class="kraft2026zion-header-title">Select Shape</span>
+        <span class="kraft2026zion-header-value" id="value-shape-{{ block.id }}">Not selected</span>
+        <span class="kraft2026zion-header-arrow">&#9662;</span>
+      </div>
+      <div class="kraft2026zion-accordion-content" id="content-shape-{{ block.id }}">
+        <div class="kraft2026zion-horizontal-scroll-container" id="shape-scroll-container-{{ block.id }}">
+          <button type="button" class="kraft2026zion-scroll-arrow kraft2026zion-scroll-arrow-left" id="shape-scroll-left-{{ block.id }}" aria-label="Scroll left">&#8249;</button>
+          <div class="kraft2026zion-horizontal-scroll-wrapper" id="shape-scroll-wrapper-{{ block.id }}">
+            <div class="kraft2026zion-options-row" id="shape-grid-{{ block.id }}"></div>
+          </div>
+          <button type="button" class="kraft2026zion-scroll-arrow kraft2026zion-scroll-arrow-right" id="shape-scroll-right-{{ block.id }}" aria-label="Scroll right">&#8250;</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 2: Dimensions -->
+    <div class="kraft2026zion-accordion-section" data-section="dimensions">
+      <div class="kraft2026zion-accordion-header" id="header-dimensions-{{ block.id }}">
+        <span class="kraft2026zion-header-title">Enter Dimensions</span>
+        <span class="kraft2026zion-header-value" id="value-dimensions-{{ block.id }}">Not set</span>
+        <span class="kraft2026zion-header-arrow">&#9662;</span>
+      </div>
+      <div class="kraft2026zion-accordion-content" id="content-dimensions-{{ block.id }}">
+        <div class="kraft2026zion-dimensions-scroll-container" id="dimensions-scroll-container-{{ block.id }}">
+          <button type="button" class="kraft2026zion-scroll-arrow kraft2026zion-scroll-arrow-left kraft2026zion-dimensions-scroll-arrow" id="dimensions-scroll-left-{{ block.id }}" aria-label="Scroll left" style="display: none;">&#8249;</button>
+          <div class="kraft2026zion-dimensions-scroll-wrapper" id="dimensions-scroll-wrapper-{{ block.id }}">
+            <div class="kraft2026zion-dimensions-form" id="dimensions-form-{{ block.id }}"></div>
+          </div>
+          <button type="button" class="kraft2026zion-scroll-arrow kraft2026zion-scroll-arrow-right kraft2026zion-dimensions-scroll-arrow" id="dimensions-scroll-right-{{ block.id }}" aria-label="Scroll right" style="display: none;">&#8250;</button>
+        </div>
+        <!-- Panels input for 2D shapes -->
+        <div class="kraft2026zion-panels-input-container" id="panels-input-container-{{ block.id }}" style="display: none; margin-top: 16px;">
+          <div class="kraft2026zion-dim-field">
+            <label for="panels-input-{{ block.id }}">Number of Panels</label>
+            <input type="number" id="panels-input-{{ block.id }}" min="1" max="10" step="1" value="1">
+            <span class="kraft2026zion-dim-unit">panels</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 3: Fill Type -->
+    <div class="kraft2026zion-accordion-section" data-section="fill">
+      <div class="kraft2026zion-accordion-header" id="header-fill-{{ block.id }}">
+        <span class="kraft2026zion-header-title">Select Fill Type</span>
+        <span class="kraft2026zion-header-value" id="value-fill-{{ block.id }}">Not selected</span>
+        <span class="kraft2026zion-header-arrow">&#9662;</span>
+      </div>
+      <div class="kraft2026zion-accordion-content" id="content-fill-{{ block.id }}">
+        <div class="kraft2026zion-horizontal-scroll-container" id="fill-scroll-container-{{ block.id }}">
+          <button type="button" class="kraft2026zion-scroll-arrow kraft2026zion-scroll-arrow-left" id="fill-scroll-left-{{ block.id }}" aria-label="Scroll left" style="display: none;">&#8249;</button>
+          <div class="kraft2026zion-horizontal-scroll-wrapper" id="fill-scroll-wrapper-{{ block.id }}">
+            <div class="kraft2026zion-options-row" id="fill-grid-{{ block.id }}"></div>
+          </div>
+          <button type="button" class="kraft2026zion-scroll-arrow kraft2026zion-scroll-arrow-right" id="fill-scroll-right-{{ block.id }}" aria-label="Scroll right" style="display: none;">&#8250;</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 4: Fabric -->
+    <div class="kraft2026zion-accordion-section" data-section="fabric">
+      <div class="kraft2026zion-accordion-header" id="header-fabric-{{ block.id }}">
+        <span class="kraft2026zion-header-title">Select Fabric</span>
+        <span class="kraft2026zion-header-value" id="value-fabric-{{ block.id }}">Not selected</span>
+        <span class="kraft2026zion-header-arrow">&#9662;</span>
+      </div>
+      <div class="kraft2026zion-accordion-content" id="content-fabric-{{ block.id }}">
+        <div class="kraft2026zion-fabric-categories" id="fabric-categories-{{ block.id }}"></div>
+      </div>
+    </div>
+
+    <!-- Section 5: Design -->
+    <div class="kraft2026zion-accordion-section" data-section="design">
+      <div class="kraft2026zion-accordion-header" id="header-design-{{ block.id }}">
+        <span class="kraft2026zion-header-title">Design Option</span>
+        <span class="kraft2026zion-header-value" id="value-design-{{ block.id }}">Not selected</span>
+        <span class="kraft2026zion-header-arrow">&#9662;</span>
+      </div>
+      <div class="kraft2026zion-accordion-content" id="content-design-{{ block.id }}">
+        <div class="kraft2026zion-horizontal-scroll-container" id="design-scroll-container-{{ block.id }}">
+          <button type="button" class="kraft2026zion-scroll-arrow kraft2026zion-scroll-arrow-left" id="design-scroll-left-{{ block.id }}" aria-label="Scroll left" style="display: none;">&#8249;</button>
+          <div class="kraft2026zion-horizontal-scroll-wrapper" id="design-scroll-wrapper-{{ block.id }}">
+            <div class="kraft2026zion-options-row" id="design-grid-{{ block.id }}"></div>
+          </div>
+          <button type="button" class="kraft2026zion-scroll-arrow kraft2026zion-scroll-arrow-right" id="design-scroll-right-{{ block.id }}" aria-label="Scroll right" style="display: none;">&#8250;</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 6: Piping -->
+    <div class="kraft2026zion-accordion-section" data-section="piping">
+      <div class="kraft2026zion-accordion-header" id="header-piping-{{ block.id }}">
+        <span class="kraft2026zion-header-title">Piping Options</span>
+        <span class="kraft2026zion-header-value" id="value-piping-{{ block.id }}">Not selected</span>
+        <span class="kraft2026zion-header-arrow">&#9662;</span>
+      </div>
+      <div class="kraft2026zion-accordion-content" id="content-piping-{{ block.id }}">
+        <div class="kraft2026zion-horizontal-scroll-container" id="piping-scroll-container-{{ block.id }}">
+          <button type="button" class="kraft2026zion-scroll-arrow kraft2026zion-scroll-arrow-left" id="piping-scroll-left-{{ block.id }}" aria-label="Scroll left" style="display: none;">&#8249;</button>
+          <div class="kraft2026zion-horizontal-scroll-wrapper" id="piping-scroll-wrapper-{{ block.id }}">
+            <div class="kraft2026zion-options-row" id="piping-grid-{{ block.id }}"></div>
+          </div>
+          <button type="button" class="kraft2026zion-scroll-arrow kraft2026zion-scroll-arrow-right" id="piping-scroll-right-{{ block.id }}" aria-label="Scroll right" style="display: none;">&#8250;</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 7: Button Style -->
+    <div class="kraft2026zion-accordion-section" data-section="button">
+      <div class="kraft2026zion-accordion-header" id="header-button-{{ block.id }}">
+        <span class="kraft2026zion-header-title">Button Style</span>
+        <span class="kraft2026zion-header-value" id="value-button-{{ block.id }}">Not selected</span>
+        <span class="kraft2026zion-header-arrow">&#9662;</span>
+      </div>
+      <div class="kraft2026zion-accordion-content" id="content-button-{{ block.id }}">
+        <div class="kraft2026zion-horizontal-scroll-container" id="button-scroll-container-{{ block.id }}">
+          <button type="button" class="kraft2026zion-scroll-arrow kraft2026zion-scroll-arrow-left" id="button-scroll-left-{{ block.id }}" aria-label="Scroll left" style="display: none;">&#8249;</button>
+          <div class="kraft2026zion-horizontal-scroll-wrapper" id="button-scroll-wrapper-{{ block.id }}">
+            <div class="kraft2026zion-options-row" id="button-grid-{{ block.id }}"></div>
+          </div>
+          <button type="button" class="kraft2026zion-scroll-arrow kraft2026zion-scroll-arrow-right" id="button-scroll-right-{{ block.id }}" aria-label="Scroll right" style="display: none;">&#8250;</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 8: Anti-Skid -->
+    <div class="kraft2026zion-accordion-section" data-section="antiskid">
+      <div class="kraft2026zion-accordion-header" id="header-antiskid-{{ block.id }}">
+        <span class="kraft2026zion-header-title">Anti-Skid Bottom</span>
+        <span class="kraft2026zion-header-value" id="value-antiskid-{{ block.id }}">Not selected</span>
+        <span class="kraft2026zion-header-arrow">&#9662;</span>
+      </div>
+      <div class="kraft2026zion-accordion-content" id="content-antiskid-{{ block.id }}">
+        <div class="kraft2026zion-horizontal-scroll-container" id="antiskid-scroll-container-{{ block.id }}">
+          <button type="button" class="kraft2026zion-scroll-arrow kraft2026zion-scroll-arrow-left" id="antiskid-scroll-left-{{ block.id }}" aria-label="Scroll left" style="display: none;">&#8249;</button>
+          <div class="kraft2026zion-horizontal-scroll-wrapper" id="antiskid-scroll-wrapper-{{ block.id }}">
+            <div class="kraft2026zion-options-row" id="antiskid-grid-{{ block.id }}"></div>
+          </div>
+          <button type="button" class="kraft2026zion-scroll-arrow kraft2026zion-scroll-arrow-right" id="antiskid-scroll-right-{{ block.id }}" aria-label="Scroll right" style="display: none;">&#8250;</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 9: Rod Pocket -->
+    <div class="kraft2026zion-accordion-section" data-section="rodpocket">
+      <div class="kraft2026zion-accordion-header" id="header-rodpocket-{{ block.id }}">
+        <span class="kraft2026zion-header-title">Rod Pocket</span>
+        <span class="kraft2026zion-header-value" id="value-rodpocket-{{ block.id }}">Not selected</span>
+        <span class="kraft2026zion-header-arrow">&#9662;</span>
+      </div>
+      <div class="kraft2026zion-accordion-content" id="content-rodpocket-{{ block.id }}">
+        <div class="kraft2026zion-horizontal-scroll-container" id="rodpocket-scroll-container-{{ block.id }}">
+          <button type="button" class="kraft2026zion-scroll-arrow kraft2026zion-scroll-arrow-left" id="rodpocket-scroll-left-{{ block.id }}" aria-label="Scroll left" style="display: none;">&#8249;</button>
+          <div class="kraft2026zion-horizontal-scroll-wrapper" id="rodpocket-scroll-wrapper-{{ block.id }}">
+            <div class="kraft2026zion-options-row" id="rodpocket-grid-{{ block.id }}"></div>
+          </div>
+          <button type="button" class="kraft2026zion-scroll-arrow kraft2026zion-scroll-arrow-right" id="rodpocket-scroll-right-{{ block.id }}" aria-label="Scroll right" style="display: none;">&#8250;</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 10: Ties -->
+    <div class="kraft2026zion-accordion-section" data-section="ties">
+      <div class="kraft2026zion-accordion-header" id="header-ties-{{ block.id }}">
+        <span class="kraft2026zion-header-title">Ties</span>
+        <span class="kraft2026zion-header-value" id="value-ties-{{ block.id }}">Not selected</span>
+        <span class="kraft2026zion-header-arrow">&#9662;</span>
+      </div>
+      <div class="kraft2026zion-accordion-content" id="content-ties-{{ block.id }}">
+        <div class="kraft2026zion-horizontal-scroll-container" id="ties-scroll-container-{{ block.id }}">
+          <button type="button" class="kraft2026zion-scroll-arrow kraft2026zion-scroll-arrow-left" id="ties-scroll-left-{{ block.id }}" aria-label="Scroll left" style="display: none;">&#8249;</button>
+          <div class="kraft2026zion-horizontal-scroll-wrapper" id="ties-scroll-wrapper-{{ block.id }}">
+            <div class="kraft2026zion-options-row" id="ties-grid-{{ block.id }}"></div>
+          </div>
+          <button type="button" class="kraft2026zion-scroll-arrow kraft2026zion-scroll-arrow-right" id="ties-scroll-right-{{ block.id }}" aria-label="Scroll right" style="display: none;">&#8250;</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 11: Fabric Ties -->
+    <div class="kraft2026zion-accordion-section" data-section="fabricties">
+      <div class="kraft2026zion-accordion-header" id="header-fabricties-{{ block.id }}">
+        <span class="kraft2026zion-header-title">Fabric Ties</span>
+        <span class="kraft2026zion-header-value" id="value-fabricties-{{ block.id }}">Not selected</span>
+        <span class="kraft2026zion-header-arrow">&#9662;</span>
+      </div>
+      <div class="kraft2026zion-accordion-content" id="content-fabricties-{{ block.id }}">
+        <div class="kraft2026zion-horizontal-scroll-container" id="fabricties-scroll-container-{{ block.id }}">
+          <button type="button" class="kraft2026zion-scroll-arrow kraft2026zion-scroll-arrow-left" id="fabricties-scroll-left-{{ block.id }}" aria-label="Scroll left" style="display: none;">&#8249;</button>
+          <div class="kraft2026zion-horizontal-scroll-wrapper" id="fabricties-scroll-wrapper-{{ block.id }}">
+            <div class="kraft2026zion-options-row" id="fabricties-grid-{{ block.id }}"></div>
+          </div>
+          <button type="button" class="kraft2026zion-scroll-arrow kraft2026zion-scroll-arrow-right" id="fabricties-scroll-right-{{ block.id }}" aria-label="Scroll right" style="display: none;">&#8250;</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 12: Instructions -->
+    <div class="kraft2026zion-accordion-section" data-section="instructions">
+      <div class="kraft2026zion-accordion-header" id="header-instructions-{{ block.id }}">
+        <span class="kraft2026zion-header-title">Special Instructions</span>
+        <span class="kraft2026zion-header-value" id="value-instructions-{{ block.id }}">Optional</span>
+        <span class="kraft2026zion-header-arrow">&#9662;</span>
+      </div>
+      <div class="kraft2026zion-accordion-content" id="content-instructions-{{ block.id }}">
+        <div class="kraft2026zion-instructions-form">
+          <textarea id="instructions-text-{{ block.id }}" rows="3" placeholder="Enter any special instructions..."></textarea>
+
+          <div class="kraft2026zion-attachment-section">
+            <label class="kraft2026zion-attachment-label">Attach Reference Image (Optional)</label>
+            <p class="kraft2026zion-attachment-hint">PNG, JPG or JPEG only. Max 2MB.</p>
+            <div class="kraft2026zion-attachment-dropzone" id="attachment-dropzone-{{ block.id }}">
+              <input type="file" id="attachment-input-{{ block.id }}" accept=".png,.jpg,.jpeg,image/png,image/jpeg" style="display: none;">
+              <div class="kraft2026zion-dropzone-content" id="dropzone-content-{{ block.id }}">
+                <svg class="kraft2026zion-dropzone-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <span class="kraft2026zion-dropzone-text">Click or drag image here</span>
+              </div>
+              <div class="kraft2026zion-dropzone-preview" id="dropzone-preview-{{ block.id }}" style="display: none;">
+                <img id="preview-image-{{ block.id }}" src="" alt="Preview">
+                <div class="kraft2026zion-preview-info">
+                  <span class="kraft2026zion-preview-name" id="preview-name-{{ block.id }}"></span>
+                  <button type="button" class="kraft2026zion-preview-remove" id="preview-remove-{{ block.id }}">&times;</button>
+                </div>
+              </div>
+              <div class="kraft2026zion-dropzone-uploading" id="dropzone-uploading-{{ block.id }}" style="display: none;">
+                <div class="kraft2026zion-loading-spinner-small"></div>
+                <span>Uploading...</span>
+              </div>
+              <div class="kraft2026zion-dropzone-success" id="dropzone-success-{{ block.id }}" style="display: none;">
+                <svg class="kraft2026zion-success-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+                <span>Uploaded!</span>
+              </div>
+            </div>
+            <p class="kraft2026zion-attachment-error" id="attachment-error-{{ block.id }}" style="display: none;"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div><!-- End single-piece-container -->
+
+    <!-- Multi-Piece Price Breakdown (hidden in single-piece mode) -->
+    <div class="kraft2026zion-multi-piece-breakdown-container" id="multi-piece-breakdown-container-{{ block.id }}" style="display: none;">
+      <div class="kraft2026zion-multi-piece-breakdown" id="multi-piece-breakdown-{{ block.id }}">
+        <!-- Dynamically populated with multi-piece price breakdown -->
+      </div>
+    </div>
+
+    <!-- Price Breakdown (Single-piece mode) -->
+    <div class="kraft2026zion-price-breakdown" id="price-breakdown-{{ block.id }}">
+      <div class="kraft2026zion-breakdown-toggle" id="breakdown-toggle-{{ block.id }}">
+        <span>View Price Breakdown</span>
+        <span class="kraft2026zion-toggle-arrow">&#9662;</span>
+      </div>
+      <div class="kraft2026zion-breakdown-content" id="breakdown-content-{{ block.id }}" style="display: none;">
+        <div class="kraft2026zion-breakdown-row"><span>Fabric Cost:</span><span id="bd-fabric-{{ block.id }}">$0.00</span></div>
+        <div class="kraft2026zion-breakdown-row"><span>Fill Cost:</span><span id="bd-fill-{{ block.id }}">$0.00</span></div>
+        <div class="kraft2026zion-breakdown-row kraft2026zion-subtotal"><span>Base Subtotal:</span><span id="bd-subtotal-{{ block.id }}">$0.00</span></div>
+        <div class="kraft2026zion-breakdown-row" id="bd-design-row-{{ block.id }}" style="display: none;"><span>Design (<span id="bd-design-pct-{{ block.id }}">0</span>%):</span><span id="bd-design-{{ block.id }}">$0.00</span></div>
+        <div class="kraft2026zion-breakdown-row" id="bd-piping-row-{{ block.id }}" style="display: none;"><span>Piping (<span id="bd-piping-pct-{{ block.id }}">0</span>%):</span><span id="bd-piping-{{ block.id }}">$0.00</span></div>
+        <div class="kraft2026zion-breakdown-row" id="bd-button-row-{{ block.id }}" style="display: none;"><span>Button Style (<span id="bd-button-pct-{{ block.id }}">0</span>%):</span><span id="bd-button-{{ block.id }}">$0.00</span></div>
+        <div class="kraft2026zion-breakdown-row" id="bd-antiskid-row-{{ block.id }}" style="display: none;"><span>Anti-Skid (<span id="bd-antiskid-pct-{{ block.id }}">0</span>%):</span><span id="bd-antiskid-{{ block.id }}">$0.00</span></div>
+        <div class="kraft2026zion-breakdown-row" id="bd-rodpocket-row-{{ block.id }}" style="display: none;"><span>Rod Pocket (<span id="bd-rodpocket-pct-{{ block.id }}">0</span>%):</span><span id="bd-rodpocket-{{ block.id }}">$0.00</span></div>
+        <div class="kraft2026zion-breakdown-row" id="bd-ties-row-{{ block.id }}" style="display: none;"><span>Ties:</span><span id="bd-ties-{{ block.id }}">$0.00</span></div>
+        <div class="kraft2026zion-breakdown-row" id="bd-fabricties-row-{{ block.id }}" style="display: none;"><span>Fabric Ties:</span><span id="bd-fabricties-{{ block.id }}">$0.00</span></div>
+        <div class="kraft2026zion-breakdown-row" id="bd-profile-row-{{ block.id }}" style="display: none;"><span>Profile Markup (<span id="bd-profile-pct-{{ block.id }}">0</span>%):</span><span id="bd-profile-{{ block.id }}">$0.00</span></div>
+        <div class="kraft2026zion-breakdown-row" id="bd-panels-row-{{ block.id }}" style="display: none;"><span>Panels (x<span id="bd-panels-count-{{ block.id }}">1</span>):</span><span id="bd-panels-{{ block.id }}">Multiplied</span></div>
+        <div class="kraft2026zion-breakdown-row" id="bd-shipping-row-{{ block.id }}"><span>Shipping (<span id="bd-shipping-pct-{{ block.id }}">0</span>%):</span><span id="bd-shipping-{{ block.id }}">$0.00</span></div>
+        <div class="kraft2026zion-breakdown-row" id="bd-labour-row-{{ block.id }}"><span>Labour (<span id="bd-labour-pct-{{ block.id }}">0</span>%):</span><span id="bd-labour-{{ block.id }}">$0.00</span></div>
+        <div class="kraft2026zion-breakdown-row kraft2026zion-pretotal"><span>Subtotal before margin:</span><span id="bd-pretotal-{{ block.id }}">$0.00</span></div>
+        <div class="kraft2026zion-breakdown-row kraft2026zion-margin" id="bd-margin-row-{{ block.id }}" style="display: none;"><span>Margin (<span id="bd-margin-pct-{{ block.id }}">0</span>%):</span><span id="bd-margin-{{ block.id }}">$0.00</span></div>
+        <div class="kraft2026zion-breakdown-row kraft2026zion-discount" id="bd-discount-row-{{ block.id }}" style="display: none;"><span>Discount (<span id="bd-discount-pct-{{ block.id }}">0</span>%):</span><span id="bd-discount-{{ block.id }}">-$0.00</span></div>
+        <div class="kraft2026zion-breakdown-row kraft2026zion-total"><span>Total (x<span id="bd-qty-{{ block.id }}">1</span>):</span><span id="bd-total-{{ block.id }}">$0.00</span></div>
+      </div>
+    </div>
+
+    <!-- Add to Cart -->
+    <div class="kraft2026zion-calc-actions">
+      <div class="kraft2026zion-qty-selector">
+        <button type="button" class="kraft2026zion-qty-btn kraft2026zion-qty-minus" id="qty-minus-{{ block.id }}">-</button>
+        <input type="number" id="quantity-{{ block.id }}" min="1" max="100" value="1" class="kraft2026zion-qty-input" readonly>
+        <button type="button" class="kraft2026zion-qty-btn kraft2026zion-qty-plus" id="qty-plus-{{ block.id }}">+</button>
+      </div>
+      <button type="button" class="kraft2026zion-add-to-cart-btn" id="add-cart-btn-{{ block.id }}" disabled>
+        Add to Cart - <span id="cart-price-{{ block.id }}">$0.00</span>
+      </button>
+    </div>
+    <p class="kraft2026zion-error-msg" id="error-msg-{{ block.id }}" style="display: none;"></p>
+  </div>
+
+  <!-- Success Popup -->
+  <div class="kraft2026zion-cart-success-overlay" id="cart-success-overlay-{{ block.id }}" style="display: none;">
+    <div class="kraft2026zion-cart-success-modal">
+      <div class="kraft2026zion-cart-success-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+      </div>
+      <h3 class="kraft2026zion-cart-success-title">Added to Cart!</h3>
+      <p class="kraft2026zion-cart-success-message">Your custom cushion has been added.</p>
+      <div class="kraft2026zion-cart-success-details" id="cart-success-details-{{ block.id }}"></div>
+      <div class="kraft2026zion-cart-success-buttons">
+        <button type="button" class="kraft2026zion-cart-success-btn kraft2026zion-cart-success-btn-secondary" id="continue-shopping-{{ block.id }}">Continue Shopping</button>
+        <button type="button" class="kraft2026zion-cart-success-btn kraft2026zion-cart-success-btn-primary" id="view-cart-{{ block.id }}" disabled>View Cart (5)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Footer -->
+  <div class="kraft2026zion-floating-footer" id="floating-footer-{{ block.id }}" style="display: none;">
+    <div class="kraft2026zion-floating-footer-content">
+      <div class="kraft2026zion-floating-price">
+        <span class="kraft2026zion-floating-price-label">Total</span>
+        <span class="kraft2026zion-floating-price-value" id="floating-price-{{ block.id }}">$0.00</span>
+      </div>
+      <div class="kraft2026zion-floating-qty-selector">
+        <button type="button" class="kraft2026zion-floating-qty-btn" id="floating-qty-minus-{{ block.id }}">-</button>
+        <span class="kraft2026zion-floating-qty-value" id="floating-qty-value-{{ block.id }}">1</span>
+        <button type="button" class="kraft2026zion-floating-qty-btn" id="floating-qty-plus-{{ block.id }}">+</button>
+      </div>
+      <button type="button" class="kraft2026zion-floating-add-btn" id="floating-add-btn-{{ block.id }}" disabled>
+        Add to Cart
+      </button>
+    </div>
+  </div>
+
+  <!-- Fabric Browser Popup --><div class="kraft2026zion-fabric-browser-overlay" id="fabric-browser-overlay-{{ block.id }}" style="display: none;">
+    <div class="kraft2026zion-fabric-browser-modal">
+      <div class="kraft2026zion-fabric-browser-header">
+        <h3 class="kraft2026zion-fabric-browser-title" id="fabric-browser-title-{{ block.id }}">Browse Fabrics</h3>
+        <button type="button" class="kraft2026zion-fabric-browser-close" id="fabric-browser-close-{{ block.id }}">&times;</button>
+      </div>
+      <div class="kraft2026zion-fabric-browser-filters" id="fabric-browser-filters-{{ block.id }}">
+        <div class="kraft2026zion-filter-row-compact">
+          <select id="filter-brand-{{ block.id }}" class="kraft2026zion-filter-select-compact"><option value="">Brand</option></select>
+          <select id="filter-pattern-{{ block.id }}" class="kraft2026zion-filter-select-compact"><option value="">Pattern</option></select>
+          <select id="filter-color-{{ block.id }}" class="kraft2026zion-filter-select-compact"><option value="">Color</option></select>
+          <select id="filter-material-{{ block.id }}" class="kraft2026zion-filter-select-compact"><option value="">Material</option></select>
+          <select id="filter-sort-{{ block.id }}" class="kraft2026zion-filter-select-compact">
+            <option value="priceTier-asc">Price: Low-High</option>
+            <option value="priceTier-desc">Price: High-Low</option>
+            <option value="sortOrder-asc">Default</option>
+            <option value="name-asc">A-Z</option>
+            <option value="name-desc">Z-A</option>
+          </select>
+          <button type="button" class="kraft2026zion-filter-btn-compact kraft2026zion-filter-btn-apply" id="filter-apply-{{ block.id }}">Apply</button>
+          <button type="button" class="kraft2026zion-filter-btn-compact kraft2026zion-filter-btn-reset" id="filter-reset-{{ block.id }}">Reset</button>
+        </div>
+      </div>
+      <div class="kraft2026zion-fabric-browser-loading" id="fabric-browser-loading-{{ block.id }}" style="display: none;">
+        <div class="kraft2026zion-loading-spinner"></div>
+        <p>Loading fabrics...</p>
+      </div>
+      <div class="kraft2026zion-fabric-browser-body">
+        <div class="kraft2026zion-fabric-browser-content" id="fabric-browser-content-{{ block.id }}">
+          <div class="kraft2026zion-fabric-browser-grid" id="fabric-browser-grid-{{ block.id }}"></div>
+          <div class="kraft2026zion-fabric-browser-pagination" id="fabric-browser-pagination-{{ block.id }}">
+            <button type="button" class="kraft2026zion-pagination-btn" id="pagination-prev-{{ block.id }}" disabled>&laquo;</button>
+            <span class="kraft2026zion-pagination-info" id="pagination-info-{{ block.id }}">1 / 1</span>
+            <button type="button" class="kraft2026zion-pagination-btn" id="pagination-next-{{ block.id }}" disabled>&raquo;</button>
+          </div>
+        </div>
+        <div class="kraft2026zion-fabric-detail-panel" id="fabric-detail-panel-{{ block.id }}">
+          <div class="kraft2026zion-fabric-detail-placeholder">
+            <span>Select a fabric to view details</span>
+          </div>
+          <div class="kraft2026zion-fabric-detail-content" id="fabric-detail-content-{{ block.id }}" style="display: none;">
+            <div class="kraft2026zion-fabric-detail-image-wrap">
+              <img id="fabric-detail-image-{{ block.id }}" src="" alt="Fabric">
+            </div>
+            <div class="kraft2026zion-fabric-detail-info">
+              <h4 id="fabric-detail-name-{{ block.id }}"></h4>
+              <div class="kraft2026zion-fabric-detail-meta">
+                <div class="kraft2026zion-detail-row"><span class="kraft2026zion-detail-label">Category:</span><span id="fabric-detail-category-{{ block.id }}">-</span></div>
+                <div class="kraft2026zion-detail-row"><span class="kraft2026zion-detail-label">Pattern:</span><span id="fabric-detail-pattern-{{ block.id }}">-</span></div>
+                <div class="kraft2026zion-detail-row"><span class="kraft2026zion-detail-label">Color:</span><span id="fabric-detail-color-{{ block.id }}">-</span></div>
+                <div class="kraft2026zion-detail-row"><span class="kraft2026zion-detail-label">Brand:</span><span id="fabric-detail-brand-{{ block.id }}">-</span></div>
+                <div class="kraft2026zion-detail-row"><span class="kraft2026zion-detail-label">Price Tier:</span><span id="fabric-detail-tier-{{ block.id }}">-</span></div>
+                  <div class="kraft2026zion-detail-row"><span class="kraft2026zion-detail-label">Material:</span><span id="fabric-detail-material-{{ block.id }}">-</span></div>
+              </div>
+              <button type="button" class="kraft2026zion-fabric-detail-select-btn" id="fabric-browser-select-{{ block.id }}">Select This Fabric</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Cushion Calculator Scoped Styles - All class names prefixed with kraft2026zion- to avoid conflicts */
+  .cushion-calculator-block-full-width, [class*="cushion_calculator"] { width: 100% !important; max-width: 100% !important; }
+  .kraft2026zion-calc { width: 100%; max-width: 100%; margin: 20px 0; padding: 0 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; box-sizing: border-box; }
+  .kraft2026zion-calc-loading { text-align: center; padding: 60px 20px; }
+  .kraft2026zion-loading-spinner { width: 40px; height: 40px; border: 3px solid #f3f3f3; border-top: 3px solid {{ block.settings.accent_color | default: '#5c6ac4' }}; border-radius: 50%; margin: 0 auto 16px; animation: kraft2026zion-spin 1s linear infinite; }
+  @keyframes kraft2026zion-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  .kraft2026zion-price-display { background: linear-gradient(135deg, {{ block.settings.accent_color | default: '#5c6ac4' }}, #7c3aed); color: white; padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 16px; }
+  .kraft2026zion-price-label { font-size: 0.9rem; opacity: 0.9; margin-bottom: 4px; }
+  .kraft2026zion-price-value { font-size: 2.5rem; font-weight: 700; }
+  .kraft2026zion-accordion-section { border: 1px solid #e5e5e5; border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
+  .kraft2026zion-accordion-header { display: flex; align-items: center; padding: 0 16px; height: 60px; background: {{ block.settings.header_bg | default: '#eae5ff' }}; cursor: pointer; transition: background 0.2s; }
+  .kraft2026zion-accordion-header:hover { background: {{ block.settings.header_hover_bg | default: '#ddd5ff' }}; }
+  .kraft2026zion-accordion-header.kraft2026zion-active { background: {{ block.settings.header_active_bg | default: '#d5cbff' }}; }
+  .kraft2026zion-header-title { font-weight: 600; font-size: 1rem; color: #333; flex: 1; }
+  .kraft2026zion-header-value { font-size: 0.85rem; color: #666; margin-right: 12px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .kraft2026zion-header-value.kraft2026zion-selected { color: {{ block.settings.accent_color | default: '#5c6ac4' }}; font-weight: 500; }
+  .kraft2026zion-header-arrow { font-size: 12px; color: #666; transition: transform 0.2s; }
+  .kraft2026zion-accordion-header.kraft2026zion-active .kraft2026zion-header-arrow { transform: rotate(180deg); }
+  .kraft2026zion-accordion-content { display: none; padding: 16px; background: #fff; }
+  .kraft2026zion-accordion-content.kraft2026zion-open { display: block; }
+  .kraft2026zion-options-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; }
+
+  /* Horizontal scroll container for shapes */
+  .kraft2026zion-horizontal-scroll-container { display: flex; align-items: center; gap: 8px; position: relative; }
+  .kraft2026zion-horizontal-scroll-wrapper { flex: 1; overflow-x: auto; overflow-y: hidden; scroll-behavior: smooth; scrollbar-width: none; -ms-overflow-style: none; }
+  .kraft2026zion-horizontal-scroll-wrapper::-webkit-scrollbar { display: none; }
+  .kraft2026zion-options-row { display: flex; gap: 12px; padding: 4px 0; }
+  .kraft2026zion-options-row .kraft2026zion-option-card { flex: 0 0 140px; min-width: 140px; }
+  .kraft2026zion-scroll-arrow { width: 36px; height: 36px; border-radius: 50%; background: {{ block.settings.accent_color | default: '#5c6ac4' }}; color: white; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; transition: all 0.2s; flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .kraft2026zion-scroll-arrow:hover { transform: scale(1.1); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+  .kraft2026zion-scroll-arrow:disabled { background: #ccc; cursor: not-allowed; opacity: 0.5; transform: none; box-shadow: none; }
+  .kraft2026zion-scroll-arrow-left { order: -1; }
+  .kraft2026zion-scroll-arrow-right { order: 1; }
+
+  /* Dimensions horizontal scroll */
+  .kraft2026zion-dimensions-scroll-container { display: flex; align-items: center; gap: 8px; position: relative; }
+  .kraft2026zion-dimensions-scroll-wrapper { flex: 1; overflow-x: auto; overflow-y: hidden; scroll-behavior: smooth; scrollbar-width: none; -ms-overflow-style: none; }
+  .kraft2026zion-dimensions-scroll-wrapper::-webkit-scrollbar { display: none; }
+  .kraft2026zion-dimensions-scroll-wrapper.kraft2026zion-scroll-enabled .kraft2026zion-dimensions-form { display: flex; gap: 16px; padding: 4px 0; }
+  .kraft2026zion-dimensions-scroll-wrapper.kraft2026zion-scroll-enabled .kraft2026zion-dim-field { flex: 0 0 160px; min-width: 160px; }
+
+  .kraft2026zion-option-card { border: 2px solid #e5e5e5; border-radius: 8px; padding: 12px; cursor: pointer; transition: all 0.2s; text-align: center; position: relative; background: #fff; }
+  .kraft2026zion-option-card:hover { border-color: {{ block.settings.accent_color | default: '#5c6ac4' }}; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+  .kraft2026zion-option-card.kraft2026zion-selected { border-color: {{ block.settings.accent_color | default: '#5c6ac4' }}; background: rgba(92, 106, 196, 0.05); }
+  .kraft2026zion-option-card.kraft2026zion-selected::after { content: ''; position: absolute; top: 8px; right: 8px; width: 20px; height: 20px; background: #22c55e; border-radius: 50%; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/%3E%3C/svg%3E"); background-size: 14px; background-repeat: no-repeat; background-position: center; }
+  .kraft2026zion-option-image { width: 100%; height: 80px; object-fit: cover; border-radius: 4px; margin-bottom: 8px; }
+  .kraft2026zion-option-placeholder { width: 100%; height: 80px; background: #f5f5f5; border-radius: 4px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; color: #999; font-size: 11px; }
+  .kraft2026zion-option-name { font-size: 0.9rem; font-weight: 500; color: #333; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .kraft2026zion-option-price { font-size: 0.8rem; color: {{ block.settings.accent_color | default: '#5c6ac4' }}; font-weight: 600; }
+  .kraft2026zion-dimensions-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; }
+  .kraft2026zion-dim-field { display: flex; flex-direction: column; }
+  .kraft2026zion-dim-field label { font-size: 0.85rem; font-weight: 500; color: #555; margin-bottom: 6px; }
+  .kraft2026zion-dim-field input { padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; transition: border-color 0.2s; }
+  .kraft2026zion-dim-field input:focus { outline: none; border-color: {{ block.settings.accent_color | default: '#5c6ac4' }}; }
+  .kraft2026zion-dim-unit { font-size: 0.75rem; color: #888; margin-top: 4px; }
+  .kraft2026zion-dim-field input.kraft2026zion-dim-out-of-range { border-color: #dc3545 !important; background: #fff5f5; }
+  .kraft2026zion-dim-range-error { font-size: 0.7rem; color: #dc3545; margin-top: 2px; min-height: 14px; }
+  .kraft2026zion-instructions-form label { display: block; font-size: 0.85rem; font-weight: 500; color: #555; margin-bottom: 6px; }
+  .kraft2026zion-instructions-form .kraft2026zion-qty-input { width: 100px; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; margin-bottom: 16px; }
+  .kraft2026zion-instructions-form textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.95rem; resize: vertical; box-sizing: border-box; }
+  .kraft2026zion-instructions-form textarea:focus, .kraft2026zion-instructions-form .kraft2026zion-qty-input:focus { outline: none; border-color: {{ block.settings.accent_color | default: '#5c6ac4' }}; }
+  .kraft2026zion-price-breakdown { background: #f8f9fa; border-radius: 8px; margin: 16px 0; overflow: hidden; }
+  .kraft2026zion-breakdown-toggle { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; cursor: pointer; font-size: 0.9rem; color: #555; }
+  .kraft2026zion-breakdown-toggle:hover { background: #f0f0f0; }
+  .kraft2026zion-toggle-arrow { font-size: 12px; transition: transform 0.2s; }
+  .kraft2026zion-breakdown-toggle.kraft2026zion-open .kraft2026zion-toggle-arrow { transform: rotate(180deg); }
+  .kraft2026zion-breakdown-content { padding: 0 16px 16px; }
+  .kraft2026zion-breakdown-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 0.9rem; color: #555; }
+  .kraft2026zion-breakdown-row.kraft2026zion-subtotal { border-top: 1px dashed #ddd; margin-top: 8px; padding-top: 12px; }
+  .kraft2026zion-breakdown-row.kraft2026zion-pretotal { border-top: 1px dashed #ddd; margin-top: 8px; padding-top: 12px; font-weight: 500; }
+  .kraft2026zion-breakdown-row.kraft2026zion-margin { color: #059669; }
+  .kraft2026zion-breakdown-row.kraft2026zion-margin.kraft2026zion-increase { color: #dc2626; }
+  .kraft2026zion-breakdown-row.kraft2026zion-discount { color: #059669; font-weight: 500; }
+  .kraft2026zion-breakdown-row.kraft2026zion-total { border-top: 2px solid #333; margin-top: 8px; padding-top: 12px; font-weight: 700; font-size: 1.1rem; color: {{ block.settings.accent_color | default: '#5c6ac4' }}; }
+  .kraft2026zion-calc-actions { margin-top: 16px; display: flex; gap: 12px; align-items: center; }
+  .kraft2026zion-qty-selector { display: flex; align-items: center; border: 1px solid #ddd; border-radius: 6px; overflow: hidden; }
+  .kraft2026zion-qty-btn { width: 36px; height: 44px; border: none; background: #f5f5f5; font-size: 18px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+  .kraft2026zion-qty-btn:hover { background: #e8e8e8; }
+  .kraft2026zion-qty-btn:active { background: #ddd; }
+  .kraft2026zion-calc-actions .kraft2026zion-qty-input { width: 50px; height: 44px; border: none; border-left: 1px solid #ddd; border-right: 1px solid #ddd; text-align: center; font-size: 16px; font-weight: 600; -moz-appearance: textfield; }
+  .kraft2026zion-calc-actions .kraft2026zion-qty-input::-webkit-outer-spin-button, .kraft2026zion-calc-actions .kraft2026zion-qty-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .kraft2026zion-add-to-cart-btn { width: 100%; padding: 16px 24px; background: {{ block.settings.accent_color | default: '#5c6ac4' }}; color: white; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+  .kraft2026zion-add-to-cart-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+  .kraft2026zion-add-to-cart-btn:disabled { background: #ccc; cursor: not-allowed; }
+  .kraft2026zion-error-msg { margin-top: 12px; padding: 12px; background: #fff5f5; border: 1px solid #dc3545; border-radius: 6px; color: #dc3545; font-size: 0.9rem; text-align: center; }
+  @media (max-width: 480px) { .kraft2026zion-calc { margin: 10px 0; } .kraft2026zion-options-grid { grid-template-columns: repeat(2, 1fr); } .kraft2026zion-price-value { font-size: 2rem; } .kraft2026zion-scroll-arrow { width: 30px; height: 30px; font-size: 16px; } .kraft2026zion-options-row .kraft2026zion-option-card { flex: 0 0 120px; min-width: 120px; } .kraft2026zion-dimensions-scroll-wrapper.kraft2026zion-scroll-enabled .kraft2026zion-dim-field { flex: 0 0 140px; min-width: 140px; } }
+
+  /* Debug Pricing - when disabled, hide all pricing elements */
+  .kraft2026zion-calc.kraft2026zion-pricing-hidden .kraft2026zion-option-price { display: none !important; }
+  .kraft2026zion-calc.kraft2026zion-pricing-hidden .kraft2026zion-price-breakdown { display: none !important; }
+  .kraft2026zion-calc.kraft2026zion-pricing-hidden .kraft2026zion-multi-piece-breakdown-container { display: none !important; }
+  .kraft2026zion-calc.kraft2026zion-pricing-hidden .kraft2026zion-cart-success-details .kraft2026zion-price-line { display: none !important; }
+  .kraft2026zion-calc.kraft2026zion-pricing-hidden .kraft2026zion-selected-fabric-info .kraft2026zion-fabric-price { display: none !important; }
+  .kraft2026zion-cart-success-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 9999; animation: kraft2026zion-fadeIn 0.2s ease-out; }
+  @keyframes kraft2026zion-fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes kraft2026zion-slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  .kraft2026zion-cart-success-modal { background: white; border-radius: 16px; padding: 32px; max-width: 400px; width: 90%; text-align: center; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); animation: kraft2026zion-slideUp 0.3s ease-out; }
+  .kraft2026zion-cart-success-icon { width: 64px; height: 64px; margin: 0 auto 16px; background: linear-gradient(135deg, #22c55e, #16a34a); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; }
+  .kraft2026zion-cart-success-title { font-size: 1.5rem; font-weight: 700; color: #333; margin: 0 0 8px; }
+  .kraft2026zion-cart-success-message { font-size: 0.95rem; color: #666; margin: 0 0 16px; }
+  .kraft2026zion-cart-success-details { background: #f8f9fa; border-radius: 8px; padding: 12px; margin-bottom: 20px; text-align: left; font-size: 0.85rem; color: #555; }
+  .kraft2026zion-cart-success-details p { margin: 4px 0; }
+  .kraft2026zion-cart-success-details strong { color: #333; }
+  .kraft2026zion-cart-success-buttons { display: flex; gap: 12px; }
+  .kraft2026zion-cart-success-btn { flex: 1; padding: 14px 20px; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: all 0.2s; border: none; }
+  .kraft2026zion-cart-success-btn-secondary { background: #f3f4f6; color: #374151; }
+  .kraft2026zion-cart-success-btn-secondary:hover { background: #e5e7eb; }
+  .kraft2026zion-cart-success-btn-primary { background: {{ block.settings.accent_color | default: '#5c6ac4' }}; color: white; }
+  .kraft2026zion-cart-success-btn-primary:hover:not(:disabled) { opacity: 0.9; }
+  .kraft2026zion-cart-success-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+  @media (max-width: 480px) { .kraft2026zion-cart-success-modal { padding: 24px; } .kraft2026zion-cart-success-buttons { flex-direction: column; } }
+
+  /* Fabric Browser Popup Styles - Split Panel Design */
+  .kraft2026zion-fabric-browser-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 10000; animation: kraft2026zion-fadeIn 0.25s ease-out; }
+  .kraft2026zion-fabric-browser-modal { background: #fff; border-radius: 12px; max-width: 800px; width: 95%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25); animation: kraft2026zion-slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); overflow: hidden; }
+  .kraft2026zion-fabric-browser-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #fa6439; }
+  .kraft2026zion-fabric-browser-title { font-size: 0.95rem; font-weight: 600; color: #fff; margin: 0; }
+  .kraft2026zion-fabric-browser-close { background: rgba(255,255,255,0.2); border: none; width: 26px; height: 26px; border-radius: 6px; font-size: 16px; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .kraft2026zion-fabric-browser-close:hover { background: rgba(255,255,255,0.3); }
+  .kraft2026zion-fabric-browser-filters { padding: 6px 10px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+  .kraft2026zion-filter-row-compact { display: flex; flex-wrap: nowrap; gap: 5px; align-items: center; }
+  .kraft2026zion-filter-select-compact { padding: 5px 6px; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 0.7rem; background: #fff; cursor: pointer; min-width: 0; flex: 1; max-width: 90px; color: #475569; }
+  .kraft2026zion-filter-select-compact:focus { outline: none; border-color: #fa6439; }
+  .kraft2026zion-filter-btn-compact { padding: 5px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; white-space: nowrap; }
+  .kraft2026zion-filter-btn-apply { background: #fa6439; color: white; }
+  .kraft2026zion-filter-btn-apply:hover { background: #e85a33; }
+  .kraft2026zion-filter-btn-reset { background: #fff; color: #64748b; border: 1px solid #e2e8f0; }
+  .kraft2026zion-filter-btn-reset:hover { background: #f1f5f9; }
+  .kraft2026zion-fabric-browser-loading { padding: 40px 16px; text-align: center; background: #fff; }
+  .kraft2026zion-fabric-browser-body { display: flex; flex: 1; overflow: hidden; }
+  .kraft2026zion-fabric-browser-content { flex: 1; display: flex; flex-direction: column; border-right: 1px solid #e2e8f0; min-width: 0; }
+  .kraft2026zion-fabric-browser-content::-webkit-scrollbar { width: 4px; }
+  .kraft2026zion-fabric-browser-content::-webkit-scrollbar-track { background: #f1f5f9; }
+  .kraft2026zion-fabric-browser-content::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+  .kraft2026zion-fabric-browser-grid { flex: 1; overflow-y: auto; padding: 8px; display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 5px; align-content: start; }
+  .kraft2026zion-fabric-browser-grid .kraft2026zion-fabric-thumb { position: relative; width: 100%; aspect-ratio: 1; border-radius: 4px; border: 2px solid transparent; cursor: pointer; overflow: hidden; transition: all 0.15s; background: #f5f5f5; }
+  .kraft2026zion-fabric-browser-grid .kraft2026zion-fabric-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .kraft2026zion-fabric-browser-grid .kraft2026zion-fabric-thumb:hover { border-color: #fda488; transform: scale(1.05); }
+  .kraft2026zion-fabric-browser-grid .kraft2026zion-fabric-thumb.kraft2026zion-selected { border-color: #fa6439; box-shadow: 0 0 0 2px rgba(250, 100, 57, 0.3); }
+  .kraft2026zion-fabric-browser-pagination { display: flex; justify-content: center; align-items: center; gap: 8px; padding: 6px 8px; border-top: 1px solid #e2e8f0; background: #f8fafc; }
+  .kraft2026zion-pagination-btn { padding: 4px 10px; border: 1px solid #e2e8f0; border-radius: 4px; background: #fff; cursor: pointer; font-size: 0.75rem; font-weight: 600; color: #475569; }
+  .kraft2026zion-pagination-btn:hover:not(:disabled) { border-color: #fa6439; color: #fa6439; }
+  .kraft2026zion-pagination-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .kraft2026zion-pagination-info { font-size: 0.7rem; color: #64748b; }
+  .kraft2026zion-fabric-detail-panel { width: 240px; flex-shrink: 0; display: flex; flex-direction: column; background: #fafafa; }
+  .kraft2026zion-fabric-detail-placeholder { flex: 1; display: flex; align-items: center; justify-content: center; color: #999; font-size: 0.8rem; text-align: center; padding: 20px; }
+  .kraft2026zion-fabric-detail-content { flex: 1; display: flex; flex-direction: column; }
+  .kraft2026zion-fabric-detail-image-wrap { padding: 12px; background: #fff; border-bottom: 1px solid #e2e8f0; }
+  .kraft2026zion-fabric-detail-image-wrap img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; display: block; }
+  .kraft2026zion-fabric-detail-info { flex: 1; padding: 12px; display: flex; flex-direction: column; }
+  .kraft2026zion-fabric-detail-info h4 { margin: 0 0 10px; font-size: 0.9rem; font-weight: 600; color: #333; line-height: 1.3; }
+  .kraft2026zion-fabric-detail-meta { flex: 1; }
+  .kraft2026zion-detail-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 0.75rem; border-bottom: 1px solid #eee; }
+  .kraft2026zion-detail-row:last-child { border-bottom: none; }
+  .kraft2026zion-detail-label { color: #888; }
+  .kraft2026zion-detail-row span:last-child { color: #333; font-weight: 500; text-align: right; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .kraft2026zion-fabric-detail-select-btn { width: 100%; padding: 10px; background: #fa6439; color: white; border: none; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; margin-top: 10px; }
+  .kraft2026zion-fabric-detail-select-btn:hover { background: #e85a33; }
+  .kraft2026zion-view-more-btn { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; padding: 8px 14px; background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.8rem; font-weight: 500; color: #fa6439; cursor: pointer; transition: all 0.2s; }
+  .kraft2026zion-view-more-btn:hover { background: rgba(250, 100, 57, 0.05); border-color: #fa6439; }
+  .kraft2026zion-fabric-browser-empty { text-align: center; padding: 40px 16px; color: #94a3b8; font-size: 0.8rem; }
+  @media (max-width: 600px) {
+    .kraft2026zion-fabric-browser-modal { width: 100%; height: 100%; max-height: 100vh; border-radius: 0; }
+    .kraft2026zion-fabric-browser-body { flex-direction: column; }
+    .kraft2026zion-fabric-browser-content { border-right: none; border-bottom: 1px solid #e2e8f0; max-height: 50%; }
+    .kraft2026zion-fabric-detail-panel { width: 100%; flex: 1; }
+    .kraft2026zion-fabric-detail-content { flex-direction: row; }
+    .kraft2026zion-fabric-detail-image-wrap { width: 40%; padding: 10px; }
+    .kraft2026zion-fabric-detail-info { width: 60%; }
+    .kraft2026zion-filter-row-compact { flex-wrap: wrap; }
+    .kraft2026zion-filter-select-compact { flex: 1 1 30%; max-width: none; }
+    .kraft2026zion-filter-btn-compact { flex: 1 1 45%; }
+  }
+
+  /* Fabric Category Tabs */
+  .kraft2026zion-fabric-category-tabs { display: flex; gap: 4px; margin-bottom: 10px; flex-wrap: wrap; }
+  .kraft2026zion-fabric-tab { padding: 6px 12px; border: 1px solid #e2e8f0; border-radius: 6px; background: #fff; font-size: 0.75rem; font-weight: 500; color: #666; cursor: pointer; transition: all 0.15s; }
+  .kraft2026zion-fabric-tab:hover { border-color: #fa6439; color: #fa6439; }
+  .kraft2026zion-fabric-tab.kraft2026zion-active { background: #fa6439; border-color: #fa6439; color: #fff; }
+
+  /* Fabric Preview Grid */
+  .kraft2026zion-fabric-preview-container { min-height: 60px; }
+  .kraft2026zion-fabric-preview-loading { display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .kraft2026zion-loading-spinner-small { width: 24px; height: 24px; border: 2px solid #f3f3f3; border-top: 2px solid #fa6439; border-radius: 50%; animation: kraft2026zion-spin 0.8s linear infinite; }
+  .kraft2026zion-fabric-preview-grid { display: flex; gap: 5px; flex-wrap: wrap; }
+  .kraft2026zion-fabric-preview-thumb { position: relative; width: 100px; height: 100px; border-radius: 6px; border: 2px solid transparent; cursor: pointer; overflow: hidden; background: #f5f5f5; transition: all 0.15s; }
+  .kraft2026zion-fabric-preview-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .kraft2026zion-fabric-preview-thumb .kraft2026zion-no-img { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; font-size: 12px; color: #999; }
+  .kraft2026zion-fabric-preview-thumb:hover { border-color: #fda488; transform: scale(1.05); }
+  .kraft2026zion-fabric-preview-thumb.kraft2026zion-selected { border-color: #fa6439; box-shadow: 0 0 0 2px rgba(250, 100, 57, 0.3); }
+  .kraft2026zion-fabric-tier-badge { position: absolute; bottom: 4px; left: 4px; background: #f46a3f; color: #fff; font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 3px; line-height: 1; z-index: 1; }
+  .kraft2026zion-fabric-view-all-block { background: linear-gradient(135deg, #fa6439, #ff8c69); border-color: #fa6439; display: flex; align-items: center; justify-content: center; }
+  .kraft2026zion-fabric-view-all-block:hover { border-color: #e85a33; transform: scale(1.05); }
+  .kraft2026zion-view-all-text { color: #fff; font-size: 0.85rem; font-weight: 600; text-align: center; line-height: 1.2; }
+  .kraft2026zion-no-fabrics-msg { font-size: 0.8rem; color: #999; padding: 10px 0; }
+
+  /* Category grid */
+  .kraft2026zion-category-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+  .kraft2026zion-category-card { border: 1px solid #e5e5e5; border-radius: 6px; padding: 8px; cursor: pointer; text-align: center; transition: all 0.15s; background: #fff; }
+  .kraft2026zion-category-card:hover { border-color: #fa6439; }
+  .kraft2026zion-category-card-image { width: 100%; height: 50px; object-fit: cover; border-radius: 4px; margin-bottom: 4px; }
+  .kraft2026zion-category-card-placeholder { width: 100%; height: 50px; background: #f0f0f0; border-radius: 4px; margin-bottom: 4px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .kraft2026zion-category-card-name { font-size: 0.75rem; font-weight: 600; color: #333; }
+  .kraft2026zion-category-card-count { font-size: 0.65rem; color: #888; }
+
+  /* Price Tier Badge */
+  .kraft2026zion-price-tier-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+  .kraft2026zion-price-tier-badge.kraft2026zion-tier-low { background: #d4edda; color: #155724; }
+  .kraft2026zion-price-tier-badge.kraft2026zion-tier-medium { background: #fff3cd; color: #856404; }
+  .kraft2026zion-price-tier-badge.kraft2026zion-tier-high { background: #ffd6a5; color: #8a4500; }
+  .kraft2026zion-price-tier-badge.kraft2026zion-tier-none { background: #f0f0f0; color: #666; }
+
+  /* Fabric loading indicator inside section */
+  .kraft2026zion-fabric-section-loading { text-align: center; padding: 30px; }
+  .kraft2026zion-fabric-section-loading .kraft2026zion-loading-spinner { width: 30px; height: 30px; }
+
+  @media (max-width: 480px) { .kraft2026zion-category-grid { grid-template-columns: repeat(2, 1fr); } }
+
+  /* Multi-Piece Mode Styles - Matches accordion design */
+  .kraft2026zion-multi-piece-container { margin-bottom: 8px; }
+  .kraft2026zion-multi-piece-tabs-wrapper { border: 1px solid #e5e5e5; border-radius: 8px; overflow: hidden; margin-bottom: 8px; }
+  .kraft2026zion-pieces-header { display: flex; align-items: center; padding: 0 16px; height: 60px; background: {{ block.settings.header_bg | default: '#eae5ff' }}; }
+  .kraft2026zion-pieces-label { font-size: 1rem; font-weight: 600; color: #333; }
+  .kraft2026zion-pieces-tabs { display: flex; gap: 0; background: #fff; }
+  .kraft2026zion-piece-tab { flex: 1; padding: 12px 16px; border: none; border-bottom: 3px solid transparent; background: #f8f9fa; cursor: pointer; transition: all 0.2s; font-weight: 500; font-size: 0.9rem; color: #666; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .kraft2026zion-piece-tab:hover { background: {{ block.settings.header_hover_bg | default: '#ddd5ff' }}; color: #333; }
+  .kraft2026zion-piece-tab.kraft2026zion-active { background: #fff; border-bottom-color: {{ block.settings.accent_color | default: '#5c6ac4' }}; color: {{ block.settings.accent_color | default: '#5c6ac4' }}; font-weight: 600; }
+  .kraft2026zion-piece-tab-status { display: none; }
+  .kraft2026zion-pieces-content { padding: 0; background: transparent; }
+
+  .kraft2026zion-shared-fabric-container { margin-bottom: 8px; }
+  .kraft2026zion-shared-fabric-container .kraft2026zion-accordion-section { border-color: {{ block.settings.accent_color | default: '#5c6ac4' }}; border-width: 2px; }
+  .kraft2026zion-shared-fabric-container .kraft2026zion-accordion-header { background: {{ block.settings.header_bg | default: '#eae5ff' }}; }
+
+  @media (max-width: 480px) {
+    .kraft2026zion-pieces-tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .kraft2026zion-piece-tab { flex: 0 0 auto; min-width: 100px; padding: 10px 14px; font-size: 0.85rem; }
+  }
+
+  /* Multi-Piece Breakdown Styles */
+  .kraft2026zion-multi-piece-breakdown-container { background: #f8f9fa; border-radius: 8px; margin: 16px 0; overflow: hidden; padding: 16px; }
+  .kraft2026zion-multi-piece-breakdown { font-size: 0.9rem; }
+  .kraft2026zion-mp-breakdown-piece { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px dashed #e2e8f0; cursor: pointer; }
+  .kraft2026zion-mp-breakdown-piece:hover { background: #f0f0f0; margin: 0 -8px; padding: 8px; border-radius: 4px; }
+  .kraft2026zion-mp-breakdown-piece-name { font-weight: 500; color: #374151; }
+  .kraft2026zion-mp-piece-arrow { display: inline-block; font-size: 0.7rem; transition: transform 0.2s; margin-right: 4px; }
+  .kraft2026zion-mp-piece-arrow.kraft2026zion-open { transform: rotate(180deg); }
+  .kraft2026zion-mp-breakdown-piece-price { font-weight: 600; color: {{ block.settings.accent_color | default: '#5c6ac4' }}; }
+  .kraft2026zion-mp-piece-detail { padding: 4px 0 8px 18px; border-bottom: 1px dashed #e2e8f0; }
+  .kraft2026zion-mp-detail-row { display: flex; justify-content: space-between; padding: 2px 0; font-size: 0.85rem; color: #6b7280; }
+  .kraft2026zion-mp-detail-section { font-size: 0.75rem; font-weight: 600; color: #9ca3af; text-transform: uppercase; margin-top: 8px; margin-bottom: 4px; letter-spacing: 0.5px; }
+  .kraft2026zion-mp-detail-section:first-child { margin-top: 0; }
+  .kraft2026zion-mp-detail-subtotal { font-weight: 600; color: #374151; border-top: 1px dashed #e2e8f0; margin-top: 4px; padding-top: 4px; }
+  .kraft2026zion-mp-detail-discount { color: #059669; }
+  .kraft2026zion-mp-detail-final { font-weight: 700; color: {{ block.settings.accent_color | default: '#5c6ac4' }}; border-top: 1px solid #d1d5db; margin-top: 6px; padding-top: 6px; }
+  .kraft2026zion-mp-breakdown-divider { height: 1px; background: #d1d5db; margin: 12px 0; }
+  .kraft2026zion-mp-breakdown-row { display: flex; justify-content: space-between; padding: 4px 0; color: #555; }
+  .kraft2026zion-mp-breakdown-row.kraft2026zion-mp-breakdown-discount { color: #059669; font-weight: 500; }
+  .kraft2026zion-mp-breakdown-row.kraft2026zion-mp-breakdown-total { font-weight: 700; font-size: 1.1rem; color: {{ block.settings.accent_color | default: '#5c6ac4' }}; padding-top: 8px; }
+  .kraft2026zion-mp-breakdown-incomplete { text-align: center; color: #9ca3af; padding: 20px; font-style: italic; }
+
+  /* Piece tab status indicators */
+  .kraft2026zion-piece-tab-status { font-size: 0.75rem; margin-left: 4px; }
+  .kraft2026zion-piece-tab-status.kraft2026zion-complete { color: #22c55e; }
+
+  /* Attachment Upload Styles */
+  .kraft2026zion-attachment-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid #eee; }
+  .kraft2026zion-attachment-label { display: block; font-size: 0.9rem; font-weight: 600; color: #333; margin-bottom: 4px; }
+  .kraft2026zion-attachment-hint { font-size: 0.75rem; color: #888; margin: 0 0 10px; }
+  .kraft2026zion-attachment-dropzone { border: 2px dashed #ddd; border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s; background: #fafafa; position: relative; min-height: 80px; display: flex; align-items: center; justify-content: center; }
+  .kraft2026zion-attachment-dropzone:hover { border-color: {{ block.settings.accent_color | default: '#5c6ac4' }}; background: #f5f5ff; }
+  .kraft2026zion-attachment-dropzone.kraft2026zion-dragover { border-color: {{ block.settings.accent_color | default: '#5c6ac4' }}; background: rgba(92, 106, 196, 0.1); transform: scale(1.02); }
+  .kraft2026zion-dropzone-content { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .kraft2026zion-dropzone-icon { color: #999; }
+  .kraft2026zion-dropzone-text { font-size: 0.85rem; color: #666; }
+  .kraft2026zion-dropzone-preview { display: flex; align-items: center; gap: 12px; width: 100%; }
+  .kraft2026zion-dropzone-preview img { width: 60px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid #ddd; }
+  .kraft2026zion-preview-info { flex: 1; display: flex; align-items: center; justify-content: space-between; }
+  .kraft2026zion-preview-name { font-size: 0.8rem; color: #333; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .kraft2026zion-preview-remove { width: 28px; height: 28px; border: none; background: #ff4444; color: white; border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .kraft2026zion-preview-remove:hover { background: #cc0000; transform: scale(1.1); }
+  .kraft2026zion-dropzone-uploading { display: flex; align-items: center; gap: 10px; color: #666; font-size: 0.85rem; }
+  .kraft2026zion-dropzone-success { display: flex; align-items: center; gap: 8px; color: #22c55e; font-size: 0.85rem; font-weight: 500; }
+  .kraft2026zion-success-icon { color: #22c55e; }
+  .kraft2026zion-attachment-error { margin-top: 8px; font-size: 0.8rem; color: #dc3545; padding: 8px; background: #fff5f5; border-radius: 4px; border: 1px solid #ffcccc; }
+
+  /* Floating Footer */
+  .kraft2026zion-floating-footer { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #e5e5e5; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); z-index: 9998; padding: 12px 16px; transform: translateY(100%); transition: transform 0.3s ease-out; }
+  .kraft2026zion-floating-footer.kraft2026zion-visible { transform: translateY(0); }
+  .kraft2026zion-floating-footer-content { max-width: 600px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .kraft2026zion-floating-price { display: flex; flex-direction: column; align-items: flex-start; min-width: 80px; }
+  .kraft2026zion-floating-price-label { font-size: 0.7rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+  .kraft2026zion-floating-price-value { font-size: 1.3rem; font-weight: 700; color: {{ block.settings.accent_color | default: '#5c6ac4' }}; }
+  .kraft2026zion-floating-qty-selector { display: flex; align-items: center; background: #f5f5f5; border-radius: 8px; overflow: hidden; }
+  .kraft2026zion-floating-qty-btn { width: 36px; height: 36px; border: none; background: transparent; font-size: 18px; font-weight: 600; cursor: pointer; color: #333; transition: background 0.15s; }
+  .kraft2026zion-floating-qty-btn:hover { background: #e8e8e8; }
+  .kraft2026zion-floating-qty-btn:active { background: #ddd; }
+  .kraft2026zion-floating-qty-value { width: 36px; text-align: center; font-size: 1rem; font-weight: 600; color: #333; }
+  .kraft2026zion-floating-add-btn { flex: 1; max-width: 200px; padding: 12px 20px; background: {{ block.settings.accent_color | default: '#5c6ac4' }}; color: white; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+  .kraft2026zion-floating-add-btn:hover:not(:disabled) { opacity: 0.9; }
+  .kraft2026zion-floating-add-btn:disabled { background: #ccc; cursor: not-allowed; }
+  @media (max-width: 480px) {
+    .kraft2026zion-floating-footer { padding: 10px 12px; }
+    .kraft2026zion-floating-footer-content { gap: 8px; }
+    .kraft2026zion-floating-price { min-width: 60px; }
+    .kraft2026zion-floating-price-value { font-size: 1.1rem; }
+    .kraft2026zion-floating-qty-btn { width: 32px; height: 32px; font-size: 16px; }
+    .kraft2026zion-floating-qty-value { width: 28px; font-size: 0.9rem; }
+    .kraft2026zion-floating-add-btn { padding: 10px 14px; font-size: 0.85rem; }
+  }
+
+  /* Panels input container */
+  .kraft2026zion-panels-input-container { margin-top: 16px; }
+</style>
+
+
+<script src="{{ 'calculator-core.js' | asset_url }}" defer></script>
+<script src="{{ 'calculator-renderers.js' | asset_url }}" defer></script>
+<script src="{{ 'calculator-selections.js' | asset_url }}" defer></script>
+<script src="{{ 'calculator-multi-piece.js' | asset_url }}" defer></script>
+<script src="{{ 'calculator-fabric.js' | asset_url }}" defer></script>
+<script src="{{ 'calculator-pricing.js' | asset_url }}" defer></script>
+<script src="{{ 'calculator-cart.js' | asset_url }}" defer></script>
+<script src="{{ 'calculator-ui.js' | asset_url }}" defer></script>
+
+
+{% schema %}
+{
+  "name": "Cushion Calculator",
+  "target": "section",
+  "class": "cushion-calculator-block-full-width",
+  "settings": [
+    { "type": "header", "content": "Colors" },
+    { "type": "color", "id": "accent_color", "label": "Accent Color", "default": "#5c6ac4" },
+    { "type": "color", "id": "header_bg", "label": "Accordion Header Background", "default": "#eae5ff" },
+    { "type": "color", "id": "header_hover_bg", "label": "Accordion Header Hover", "default": "#ddd5ff" },
+    { "type": "color", "id": "header_active_bg", "label": "Accordion Header Active", "default": "#d5cbff" }
+  ]
+}
+{% endschema %}

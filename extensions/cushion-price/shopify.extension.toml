@@ -1,0 +1,21 @@
+api_version = "2025-07"
+
+[[extensions]]
+name = "t:name"
+handle = "cushion-price"
+type = "function"
+uid = "778e6584-fd50-7fa4-ff75-7b03c497e944d77fb2cb"
+description = "t:description"
+
+  [[extensions.targeting]]
+  target = "cart.transform.run"
+  input_query = "src/cart_transform_run.graphql"
+  export = "cart-transform-run"
+
+  [extensions.build]
+  command = ""
+  path = "dist/function.wasm"
+
+  [extensions.ui.paths]
+  create = "/"
+  details = "/"

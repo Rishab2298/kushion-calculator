@@ -1,0 +1,22 @@
+query CartInput {
+  cart {
+    lines {
+      id
+      quantity
+      cost {
+        subtotalAmount {
+          amount
+        }
+        amountPerQuantity {
+          amount
+        }
+      }
+      calculatedPrice: attribute(key: "_calculated_price") {
+        value
+      }
+    }
+  }
+  discount {
+    discountClasses
+  }
+}

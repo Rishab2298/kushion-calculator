@@ -1,0 +1,28 @@
+{
+  "calculator": {
+    "title": "Cushion Price Calculator",
+    "subtitle": "Enter your dimensions for an instant quote",
+    "calculate": "Calculate Price",
+    "add_to_cart": "Add to Cart",
+    "dimensions": "Dimensions",
+    "length": "Length",
+    "width": "Width",
+    "thickness": "Thickness",
+    "options": "Options",
+    "quantity": "Quantity",
+    "ties": "Number of Ties",
+    "piping": "Add Piping",
+    "antiskid": "Add Anti-Skid Bottom",
+    "coupon": "Discount Code",
+    "apply": "Apply",
+    "breakdown": "Price Breakdown",
+    "fabric_cost": "Fabric Cost",
+    "fill_cost": "Fill Cost",
+    "piping_cost": "Piping Cost",
+    "ties_cost": "Ties Cost",
+    "antiskid_cost": "Anti-Skid",
+    "subtotal": "Subtotal",
+    "discount": "Discount",
+    "total": "Total"
+  }
+}

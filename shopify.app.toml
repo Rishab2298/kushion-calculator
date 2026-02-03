@@ -1,0 +1,32 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "2cef8e1beb12330148f03c8ede3a2b6b"
+name = "cushion-calculator"
+application_url = "https://cushion-calculator-production.up.railway.app"
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = false
+
+[webhooks]
+api_version = "2026-04"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/webhooks/app/uninstalled"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/scopes_update" ]
+  uri = "/webhooks/app/scopes_update"
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "write_products,write_files"
+
+[auth]
+redirect_urls = [ "https://cushion-calculator-production.up.railway.app/auth/callback" ]
+
+[app_proxy]
+url = "https://cushion-calculator-production.up.railway.app/api"
+subpath = "cushion-api"
+prefix = "apps"

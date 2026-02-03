@@ -1,0 +1,566 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider     = "postgresql"
+  url          = env("DATABASE_URL")
+  // Connection pool settings to prevent exhaustion
+  relationMode = "prisma"
+}
+
+model Session {
+  id                  String    @id
+  shop                String
+  state               String
+  isOnline            Boolean   @default(false)
+  scope               String?
+  expires             DateTime?
+  accessToken         String
+  userId              BigInt?
+  firstName           String?
+  lastName            String?
+  email               String?
+  accountOwner        Boolean   @default(false)
+  locale              String?
+  collaborator        Boolean?  @default(false)
+  emailVerified       Boolean?  @default(false)
+  refreshToken        String?
+  refreshTokenExpires DateTime?
+}
+
+model CalculatorSettings {
+  id   String @id @default(uuid())
+  shop String @unique
+
+  // General settings
+  currencySymbol String @default("$")
+
+  // Price adjustment tiers enabled
+  enablePriceTiers Boolean @default(true)
+
+  // Shipping, Labour, and Conversion costs as percentage of subtotal
+  shippingPercent   Float @default(100)
+  labourPercent     Float @default(100)
+  conversionPercent Float @default(0)
+
+  // Margin calculation method: "tier" (range-based) or "formula" (logarithmic)
+  marginCalculationMethod String @default("tier")
+
+  // Debug mode - when enabled, shows all pricing throughout the calculator
+  debugPricing Boolean @default(false)
+
+  // Whether ties cost is included in the base for shipping & labour % calculations
+  tiesIncludeInShippingLabour Boolean @default(true)
+
+  // Formula-based margin settings
+  // For subtotal <= flatMarginThreshold: margin% = flatMarginPercent (flat, no formula)
+  // For subtotal <= formulaThreshold: margin% = lowConstant - lowCoefficient * ln(subtotal)
+  // For subtotal > formulaThreshold: margin% = highConstant - highCoefficient * ln(subtotal)
+  flatMarginThreshold    Float @default(50)
+  flatMarginPercent      Float @default(100)
+  formulaThreshold       Float @default(400)
+  formulaLowConstant     Float @default(300)
+  formulaLowCoefficient  Float @default(52)
+  formulaHighConstant    Float @default(120)
+  formulaHighCoefficient Float @default(20)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PriceTier {
+  id                String @id @default(uuid())
+  shop              String
+  minPrice          Float
+  maxPrice          Float
+  adjustmentPercent Float
+
+  @@index([shop])
+}
+
+// ============ SHAPES ============
+model Shape {
+  id       String  @id @default(uuid())
+  shop     String
+  name     String
+  imageUrl String?
+
+  // Formulas stored as strings (e.g., "length*width*2 + length*thickness*2 + width*thickness*2")
+  surfaceAreaFormula String
+  volumeFormula      String
+
+  isActive  Boolean @default(true)
+  isDefault Boolean @default(false)
+  sortOrder Int     @default(0)
+
+  // 2D/Panels configuration for curtains
+  is2D         Boolean @default(false)
+  enablePanels Boolean @default(false)
+  maxPanels    Int     @default(10)
+
+  inputFields ShapeInputField[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([shop])
+}
+
+model ShapeInputField {
+  id      String @id @default(uuid())
+  shapeId String
+  shape   Shape  @relation(fields: [shapeId], references: [id], onDelete: Cascade)
+
+  label        String // e.g., "Length"
+  key          String // e.g., "length" - used in formulas
+  unit         String  @default("inches")
+  min          Float   @default(1)
+  max          Float   @default(200)
+  required     Boolean @default(true)
+  defaultValue Float?
+  sortOrder    Int     @default(0)
+
+  @@index([shapeId])
+}
+
+// ============ FILL TYPES ============
+model FillType {
+  id                String  @id @default(uuid())
+  shop              String
+  name              String
+  imageUrl          String?
+  pricePerCubicInch Float // USD per cubic inch
+  description       String?
+  isActive          Boolean @default(true)
+  isDefault         Boolean @default(false)
+  sortOrder         Int     @default(0)
+  discountEnabled   Boolean @default(false)
+  discountPercent   Float   @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([shop])
+}
+
+// ============ FABRIC PRICE TIER ENUM ============
+enum FabricPriceTier {
+  none
+  low // $
+  medium // $$
+  high // $$$
+}
+
+// ============ FABRIC CATEGORIES ============
+model FabricCategory {
+  id          String  @id @default(uuid())
+  shop        String
+  name        String
+  description String?
+  imageUrl    String?
+  isActive    Boolean @default(true)
+  sortOrder   Int     @default(0)
+
+  fabrics Fabric[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([shop])
+}
+
+// ============ FABRIC LOOKUP TABLES ============
+model FabricBrand {
+  id          String  @id @default(uuid())
+  shop        String
+  name        String
+  logoUrl     String?
+  description String?
+  sortOrder   Int     @default(0)
+
+  fabrics Fabric[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([shop, name])
+  @@index([shop])
+}
+
+model FabricPattern {
+  id        String @id @default(uuid())
+  shop      String
+  name      String
+  sortOrder Int    @default(0)
+
+  fabricAssignments FabricPatternAssignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([shop, name])
+  @@index([shop])
+}
+
+model FabricColor {
+  id        String  @id @default(uuid())
+  shop      String
+  name      String
+  hexCode   String?
+  sortOrder Int     @default(0)
+
+  fabricAssignments FabricColorAssignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([shop, name])
+  @@index([shop])
+}
+
+model FabricMaterial {
+  id        String @id @default(uuid())
+  shop      String
+  name      String
+  sortOrder Int    @default(0)
+
+  fabricAssignments FabricMaterialAssignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([shop, name])
+  @@index([shop])
+}
+
+// ============ FABRICS ============
+model Fabric {
+  id         String          @id @default(uuid())
+  shop       String
+  categoryId String?
+  category   FabricCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  name           String
+  imageUrl       String?
+  pricePerSqInch Float // USD per square inch
+  description    String?
+  isActive       Boolean @default(true)
+  isDefault      Boolean @default(false)
+  sortOrder      Int     @default(0)
+  discountEnabled Boolean @default(false)
+  discountPercent Float   @default(0)
+
+  // Price tier for display (manually set by admin)
+  priceTier FabricPriceTier @default(none)
+
+  // Brand (optional FK)
+  brandId String?
+  brand   FabricBrand? @relation(fields: [brandId], references: [id], onDelete: SetNull)
+
+  // Many-to-many via junction tables
+  patternAssignments  FabricPatternAssignment[]
+  colorAssignments    FabricColorAssignment[]
+  materialAssignments FabricMaterialAssignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([shop])
+  @@index([categoryId])
+  @@index([brandId])
+  @@index([shop, priceTier])
+}
+
+// ============ JUNCTION TABLES ============
+model FabricPatternAssignment {
+  id        String        @id @default(uuid())
+  fabricId  String
+  fabric    Fabric        @relation(fields: [fabricId], references: [id], onDelete: Cascade)
+  patternId String
+  pattern   FabricPattern @relation(fields: [patternId], references: [id], onDelete: Cascade)
+
+  @@unique([fabricId, patternId])
+  @@index([fabricId])
+  @@index([patternId])
+}
+
+model FabricColorAssignment {
+  id       String      @id @default(uuid())
+  fabricId String
+  fabric   Fabric      @relation(fields: [fabricId], references: [id], onDelete: Cascade)
+  colorId  String
+  color    FabricColor @relation(fields: [colorId], references: [id], onDelete: Cascade)
+
+  @@unique([fabricId, colorId])
+  @@index([fabricId])
+  @@index([colorId])
+}
+
+model FabricMaterialAssignment {
+  id         String         @id @default(uuid())
+  fabricId   String
+  fabric     Fabric         @relation(fields: [fabricId], references: [id], onDelete: Cascade)
+  materialId String
+  material   FabricMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@unique([fabricId, materialId])
+  @@index([fabricId])
+  @@index([materialId])
+}
+
+// ============ PIPING OPTIONS ============
+model PipingOption {
+  id          String  @id @default(uuid())
+  shop        String
+  name        String
+  imageUrl    String?
+  percent     Float   @default(0) // Percentage of subtotal
+  description String?
+  isActive    Boolean @default(true)
+  isDefault   Boolean @default(false)
+  sortOrder   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([shop])
+}
+
+// ============ BUTTON STYLE OPTIONS ============
+model ButtonStyleOption {
+  id          String  @id @default(uuid())
+  shop        String
+  name        String
+  imageUrl    String?
+  percent     Float   @default(0) // Percentage of subtotal
+  description String?
+  isActive    Boolean @default(true)
+  isDefault   Boolean @default(false)
+  sortOrder   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([shop])
+}
+
+// ============ ANTI-SKID OPTIONS ============
+model AntiSkidOption {
+  id          String  @id @default(uuid())
+  shop        String
+  name        String
+  imageUrl    String?
+  percent     Float   @default(0) // Percentage of subtotal
+  description String?
+  isActive    Boolean @default(true)
+  isDefault   Boolean @default(false)
+  sortOrder   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([shop])
+}
+
+// ============ TIES OPTIONS ============
+model TiesOption {
+  id          String  @id @default(uuid())
+  shop        String
+  name        String
+  imageUrl    String?
+  price       Float   @default(0) // Fixed USD price
+  description String?
+  isActive    Boolean @default(true)
+  isDefault   Boolean @default(false)
+  sortOrder   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([shop])
+}
+
+// ============ DESIGN OPTIONS ============
+model DesignOption {
+  id          String  @id @default(uuid())
+  shop        String
+  name        String
+  imageUrl    String?
+  percent     Float   @default(0) // % of fabric cost
+  description String?
+  isActive    Boolean @default(true)
+  isDefault   Boolean @default(false)
+  sortOrder   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([shop])
+}
+
+// ============ FABRIC TIES OPTIONS ============
+model FabricTiesOption {
+  id          String  @id @default(uuid())
+  shop        String
+  name        String
+  imageUrl    String?
+  price       Float   @default(0) // Fixed USD price
+  description String?
+  isActive    Boolean @default(true)
+  isDefault   Boolean @default(false)
+  sortOrder   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([shop])
+}
+
+// ============ ROD POCKET OPTIONS ============
+model RodPocketOption {
+  id          String  @id @default(uuid())
+  shop        String
+  name        String
+  imageUrl    String?
+  percent     Float   @default(0) // % of subtotal
+  description String?
+  isActive    Boolean @default(true)
+  isDefault   Boolean @default(false)
+  sortOrder   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([shop])
+}
+
+// ============ CALCULATOR PROFILES ============
+// Profiles control which options appear in the calculator per product
+model CalculatorProfile {
+  id          String  @id @default(uuid())
+  shop        String
+  name        String
+  description String?
+
+  // Profile-level percentage markup (added to subtotal)
+  additionalPercent Float @default(0)
+
+  // Multi-piece configuration
+  enableMultiPiece Boolean @default(false)
+  piecesLabel      String? // e.g., "Cushion Components"
+
+  // Section visibility toggles (used for single-piece mode or as defaults)
+  showShapeSection      Boolean @default(true)
+  showDimensionsSection Boolean @default(true)
+  showFillSection       Boolean @default(true)
+  showFabricSection     Boolean @default(true)
+  showPipingSection     Boolean @default(true)
+  showButtonSection     Boolean @default(true)
+  showAntiSkidSection   Boolean @default(true)
+  showTiesSection       Boolean @default(true)
+  showDesignSection     Boolean @default(true)
+  showFabricTiesSection Boolean @default(true)
+  showRodPocketSection  Boolean @default(true)
+  showInstructions      Boolean @default(true)
+
+  // Restrict to specific items (null = show all active items)
+  // Store as JSON arrays of IDs, e.g., ["id1", "id2"]
+  allowedShapeIds      String? // JSON array of shape IDs (null = all)
+  allowedFillIds       String? // JSON array of fill type IDs (null = all)
+  allowedFabricIds     String? // JSON array of fabric IDs (null = all) - DEPRECATED: use allowedCategoryIds
+  allowedCategoryIds   String? // JSON array of fabric category IDs (null = all)
+  allowedPipingIds     String? // JSON array of piping option IDs (null = all)
+  allowedButtonIds     String? // JSON array of button style IDs (null = all)
+  allowedAntiSkidIds   String? // JSON array of anti-skid IDs (null = all)
+  allowedTiesIds       String? // JSON array of ties IDs (null = all)
+  allowedDesignIds     String? // JSON array of design option IDs (null = all)
+  allowedFabricTiesIds String? // JSON array of fabric ties option IDs (null = all)
+  allowedRodPocketIds  String? // JSON array of rod pocket option IDs (null = all)
+
+  // Hidden section values - used when a section is hidden but still needs to calculate
+  // When section is hidden AND these IDs are set, the value will be included in calculation
+  hiddenShapeId      String? // Shape to use when shape section is hidden
+  hiddenFillTypeId   String? // Fill type to use when fill section is hidden
+  hiddenFabricId     String? // Fabric to use when fabric section is hidden
+  hiddenPipingId     String? // Piping option to use when piping section is hidden
+  hiddenButtonId     String? // Button style to use when button section is hidden
+  hiddenAntiSkidId   String? // Anti-skid option to use when anti-skid section is hidden
+  hiddenTiesId       String? // Ties option to use when ties section is hidden
+  hiddenDesignId     String? // Design option to use when design section is hidden
+  hiddenFabricTiesId String? // Fabric ties option to use when fabric ties section is hidden
+  hiddenRodPocketId  String? // Rod pocket option to use when rod pocket section is hidden
+
+  // Default profile for this shop (one per shop)
+  isDefault Boolean @default(false)
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  // Multi-piece relation
+  pieces ProfilePiece[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([shop, name])
+  @@index([shop])
+}
+
+// ============ PROFILE PIECES ============
+// Per-piece configuration for multi-piece cushion sets
+model ProfilePiece {
+  id        String            @id @default(uuid())
+  profileId String
+  profile   CalculatorProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  name      String // e.g., "Seat Base", "Backrest", "Calf Rest"
+  label     String? // Display label override
+  sortOrder Int     @default(0)
+
+  // Per-piece section visibility
+  showShapeSection      Boolean @default(true)
+  showDimensionsSection Boolean @default(true)
+  showFillSection       Boolean @default(true)
+  showPipingSection     Boolean @default(true)
+  showButtonSection     Boolean @default(true) // Button style per-piece
+  showAntiSkidSection   Boolean @default(true)
+  showTiesSection       Boolean @default(true)
+  showDesignSection     Boolean @default(true)
+  showFabricTiesSection Boolean @default(true)
+  showRodPocketSection  Boolean @default(true)
+
+  // Per-piece allowed options (null = inherit from profile)
+  allowedShapeIds      String?
+  allowedFillIds       String?
+  allowedPipingIds     String?
+  allowedButtonIds     String? // Button style per-piece
+  allowedAntiSkidIds   String?
+  allowedTiesIds       String?
+  allowedDesignIds     String?
+  allowedFabricTiesIds String?
+  allowedRodPocketIds  String?
+
+  // Per-piece hidden values
+  hiddenShapeId      String?
+  hiddenFillTypeId   String?
+  hiddenPipingId     String?
+  hiddenButtonId     String? // Button style per-piece
+  hiddenAntiSkidId   String?
+  hiddenTiesId       String?
+  hiddenDesignId     String?
+  hiddenFabricTiesId String?
+  hiddenRodPocketId  String?
+
+  // Defaults
+  defaultShapeId String?
+  defaultFillId  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([profileId])
+}

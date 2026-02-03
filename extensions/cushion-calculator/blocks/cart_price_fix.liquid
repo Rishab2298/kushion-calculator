@@ -1,0 +1,300 @@
+{% comment %}
+  Cart Price Fix - App Embed Block
+  Monitors cart items with custom pricing and ensures correct prices are displayed.
+  Hides $0 prices and shows a loading animation until price propagates.
+{% endcomment %}
+
+<script>
+(function() {
+  'use strict';
+
+  console.log('[CushionPriceFix] Script loaded');
+
+  let pollInterval = null;
+  let pollCount = 0;
+  const MAX_POLLS = 30;
+  const POLL_INTERVAL = 2000;
+
+  // Run on page load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  function init() {
+    console.log('[CushionPriceFix] Initializing');
+
+    // Check immediately
+    setTimeout(checkAndFixPrices, 500);
+    setTimeout(checkAndFixPrices, 1500);
+    setTimeout(checkAndFixPrices, 3000);
+
+    // Set up observer for dynamic cart changes
+    setupCartObserver();
+
+    // Listen for cart events
+    document.addEventListener('cart:updated', checkAndFixPrices);
+    document.addEventListener('cart:refresh', checkAndFixPrices);
+    document.addEventListener('cart:change', checkAndFixPrices);
+    window.addEventListener('cart:updated', checkAndFixPrices);
+  }
+
+  function setupCartObserver() {
+    const observer = new MutationObserver((mutations) => {
+      let shouldCheck = false;
+      for (const mutation of mutations) {
+        if (mutation.addedNodes.length > 0) {
+          for (const node of mutation.addedNodes) {
+            if (node.nodeType === 1) {
+              const isCartRelated = node.matches && (
+                node.matches('[data-cart-item]') ||
+                node.matches('.cart-item') ||
+                node.matches('[data-line-item]') ||
+                node.matches('.cart') ||
+                node.matches('[data-cart]')
+              );
+              const containsCart = node.querySelector && (
+                node.querySelector('[data-cart-item]') ||
+                node.querySelector('.cart-item') ||
+                node.querySelector('.cart')
+              );
+              if (isCartRelated || containsCart) {
+                shouldCheck = true;
+                break;
+              }
+            }
+          }
+        }
+      }
+      if (shouldCheck) {
+        setTimeout(checkAndFixPrices, 100);
+      }
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+  }
+
+  async function checkAndFixPrices() {
+    try {
+      const cartData = await fetch('/cart.js').then(r => r.json());
+
+      if (!cartData.items || cartData.items.length === 0) {
+        stopPolling();
+        return;
+      }
+
+      let hasUnverifiedPrices = false;
+
+      for (const item of cartData.items) {
+        const calculatedPrice = item.properties && item.properties['_calculated_price'];
+
+        if (!calculatedPrice) continue;
+
+        const expectedPrice = parseFloat(calculatedPrice);
+        const actualPrice = item.price / 100;
+
+        console.log(`[CushionPriceFix] Item ${item.variant_id}: expected $${expectedPrice.toFixed(2)}, actual $${actualPrice.toFixed(2)}`);
+
+        // Find and fix price displays for this item
+        fixPriceDisplay(item, expectedPrice, actualPrice);
+
+        if (Math.abs(actualPrice - expectedPrice) > 0.01) {
+          hasUnverifiedPrices = true;
+        }
+      }
+
+      if (hasUnverifiedPrices) {
+        startPolling();
+      } else {
+        stopPolling();
+        // Remove all loading states
+        document.querySelectorAll('.cushion-price-wrapper').forEach(el => {
+          el.classList.remove('cushion-loading');
+          const spinner = el.querySelector('.cushion-spinner');
+          if (spinner) spinner.remove();
+        });
+      }
+
+    } catch (error) {
+      console.error('[CushionPriceFix] Error:', error);
+    }
+  }
+
+  function fixPriceDisplay(item, expectedPrice, actualPrice) {
+    const priceDiffers = Math.abs(actualPrice - expectedPrice) > 0.01;
+    const properties = item.properties || {};
+
+    // Find cart item containers that match this item
+    const containers = findItemContainers(item, properties);
+
+    for (const container of containers) {
+      // Find price elements - try multiple selectors
+      const priceSelectors = [
+        '.cart-item__price',
+        '.cart__item-price',
+        '.price',
+        '[data-cart-item-price]',
+        '.product-price',
+        '.line-item-price',
+        'td.price',
+        '.cart-item__totals .price'
+      ];
+
+      let priceElements = [];
+      for (const sel of priceSelectors) {
+        const els = container.querySelectorAll(sel);
+        if (els.length > 0) {
+          priceElements = Array.from(els);
+          break;
+        }
+      }
+
+      for (const priceEl of priceElements) {
+        if (priceEl.dataset.cushionProcessed === 'true') {
+          // Already processed - just update the value
+          const wrapper = priceEl.querySelector('.cushion-price-wrapper');
+          if (wrapper) {
+            const priceSpan = wrapper.querySelector('.cushion-price-value');
+            if (priceSpan) {
+              priceSpan.textContent = formatPrice(expectedPrice);
+            }
+            if (!priceDiffers) {
+              wrapper.classList.remove('cushion-loading');
+              const spinner = wrapper.querySelector('.cushion-spinner');
+              if (spinner) spinner.remove();
+            }
+          }
+          continue;
+        }
+
+        // Mark as processed
+        priceEl.dataset.cushionProcessed = 'true';
+
+        // Save original content
+        const originalContent = priceEl.innerHTML;
+
+        // Create wrapper
+        const wrapper = document.createElement('span');
+        wrapper.className = 'cushion-price-wrapper' + (priceDiffers ? ' cushion-loading' : '');
+
+        const priceSpan = document.createElement('span');
+        priceSpan.className = 'cushion-price-value';
+        priceSpan.textContent = formatPrice(expectedPrice);
+
+        wrapper.appendChild(priceSpan);
+
+        if (priceDiffers) {
+          const spinner = document.createElement('span');
+          spinner.className = 'cushion-spinner';
+          wrapper.appendChild(spinner);
+        }
+
+        priceEl.innerHTML = '';
+        priceEl.appendChild(wrapper);
+      }
+    }
+  }
+
+  function findItemContainers(item, properties) {
+    const containers = [];
+    const shape = properties['Shape'] || '';
+
+    // Try finding by variant ID
+    const variantSelectors = [
+      `[data-variant-id="${item.variant_id}"]`,
+      `[data-id="${item.variant_id}"]`,
+      `[data-cart-item-key="${item.key}"]`,
+      `[data-line-item-key="${item.key}"]`
+    ];
+
+    for (const sel of variantSelectors) {
+      const els = document.querySelectorAll(sel);
+      for (const el of els) {
+        if (!containers.includes(el)) {
+          containers.push(el);
+        }
+      }
+    }
+
+    // If no variant-specific containers, find by properties
+    if (containers.length === 0 && shape) {
+      const allItems = document.querySelectorAll('.cart-item, .cart__item, [data-cart-item], .line-item, tr[data-id]');
+      for (const itemEl of allItems) {
+        if (itemEl.textContent.includes(shape)) {
+          containers.push(itemEl);
+        }
+      }
+    }
+
+    return containers;
+  }
+
+  function formatPrice(price) {
+    return '$' + price.toFixed(2);
+  }
+
+  function startPolling() {
+    if (pollInterval) return;
+
+    pollCount = 0;
+    console.log('[CushionPriceFix] Starting price poll');
+
+    pollInterval = setInterval(() => {
+      pollCount++;
+      if (pollCount >= MAX_POLLS) {
+        console.log('[CushionPriceFix] Max polls reached');
+        stopPolling();
+        return;
+      }
+      checkAndFixPrices();
+    }, POLL_INTERVAL);
+  }
+
+  function stopPolling() {
+    if (pollInterval) {
+      console.log('[CushionPriceFix] Stopping price poll');
+      clearInterval(pollInterval);
+      pollInterval = null;
+    }
+  }
+
+})();
+</script>
+
+<style>
+  .cushion-price-wrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .cushion-price-wrapper.cushion-loading .cushion-price-value {
+    color: #666;
+  }
+
+  .cushion-spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid #e0e0e0;
+    border-top-color: #333;
+    border-radius: 50%;
+    animation: cushion-spin 0.8s linear infinite;
+  }
+
+  @keyframes cushion-spin {
+    to { transform: rotate(360deg); }
+  }
+</style>
+
+{% schema %}
+{
+  "name": "Cart Price Fix",
+  "target": "body",
+  "settings": []
+}
+{% endschema %}
