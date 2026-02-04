@@ -1157,17 +1157,17 @@
       if (!pieceContent) return;
 
       // Add click handlers for piece section headers (accordion toggle) - using accordion-header class
-      pieceContent.querySelectorAll('.accordion-header').forEach(function(header) {
+      pieceContent.querySelectorAll('.kraft2026zion-accordion-header').forEach(function(header) {
         header.addEventListener('click', function() {
-          var section = header.closest('.accordion-section');
-          var content = section.querySelector('.accordion-content');
+          var section = header.closest('.kraft2026zion-accordion-section');
+          var content = section.querySelector('.kraft2026zion-accordion-content');
           var isOpen = content.classList.contains('kraft2026zion-open');
 
           // Close all other sections
-          pieceContent.querySelectorAll('.accordion-content').forEach(function(c) {
+          pieceContent.querySelectorAll('.kraft2026zion-accordion-content').forEach(function(c) {
             c.classList.remove('kraft2026zion-open');
           });
-          pieceContent.querySelectorAll('.accordion-header').forEach(function(h) {
+          pieceContent.querySelectorAll('.kraft2026zion-accordion-header').forEach(function(h) {
             h.classList.remove('kraft2026zion-active');
           });
 
@@ -1180,10 +1180,10 @@
       });
 
       // Open first section by default
-      var firstSection = pieceContent.querySelector('.accordion-section');
+      var firstSection = pieceContent.querySelector('.kraft2026zion-accordion-section');
       if (firstSection) {
-        var firstHeader = firstSection.querySelector('.accordion-header');
-        var firstContent = firstSection.querySelector('.accordion-content');
+        var firstHeader = firstSection.querySelector('.kraft2026zion-accordion-header');
+        var firstContent = firstSection.querySelector('.kraft2026zion-accordion-content');
         if (firstHeader && firstContent) {
           firstHeader.classList.add('kraft2026zion-active');
           firstContent.classList.add('kraft2026zion-open');
@@ -1191,7 +1191,7 @@
       }
 
       pieceContent.addEventListener('click', function(e) {
-        var card = e.target.closest('.option-card');
+        var card = e.target.closest('.kraft2026zion-option-card');
         if (!card) return;
 
         var type = card.dataset.type;
@@ -1792,6 +1792,7 @@
 
     function renderDrawstringOptions() {
       const grid = document.getElementById('drawstring-grid-' + blockId);
+      if (!grid) return;
       const opts = config.drawstringOptions || [];
       if (!opts.length) { grid.innerHTML = '<p>No drawstring options available</p>'; return; }
       grid.innerHTML = opts.map(function(o) {
@@ -1932,7 +1933,7 @@
     function selectShape(shape) {
       selectedShape = shape;
       panelCount = 1; // Reset panels when shape changes
-      document.querySelectorAll('#shape-grid-' + blockId + ' .option-card').forEach(function(c) { c.classList.toggle('kraft2026zion-selected', c.dataset.id === shape.id); });
+      document.querySelectorAll('#shape-grid-' + blockId + ' .kraft2026zion-option-card').forEach(function(c) { c.classList.toggle('kraft2026zion-selected', c.dataset.id === shape.id); });
       document.getElementById('value-shape-' + blockId).textContent = shape.name;
       document.getElementById('value-shape-' + blockId).classList.add('kraft2026zion-selected');
       renderDimensionFields(shape);
@@ -1944,7 +1945,7 @@
 
     function selectFill(fill) {
       selectedFill = fill;
-      document.querySelectorAll('#fill-grid-' + blockId + ' .option-card').forEach(function(c) { c.classList.toggle('kraft2026zion-selected', c.dataset.id === fill.id); });
+      document.querySelectorAll('#fill-grid-' + blockId + ' .kraft2026zion-option-card').forEach(function(c) { c.classList.toggle('kraft2026zion-selected', c.dataset.id === fill.id); });
       document.getElementById('value-fill-' + blockId).textContent = fill.name;
       document.getElementById('value-fill-' + blockId).classList.add('kraft2026zion-selected');
       calculatePrice();
@@ -1952,7 +1953,7 @@
 
     function selectFabric(fabric) {
       selectedFabric = fabric;
-      document.querySelectorAll('#fabric-categories-' + blockId + ' .option-card').forEach(function(c) { c.classList.toggle('kraft2026zion-selected', c.dataset.id === fabric.id); });
+      document.querySelectorAll('#fabric-categories-' + blockId + ' .kraft2026zion-option-card').forEach(function(c) { c.classList.toggle('kraft2026zion-selected', c.dataset.id === fabric.id); });
       document.getElementById('value-fabric-' + blockId).textContent = fabric.name;
       document.getElementById('value-fabric-' + blockId).classList.add('kraft2026zion-selected');
 
@@ -1978,7 +1979,7 @@
 
     function selectPiping(id) {
       selectedPiping = id === 'none' ? null : config.pipingOptions.find(function(p) { return p.id === id; });
-      document.querySelectorAll('#piping-grid-' + blockId + ' .option-card').forEach(function(c) { c.classList.toggle('kraft2026zion-selected', c.dataset.id === id); });
+      document.querySelectorAll('#piping-grid-' + blockId + ' .kraft2026zion-option-card').forEach(function(c) { c.classList.toggle('kraft2026zion-selected', c.dataset.id === id); });
       document.getElementById('value-piping-' + blockId).textContent = selectedPiping ? selectedPiping.name : 'None';
       document.getElementById('value-piping-' + blockId).classList.toggle('kraft2026zion-selected', !!selectedPiping);
       calculatePrice();
@@ -1987,7 +1988,7 @@
     function selectButton(id) {
       var opts = config.buttonStyleOptions || [];
       selectedButton = id === 'none' ? null : opts.find(function(b) { return b.id === id; });
-      document.querySelectorAll('#button-grid-' + blockId + ' .option-card').forEach(function(c) { c.classList.toggle('kraft2026zion-selected', c.dataset.id === id); });
+      document.querySelectorAll('#button-grid-' + blockId + ' .kraft2026zion-option-card').forEach(function(c) { c.classList.toggle('kraft2026zion-selected', c.dataset.id === id); });
       document.getElementById('value-button-' + blockId).textContent = selectedButton ? selectedButton.name : 'None';
       document.getElementById('value-button-' + blockId).classList.toggle('kraft2026zion-selected', !!selectedButton);
       calculatePrice();
@@ -1996,7 +1997,7 @@
     function selectAntiSkid(id) {
       var opts = config.antiSkidOptions || [];
       selectedAntiSkid = id === 'none' ? null : opts.find(function(a) { return a.id === id; });
-      document.querySelectorAll('#antiskid-grid-' + blockId + ' .option-card').forEach(function(c) { c.classList.toggle('kraft2026zion-selected', c.dataset.id === id); });
+      document.querySelectorAll('#antiskid-grid-' + blockId + ' .kraft2026zion-option-card').forEach(function(c) { c.classList.toggle('kraft2026zion-selected', c.dataset.id === id); });
       document.getElementById('value-antiskid-' + blockId).textContent = selectedAntiSkid ? selectedAntiSkid.name : 'None';
       document.getElementById('value-antiskid-' + blockId).classList.toggle('kraft2026zion-selected', !!selectedAntiSkid);
       calculatePrice();
@@ -2005,7 +2006,7 @@
     function selectTies(id) {
       var opts = config.tiesOptions || [];
       selectedTies = id === 'none' ? null : opts.find(function(t) { return t.id === id; });
-      document.querySelectorAll('#ties-grid-' + blockId + ' .option-card').forEach(function(c) { c.classList.toggle('kraft2026zion-selected', c.dataset.id === id); });
+      document.querySelectorAll('#ties-grid-' + blockId + ' .kraft2026zion-option-card').forEach(function(c) { c.classList.toggle('kraft2026zion-selected', c.dataset.id === id); });
       document.getElementById('value-ties-' + blockId).textContent = selectedTies ? selectedTies.name : 'None';
       document.getElementById('value-ties-' + blockId).classList.toggle('kraft2026zion-selected', !!selectedTies);
       calculatePrice();
@@ -2014,7 +2015,7 @@
     function selectDesign(id) {
       var opts = config.designOptions || [];
       selectedDesign = id === 'none' ? null : opts.find(function(d) { return d.id === id; });
-      document.querySelectorAll('#design-grid-' + blockId + ' .option-card').forEach(function(c) { c.classList.toggle('kraft2026zion-selected', c.dataset.id === id); });
+      document.querySelectorAll('#design-grid-' + blockId + ' .kraft2026zion-option-card').forEach(function(c) { c.classList.toggle('kraft2026zion-selected', c.dataset.id === id); });
       document.getElementById('value-design-' + blockId).textContent = selectedDesign ? selectedDesign.name : 'None';
       document.getElementById('value-design-' + blockId).classList.toggle('kraft2026zion-selected', !!selectedDesign);
       calculatePrice();
@@ -2023,7 +2024,7 @@
     function selectFabricTies(id) {
       var opts = config.fabricTiesOptions || [];
       selectedFabricTies = id === 'none' ? null : opts.find(function(ft) { return ft.id === id; });
-      document.querySelectorAll('#fabricties-grid-' + blockId + ' .option-card').forEach(function(c) { c.classList.toggle('kraft2026zion-selected', c.dataset.id === id); });
+      document.querySelectorAll('#fabricties-grid-' + blockId + ' .kraft2026zion-option-card').forEach(function(c) { c.classList.toggle('kraft2026zion-selected', c.dataset.id === id); });
       document.getElementById('value-fabricties-' + blockId).textContent = selectedFabricTies ? selectedFabricTies.name : 'None';
       document.getElementById('value-fabricties-' + blockId).classList.toggle('kraft2026zion-selected', !!selectedFabricTies);
       calculatePrice();
@@ -2032,7 +2033,7 @@
     function selectRodPocket(id) {
       var opts = config.rodPocketOptions || [];
       selectedRodPocket = id === 'none' ? null : opts.find(function(rp) { return rp.id === id; });
-      document.querySelectorAll('#rodpocket-grid-' + blockId + ' .option-card').forEach(function(c) { c.classList.toggle('kraft2026zion-selected', c.dataset.id === id); });
+      document.querySelectorAll('#rodpocket-grid-' + blockId + ' .kraft2026zion-option-card').forEach(function(c) { c.classList.toggle('kraft2026zion-selected', c.dataset.id === id); });
       document.getElementById('value-rodpocket-' + blockId).textContent = selectedRodPocket ? selectedRodPocket.name : 'None';
       document.getElementById('value-rodpocket-' + blockId).classList.toggle('kraft2026zion-selected', !!selectedRodPocket);
       calculatePrice();
@@ -2609,10 +2610,10 @@
       if (!header || !content) return;
       if (forceOpen || !content.classList.contains('kraft2026zion-open')) {
         // Only close accordion sections that are NOT inside pieces-content (those have their own toggle)
-        document.querySelectorAll('#calc-container-' + blockId + ' .accordion-content').forEach(function(c) {
+        document.querySelectorAll('#calc-container-' + blockId + ' .kraft2026zion-accordion-content').forEach(function(c) {
           if (!c.closest('.kraft2026zion-pieces-content')) c.classList.remove('kraft2026zion-open');
         });
-        document.querySelectorAll('#calc-container-' + blockId + ' .accordion-header').forEach(function(h) {
+        document.querySelectorAll('#calc-container-' + blockId + ' .kraft2026zion-accordion-header').forEach(function(h) {
           if (!h.closest('.kraft2026zion-pieces-content')) h.classList.remove('kraft2026zion-active');
         });
         content.classList.add('kraft2026zion-open');
@@ -2624,16 +2625,16 @@
     }
 
     function setupEventListeners() {
-      document.querySelectorAll('#calc-container-' + blockId + ' .accordion-header').forEach(function(header) {
+      document.querySelectorAll('#calc-container-' + blockId + ' .kraft2026zion-accordion-header').forEach(function(header) {
         // Skip headers inside pieces-content (they have their own toggle via setupPieceSectionListeners)
         if (header.closest('.kraft2026zion-pieces-content')) return;
-        header.addEventListener('click', function() { toggleSection(header.closest('.accordion-section').dataset.section); });
+        header.addEventListener('click', function() { toggleSection(header.closest('.kraft2026zion-accordion-section').dataset.section); });
       });
 
       // Note: shared fabric container is handled by the general accordion header handler above
 
       container.addEventListener('click', function(e) {
-        var card = e.target.closest('.option-card');
+        var card = e.target.closest('.kraft2026zion-option-card');
         if (!card) return;
         var type = card.dataset.type, id = card.dataset.id;
         if (type === 'shape') { var s = config.shapes.find(function(x) { return x.id === id; }); if (s) selectShape(s); }
