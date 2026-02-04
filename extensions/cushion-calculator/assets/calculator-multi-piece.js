@@ -425,11 +425,11 @@ CushionCalculator.prototype.switchToPiece = function(idx) {
     sectionNum++;
   }
 
-  // Rod Pocket section
+  // Bottom Rod Pocket section
   if (pieceConfig.showRodPocketSection !== false && sv.showRodPocketSection !== false) {
     html += '<div class="kraft2026zion-accordion-section" data-section="piece-rodpocket">' +
       '<div class="kraft2026zion-accordion-header" id="piece-header-rodpocket-' + blockId + '">' +
-      '<span class="kraft2026zion-header-title">' + sectionNum + '. Rod Pocket</span>' +
+      '<span class="kraft2026zion-header-title">' + sectionNum + '. Bottom Rod Pocket</span>' +
       '<span class="kraft2026zion-header-value' + (piece.rodPocket ? ' kraft2026zion-selected' : '') + '" id="piece-value-rodpocket-' + blockId + '">' + (piece.rodPocket ? piece.rodPocket.name : 'Not selected') + '</span>' +
       '<span class="kraft2026zion-header-arrow">&#9662;</span>' +
       '</div>' +
@@ -710,7 +710,7 @@ CushionCalculator.prototype.renderPieceRodPocketOptions = function(piece, pieceC
   var grid = document.getElementById('piece-rodpocket-grid-' + this.blockId);
   if (!grid) return;
   var options = this.getFilteredRodPocketOptions(pieceConfig);
-  if (!options.length) { grid.innerHTML = '<p>No rod pocket options available</p>'; return; }
+  if (!options.length) { grid.innerHTML = '<p>No bottom rod pocket options available</p>'; return; }
   grid.innerHTML = options.map(function(o) {
     return '<div class="kraft2026zion-option-card' + (piece.rodPocket && piece.rodPocket.id === o.id ? ' kraft2026zion-selected' : '') + '" data-type="piece-rodpocket" data-id="' + o.id + '">' +
       (o.imageUrl ? '<img class="kraft2026zion-option-image" src="' + o.imageUrl + '" alt="' + o.name + '">' : '<div class="kraft2026zion-option-placeholder">No image</div>') +

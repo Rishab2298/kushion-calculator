@@ -25,7 +25,7 @@ export default function App() {
         <s-link href="/app/piping">Piping</s-link>
         <s-link href="/app/button-style">Button Style</s-link>
         <s-link href="/app/anti-skid">Anti-Skid Bottom</s-link>
-        <s-link href="/app/rod-pocket">Rod Pocket</s-link>
+        <s-link href="/app/rod-pocket">Bottom Rod Pocket</s-link>
         <s-link href="/app/ties">Ties</s-link>
         <s-link href="/app/fabric-ties">Fabric Ties</s-link>
         <s-link href="/app/settings">Settings</s-link>

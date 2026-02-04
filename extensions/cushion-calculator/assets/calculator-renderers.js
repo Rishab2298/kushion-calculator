@@ -222,7 +222,7 @@ CushionCalculator.prototype.renderFabricTiesOptions = function() {
 CushionCalculator.prototype.renderRodPocketOptions = function() {
   var grid = document.getElementById('rodpocket-grid-' + this.blockId);
   var opts = this.config.rodPocketOptions || [];
-  if (!opts.length) { grid.innerHTML = '<p>No rod pocket options available</p>'; return; }
+  if (!opts.length) { grid.innerHTML = '<p>No bottom rod pocket options available</p>'; return; }
   grid.innerHTML = opts.map(function(o) {
     return '<div class="kraft2026zion-option-card" data-type="rodpocket" data-id="' + o.id + '">' +
       (o.imageUrl ? '<img class="kraft2026zion-option-image" src="' + o.imageUrl + '" alt="' + o.name + '">' : '<div class="kraft2026zion-option-placeholder">No image</div>') +

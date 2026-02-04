@@ -558,7 +558,7 @@ export default function Profiles() {
     if (profile.showPipingSection) sections.push("Piping");
     if (profile.showButtonSection) sections.push("Button");
     if (profile.showAntiSkidSection) sections.push("Anti-Skid");
-    if (profile.showRodPocketSection) sections.push("Rod Pocket");
+    if (profile.showRodPocketSection) sections.push("Bottom Rod Pocket");
     if (profile.showTiesSection) sections.push("Ties");
     if (profile.showFabricTiesSection) sections.push("Fabric Ties");
     return sections.join(", ") || "None";
@@ -709,7 +709,7 @@ export default function Profiles() {
                                   </label>
                                   <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                     <input type="checkbox" checked={piece.showRodPocketSection} onChange={(e) => updatePiece(idx, "showRodPocketSection", e.target.checked)} />
-                                    Rod Pocket
+                                    Bottom Rod Pocket
                                   </label>
                                 </div>
 
@@ -859,7 +859,7 @@ export default function Profiles() {
 
                                 {piece.showRodPocketSection && rodPocketOptions.length > 0 && (
                                   <s-stack direction="block" gap="tight">
-                                    <s-text fontWeight="medium" fontSize="small">Allowed Rod Pocket Options (leave empty for all)</s-text>
+                                    <s-text fontWeight="medium" fontSize="small">Allowed Bottom Rod Pocket Options (leave empty for all)</s-text>
                                     <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                                       {rodPocketOptions.map((o) => (
                                         <label key={o.id} style={{ display: "flex", alignItems: "center", gap: "4px", padding: "4px 8px", background: (piece.allowedRodPocketIds || []).includes(o.id) ? "#e0f0e0" : "#f5f5f5", borderRadius: "4px", cursor: "pointer", fontSize: "12px" }}>
@@ -948,7 +948,7 @@ export default function Profiles() {
                                   )}
                                   {!piece.showRodPocketSection && rodPocketOptions.length > 0 && (
                                     <div>
-                                      <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", fontSize: "12px" }}>Hidden Rod Pocket</label>
+                                      <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", fontSize: "12px" }}>Hidden Bottom Rod Pocket</label>
                                       <select value={piece.hiddenRodPocketId} onChange={(e) => updatePiece(idx, "hiddenRodPocketId", e.target.value)} style={{ width: "100%", padding: "6px", borderRadius: "4px", border: "1px solid #ccc", fontSize: "12px" }}>
                                         <option value="">None</option>
                                         {rodPocketOptions.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
@@ -1029,7 +1029,7 @@ export default function Profiles() {
                     <>
                       <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         <input type="checkbox" checked={form.showRodPocketSection} onChange={(e) => setForm({ ...form, showRodPocketSection: e.target.checked })} />
-                        Rod Pocket
+                        Bottom Rod Pocket
                       </label>
                       <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         <input type="checkbox" checked={form.showFabricTiesSection} onChange={(e) => setForm({ ...form, showFabricTiesSection: e.target.checked })} />
@@ -1195,13 +1195,13 @@ export default function Profiles() {
 
                 {!form.enableMultiPiece && !form.showRodPocketSection && rodPocketOptions.length > 0 && (
                   <div>
-                    <label style={{ display: "block", marginBottom: "4px", fontWeight: "500" }}>Hidden Rod Pocket Value</label>
+                    <label style={{ display: "block", marginBottom: "4px", fontWeight: "500" }}>Hidden Bottom Rod Pocket Value</label>
                     <select
                       value={form.hiddenRodPocketId}
                       onChange={(e) => setForm({ ...form, hiddenRodPocketId: e.target.value })}
                       style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
                     >
-                      <option value="">None (no rod pocket cost)</option>
+                      <option value="">None (no bottom rod pocket cost)</option>
                       {rodPocketOptions.map((rp) => (
                         <option key={rp.id} value={rp.id}>{rp.name} ({rp.percent}%)</option>
                       ))}
@@ -1354,11 +1354,11 @@ export default function Profiles() {
                 </s-stack>
               )}
 
-              {/* Allowed Rod Pocket Options */}
+              {/* Allowed Bottom Rod Pocket Options */}
               {!form.enableMultiPiece && form.showRodPocketSection && rodPocketOptions.length > 0 && (
                 <s-stack direction="block" gap="base">
-                  <s-text fontWeight="semibold">Allowed Rod Pocket Options</s-text>
-                  <s-text tone="subdued">Leave all unchecked to show all rod pocket options</s-text>
+                  <s-text fontWeight="semibold">Allowed Bottom Rod Pocket Options</s-text>
+                  <s-text tone="subdued">Leave all unchecked to show all bottom rod pocket options</s-text>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
                     {rodPocketOptions.map((opt) => (
                       <label key={opt.id} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", background: form.allowedRodPocketIds.includes(opt.id) ? "#e0f0e0" : "#f5f5f5", borderRadius: "4px", cursor: "pointer" }}>

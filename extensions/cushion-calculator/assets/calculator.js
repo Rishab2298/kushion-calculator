@@ -568,11 +568,11 @@
         sectionNum++;
       }
 
-      // Rod Pocket section
+      // Bottom Rod Pocket section
       if (pieceConfig.showRodPocketSection !== false && sv.showRodPocketSection !== false) {
         html += '<div class="kraft2026zion-accordion-section" data-section="piece-rodpocket">' +
           '<div class="kraft2026zion-accordion-header" id="piece-header-rodpocket-' + blockId + '">' +
-          '<span class="kraft2026zion-header-title">' + sectionNum + '. Rod Pocket</span>' +
+          '<span class="kraft2026zion-header-title">' + sectionNum + '. Bottom Rod Pocket</span>' +
           '<span class="kraft2026zion-header-value' + (piece.rodPocket ? ' kraft2026zion-selected' : '') + '" id="piece-value-rodpocket-' + blockId + '">' + (piece.rodPocket ? piece.rodPocket.name : 'Not selected') + '</span>' +
           '<span class="kraft2026zion-header-arrow">&#9662;</span>' +
           '</div>' +
@@ -905,7 +905,7 @@
 
       var options = getFilteredRodPocketOptions(pieceConfig);
       if (!options.length) {
-        grid.innerHTML = '<p>No rod pocket options available</p>';
+        grid.innerHTML = '<p>No bottom rod pocket options available</p>';
         return;
       }
 
@@ -1710,7 +1710,7 @@
     function renderRodPocketOptions() {
       const grid = document.getElementById('rodpocket-grid-' + blockId);
       const opts = config.rodPocketOptions || [];
-      if (!opts.length) { grid.innerHTML = '<p>No rod pocket options available</p>'; return; }
+      if (!opts.length) { grid.innerHTML = '<p>No bottom rod pocket options available</p>'; return; }
       grid.innerHTML = opts.map(function(o) {
         return '<div class="kraft2026zion-option-card" data-type="rodpocket" data-id="' + o.id + '">' +
           (o.imageUrl ? '<img class="kraft2026zion-option-image" src="' + o.imageUrl + '" alt="' + o.name + '">' : '<div class="kraft2026zion-option-placeholder">No image</div>') +
@@ -2426,7 +2426,7 @@
       antiskidRow.style.display = (d.antiSkidPct || 0) > 0 ? 'flex' : 'none';
       document.getElementById('bd-antiskid-pct-' + blockId).textContent = d.antiSkidPct || 0;
       document.getElementById('bd-antiskid-' + blockId).textContent = f(d.antiSkidCost);
-      // Rod Pocket row
+      // Bottom Rod Pocket row
       var rodpocketRow = document.getElementById('bd-rodpocket-row-' + blockId);
       if (rodpocketRow) {
         rodpocketRow.style.display = (d.rodPocketPct || 0) > 0 ? 'flex' : 'none';
@@ -2945,7 +2945,7 @@
         'Piping': effectivePiping ? (debugMode ? effectivePiping.name + ' (' + pipingPct + '%)' : effectivePiping.name) : 'None',
         'Button Style': effectiveButton ? (debugMode ? effectiveButton.name + ' (' + buttonPct + '%)' : effectiveButton.name) : 'None',
         'Anti-Skid': effectiveAntiSkid ? (debugMode ? effectiveAntiSkid.name + ' (' + antiSkidPct + '%)' : effectiveAntiSkid.name) : 'None',
-        'Rod Pocket': effectiveRodPocket ? (debugMode ? effectiveRodPocket.name + ' (' + rodPocketPct + '%)' : effectiveRodPocket.name) : 'None',
+        'Bottom Rod Pocket': effectiveRodPocket ? (debugMode ? effectiveRodPocket.name + ' (' + rodPocketPct + '%)' : effectiveRodPocket.name) : 'None',
         'Ties': effectiveTies ? (debugMode ? effectiveTies.name + ' ($' + effectiveTies.price + ')' : effectiveTies.name) : 'None',
         'Fabric Ties': effectiveFabricTies ? (debugMode ? effectiveFabricTies.name + ' ($' + effectiveFabricTies.price + ')' : effectiveFabricTies.name) : 'None',
         'Discount': (debugMode && totalDiscountPct > 0) ? totalDiscountPct + '% off' : 'None',

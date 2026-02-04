@@ -479,7 +479,7 @@ CushionCalculator.prototype.updatePriceDisplay = function(d) {
   antiskidRow.style.display = (d.antiSkidPct || 0) > 0 ? 'flex' : 'none';
   document.getElementById('bd-antiskid-pct-' + blockId).textContent = d.antiSkidPct || 0;
   document.getElementById('bd-antiskid-' + blockId).textContent = f(d.antiSkidCost);
-  // Rod Pocket row
+  // Bottom Rod Pocket row
   var rodpocketRow = document.getElementById('bd-rodpocket-row-' + blockId);
   if (rodpocketRow) {
     rodpocketRow.style.display = (d.rodPocketPct || 0) > 0 ? 'flex' : 'none';

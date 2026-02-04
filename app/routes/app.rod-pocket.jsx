@@ -117,18 +117,18 @@ export default function RodPocket() {
     if (editingItem) data.append("id", editingItem.id);
     Object.entries(formData).forEach(([key, value]) => data.append(key, value.toString()));
     fetcher.submit(data, { method: "POST" });
-    shopify.toast.show(editingItem ? "Rod pocket option updated" : "Rod pocket option created");
+    shopify.toast.show(editingItem ? "Bottom rod pocket option updated" : "Bottom rod pocket option created");
     setShowForm(false);
     resetForm();
   };
 
   const handleDelete = (id) => {
-    if (confirm("Delete this rod pocket option?")) {
+    if (confirm("Delete this bottom rod pocket option?")) {
       const data = new FormData();
       data.append("intent", "delete");
       data.append("id", id);
       fetcher.submit(data, { method: "POST" });
-      shopify.toast.show("Rod pocket option deleted");
+      shopify.toast.show("Bottom rod pocket option deleted");
     }
   };
 
@@ -137,30 +137,30 @@ export default function RodPocket() {
     data.append("intent", "setDefault");
     data.append("id", id);
     fetcher.submit(data, { method: "POST" });
-    shopify.toast.show("Default rod pocket option updated");
+    shopify.toast.show("Default bottom rod pocket option updated");
   };
 
   return (
-    <s-page heading="Rod Pocket Options" fullWidth>
+    <s-page heading="Bottom Rod Pocket Options" fullWidth>
       <s-button slot="primary-action" onClick={() => { resetForm(); setShowForm(true); }}>
-        Add Rod Pocket Option
+        Add Bottom Rod Pocket Option
       </s-button>
 
       <s-section>
         <s-box padding="base" background="subdued" borderRadius="base">
-          <s-text>Rod pocket options add a percentage of the subtotal to the total. This is commonly used for curtains that need a rod pocket for hanging.</s-text>
+          <s-text>Bottom rod pocket options add a percentage of the subtotal to the total. This is commonly used for curtains that need a bottom rod pocket for hanging.</s-text>
         </s-box>
       </s-section>
 
       {showForm && (
-        <s-section heading={editingItem ? "Edit Rod Pocket Option" : "Create Rod Pocket Option"}>
+        <s-section heading={editingItem ? "Edit Bottom Rod Pocket Option" : "Create Bottom Rod Pocket Option"}>
           <s-box padding="base" borderWidth="base" borderRadius="base">
             <s-stack direction="block" gap="base">
               <s-text-field
                 label="Name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., Standard Rod Pocket"
+                placeholder="e.g., Standard Bottom Rod Pocket"
                 required
               />
 
@@ -226,10 +226,10 @@ export default function RodPocket() {
         </s-section>
       )}
 
-      <s-section heading={`Rod Pocket Options (${rodPocketOptions.length})`}>
+      <s-section heading={`Bottom Rod Pocket Options (${rodPocketOptions.length})`}>
         {rodPocketOptions.length === 0 ? (
           <s-box padding="base">
-            <s-paragraph>No rod pocket options created yet.</s-paragraph>
+            <s-paragraph>No bottom rod pocket options created yet.</s-paragraph>
           </s-box>
         ) : (
           <s-stack direction="block" gap="base">

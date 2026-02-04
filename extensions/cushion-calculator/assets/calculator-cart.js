@@ -85,7 +85,7 @@ CushionCalculator.prototype.addToCart = async function() {
     'Piping': effectivePiping ? (debugMode ? effectivePiping.name + ' (' + pipingPct + '%)' : effectivePiping.name) : 'None',
     'Button Style': effectiveButton ? (debugMode ? effectiveButton.name + ' (' + buttonPct + '%)' : effectiveButton.name) : 'None',
     'Anti-Skid': effectiveAntiSkid ? (debugMode ? effectiveAntiSkid.name + ' (' + antiSkidPct + '%)' : effectiveAntiSkid.name) : 'None',
-    'Rod Pocket': effectiveRodPocket ? (debugMode ? effectiveRodPocket.name + ' (' + rodPocketPct + '%)' : effectiveRodPocket.name) : 'None',
+    'Bottom Rod Pocket': effectiveRodPocket ? (debugMode ? effectiveRodPocket.name + ' (' + rodPocketPct + '%)' : effectiveRodPocket.name) : 'None',
     'Ties': effectiveTies ? (debugMode ? effectiveTies.name + ' ($' + effectiveTies.price + ')' : effectiveTies.name) : 'None',
     'Fabric Ties': effectiveFabricTies ? (debugMode ? effectiveFabricTies.name + ' ($' + effectiveFabricTies.price + ')' : effectiveFabricTies.name) : 'None',
     'Discount': (debugMode && totalDiscountPct > 0) ? totalDiscountPct + '% off' : 'None',
