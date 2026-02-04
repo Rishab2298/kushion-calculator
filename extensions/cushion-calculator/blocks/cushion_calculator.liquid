@@ -82,10 +82,18 @@
       <div class="kraft2026zion-accordion-content" id="content-dimensions-{{ block.id }}">
         <!-- Panels input for 2D shapes - at top of dimensions section -->
         <div class="kraft2026zion-panels-input-container" id="panels-input-container-{{ block.id }}" style="display: none; margin-bottom: 16px;">
-          <div class="kraft2026zion-dim-field">
-            <label for="panels-input-{{ block.id }}">Number of Panels</label>
-            <input type="number" id="panels-input-{{ block.id }}" min="1" max="10" step="1" value="1">
-            <span class="kraft2026zion-dim-unit">panels</span>
+          <div class="kraft2026zion-panels-radio-group">
+            <span class="kraft2026zion-panels-label">Number of Panels</span>
+            <div class="kraft2026zion-panels-options">
+              <label class="kraft2026zion-radio-option">
+                <input type="radio" name="panels-{{ block.id }}" value="1" checked>
+                <span>Single</span>
+              </label>
+              <label class="kraft2026zion-radio-option">
+                <input type="radio" name="panels-{{ block.id }}" value="2">
+                <span>Pair</span>
+              </label>
+            </div>
           </div>
         </div>
         <div class="kraft2026zion-dimensions-scroll-container" id="dimensions-scroll-container-{{ block.id }}">
@@ -764,6 +772,11 @@
 
   /* Panels input container */
   .kraft2026zion-panels-input-container { margin-bottom: 16px; }
+  .kraft2026zion-panels-radio-group { display: flex; align-items: center; gap: 16px; }
+  .kraft2026zion-panels-label { font-weight: 500; }
+  .kraft2026zion-panels-options { display: flex; gap: 16px; }
+  .kraft2026zion-radio-option { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .kraft2026zion-radio-option input[type="radio"] { margin: 0; cursor: pointer; }
 </style>
 
 

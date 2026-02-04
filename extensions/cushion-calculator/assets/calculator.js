@@ -1741,7 +1741,7 @@
       const leftBtn = document.getElementById('dimensions-scroll-left-' + blockId);
       const rightBtn = document.getElementById('dimensions-scroll-right-' + blockId);
       const panelsContainer = document.getElementById('panels-input-container-' + blockId);
-      const panelsInput = document.getElementById('panels-input-' + blockId);
+      const panelRadios = document.querySelectorAll('input[name="panels-' + blockId + '"]');
 
       if (!shape || !shape.inputFields.length) {
         form.innerHTML = '<p>Select a shape first</p>';
@@ -1770,29 +1770,17 @@
         rightBtn.style.display = 'none';
       }
 
-      // Handle panels input visibility for 2D shapes
-      if (panelsContainer && panelsInput) {
+      // Handle panels radio buttons visibility for 2D shapes
+      if (panelsContainer && panelRadios.length > 0) {
         if (shape.is2D && shape.enablePanels) {
           panelsContainer.style.display = 'block';
-          var maxPanels = shape.maxPanels || 10;
-          panelsInput.max = maxPanels;
-          panelsInput.value = panelCount;
-          // Set up panels input event listener
-          panelsInput.onchange = function() {
-            var val = parseInt(panelsInput.value);
-            if (isNaN(val) || val < 1) val = 1;
-            if (val > maxPanels) val = maxPanels;
-            panelsInput.value = val;
-            panelCount = val;
-            calculatePrice();
-          };
-          panelsInput.oninput = function() {
-            var val = parseInt(panelsInput.value);
-            if (!isNaN(val) && val >= 1 && val <= maxPanels) {
-              panelCount = val;
+          panelRadios.forEach(function(radio) {
+            radio.checked = (parseInt(radio.value) === panelCount);
+            radio.onchange = function() {
+              panelCount = parseInt(this.value);
               calculatePrice();
-            }
-          };
+            };
+          });
         } else {
           panelsContainer.style.display = 'none';
           panelCount = 1;

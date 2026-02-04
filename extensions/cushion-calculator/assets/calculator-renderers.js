@@ -41,7 +41,7 @@ CushionCalculator.prototype.renderDimensionFields = function(shape) {
   var leftBtn = document.getElementById('dimensions-scroll-left-' + blockId);
   var rightBtn = document.getElementById('dimensions-scroll-right-' + blockId);
   var panelsContainer = document.getElementById('panels-input-container-' + blockId);
-  var panelsInput = document.getElementById('panels-input-' + blockId);
+  var panelRadios = document.querySelectorAll('input[name="panels-' + blockId + '"]');
   var self = this;
 
   if (!shape || !shape.inputFields.length) {
@@ -71,28 +71,17 @@ CushionCalculator.prototype.renderDimensionFields = function(shape) {
     rightBtn.style.display = 'none';
   }
 
-  // Handle panels input visibility for 2D shapes
-  if (panelsContainer && panelsInput) {
+  // Handle panels radio buttons visibility for 2D shapes
+  if (panelsContainer && panelRadios.length > 0) {
     if (shape.is2D && shape.enablePanels) {
       panelsContainer.style.display = 'block';
-      var maxPanels = shape.maxPanels || 10;
-      panelsInput.max = maxPanels;
-      panelsInput.value = self.panelCount;
-      panelsInput.onchange = function() {
-        var val = parseInt(panelsInput.value);
-        if (isNaN(val) || val < 1) val = 1;
-        if (val > maxPanels) val = maxPanels;
-        panelsInput.value = val;
-        self.panelCount = val;
-        self.calculatePrice();
-      };
-      panelsInput.oninput = function() {
-        var val = parseInt(panelsInput.value);
-        if (!isNaN(val) && val >= 1 && val <= maxPanels) {
-          self.panelCount = val;
+      panelRadios.forEach(function(radio) {
+        radio.checked = (parseInt(radio.value) === self.panelCount);
+        radio.onchange = function() {
+          self.panelCount = parseInt(this.value);
           self.calculatePrice();
-        }
-      };
+        };
+      });
     } else {
       panelsContainer.style.display = 'none';
       self.panelCount = 1;
