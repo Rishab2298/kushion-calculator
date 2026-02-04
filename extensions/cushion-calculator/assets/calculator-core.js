@@ -24,6 +24,7 @@ function CushionCalculator(calcRoot) {
   this.selectedTies = null;
   this.selectedDesign = null;
   this.selectedFabricTies = null;
+  this.selectedDrawstring = null;
   this.dimensions = {};
   this.panelCount = 1;
   this.calculatedPrice = 0;
@@ -110,6 +111,7 @@ CushionCalculator.prototype.initSinglePieceMode = function() {
   this.renderRodPocketOptions();
   this.renderTiesOptions();
   this.renderFabricTiesOptions();
+  this.renderDrawstringOptions();
 
   var self = this;
 
@@ -146,6 +148,7 @@ CushionCalculator.prototype.initSinglePieceMode = function() {
   if (this.config.defaultRodPocketId) this.selectRodPocket(this.config.defaultRodPocketId);
   if (this.config.defaultTiesId) this.selectTies(this.config.defaultTiesId);
   if (this.config.defaultFabricTiesId) this.selectFabricTies(this.config.defaultFabricTiesId);
+  if (this.config.defaultDrawstringId) this.selectDrawstring(this.config.defaultDrawstringId);
 };
 
 CushionCalculator.prototype.applySectionVisibility = function() {
@@ -162,6 +165,7 @@ CushionCalculator.prototype.applySectionVisibility = function() {
     { key: 'rodpocket', show: v.showRodPocketSection !== false },
     { key: 'ties', show: v.showTiesSection !== false },
     { key: 'fabricties', show: v.showFabricTiesSection !== false },
+    { key: 'drawstring', show: v.showDrawstringSection !== false },
     { key: 'instructions', show: v.showInstructions !== false },
   ];
   var container = this.container;
@@ -175,8 +179,8 @@ CushionCalculator.prototype.applySectionVisibility = function() {
 
 CushionCalculator.prototype.openFirstVisibleSection = function() {
   var v = this.config.sectionVisibility || {};
-  var order = ['shape', 'dimensions', 'fill', 'fabric', 'design', 'piping', 'button', 'antiskid', 'rodpocket', 'ties', 'fabricties', 'instructions'];
-  var map = { shape: v.showShapeSection !== false, dimensions: v.showDimensionsSection !== false, fill: v.showFillSection !== false, fabric: v.showFabricSection !== false, design: v.showDesignSection !== false, piping: v.showPipingSection !== false, button: v.showButtonSection !== false, antiskid: v.showAntiSkidSection !== false, rodpocket: v.showRodPocketSection !== false, ties: v.showTiesSection !== false, fabricties: v.showFabricTiesSection !== false, instructions: v.showInstructions !== false };
+  var order = ['shape', 'dimensions', 'fill', 'fabric', 'design', 'piping', 'button', 'antiskid', 'rodpocket', 'ties', 'fabricties', 'drawstring', 'instructions'];
+  var map = { shape: v.showShapeSection !== false, dimensions: v.showDimensionsSection !== false, fill: v.showFillSection !== false, fabric: v.showFabricSection !== false, design: v.showDesignSection !== false, piping: v.showPipingSection !== false, button: v.showButtonSection !== false, antiskid: v.showAntiSkidSection !== false, rodpocket: v.showRodPocketSection !== false, ties: v.showTiesSection !== false, fabricties: v.showFabricTiesSection !== false, drawstring: v.showDrawstringSection !== false, instructions: v.showInstructions !== false };
   for (var i = 0; i < order.length; i++) { if (map[order[i]]) { this.toggleSection(order[i], true); break; } }
 };
 

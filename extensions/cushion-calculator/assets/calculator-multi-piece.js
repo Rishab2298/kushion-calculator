@@ -33,7 +33,8 @@ CushionCalculator.prototype.initMultiPieceMode = function() {
       antiSkid: null,
       rodPocket: null,
       ties: null,
-      fabricTies: null
+      fabricTies: null,
+      drawstring: null
     };
   });
 
@@ -84,6 +85,9 @@ CushionCalculator.prototype.initMultiPieceMode = function() {
     if (pc.showFabricTiesSection === false && pc.hiddenFabricTiesId) {
       piece.fabricTies = (self.config.fabricTiesOptions || []).find(function(ft) { return ft.id === pc.hiddenFabricTiesId; }) || null;
     }
+    if (pc.showDrawstringSection === false && pc.hiddenDrawstringId) {
+      piece.drawstring = (self.config.drawstringOptions || []).find(function(ds) { return ds.id === pc.hiddenDrawstringId; }) || null;
+    }
     // Hidden shape for piece
     if (pc.showShapeSection === false && pc.hiddenShapeId) {
       var hiddenShape = self.config.shapes.find(function(s) { return s.id === pc.hiddenShapeId; });
@@ -118,6 +122,9 @@ CushionCalculator.prototype.initMultiPieceMode = function() {
     }
     if (!piece.fabricTies && self.config.defaultFabricTiesId && pc.showFabricTiesSection !== false) {
       piece.fabricTies = (self.config.fabricTiesOptions || []).find(function(ft) { return ft.id === self.config.defaultFabricTiesId; }) || null;
+    }
+    if (!piece.drawstring && self.config.defaultDrawstringId && pc.showDrawstringSection !== false) {
+      piece.drawstring = (self.config.drawstringOptions || []).find(function(ds) { return ds.id === self.config.defaultDrawstringId; }) || null;
     }
   });
 
@@ -211,6 +218,14 @@ CushionCalculator.prototype.getFilteredRodPocketOptions = function(pieceConfig) 
   var allowed = this.parseAllowedIds(pieceConfig.allowedRodPocketIds);
   if (!Array.isArray(allowed) || allowed.length === 0) return opts;
   return opts.filter(function(rp) { return allowed.includes(rp.id); });
+};
+
+CushionCalculator.prototype.getFilteredDrawstringOptions = function(pieceConfig) {
+  var opts = this.config.drawstringOptions || [];
+  if (!pieceConfig || !pieceConfig.allowedDrawstringIds) return opts;
+  var allowed = this.parseAllowedIds(pieceConfig.allowedDrawstringIds);
+  if (!Array.isArray(allowed) || allowed.length === 0) return opts;
+  return opts.filter(function(ds) { return allowed.includes(ds.id); });
 };
 
 CushionCalculator.prototype.renderPieceTabs = function() {
@@ -485,6 +500,26 @@ CushionCalculator.prototype.switchToPiece = function(idx) {
     sectionNum++;
   }
 
+  // Drawstring section
+  if (pieceConfig.showDrawstringSection !== false && sv.showDrawstringSection !== false) {
+    html += '<div class="kraft2026zion-accordion-section" data-section="piece-drawstring">' +
+      '<div class="kraft2026zion-accordion-header" id="piece-header-drawstring-' + blockId + '">' +
+      '<span class="kraft2026zion-header-title">' + sectionNum + '. Drawstring</span>' +
+      '<span class="kraft2026zion-header-value' + (piece.drawstring ? ' kraft2026zion-selected' : '') + '" id="piece-value-drawstring-' + blockId + '">' + (piece.drawstring ? piece.drawstring.name : 'Not selected') + '</span>' +
+      '<span class="kraft2026zion-header-arrow">&#9662;</span>' +
+      '</div>' +
+      '<div class="kraft2026zion-accordion-content" id="piece-content-drawstring-' + blockId + '">' +
+      '<div class="kraft2026zion-horizontal-scroll-container" id="piece-drawstring-scroll-container-' + blockId + '">' +
+      '<button type="button" class="kraft2026zion-scroll-arrow kraft2026zion-scroll-arrow-left" id="piece-drawstring-scroll-left-' + blockId + '" aria-label="Scroll left" style="display: none;">&#8249;</button>' +
+      '<div class="kraft2026zion-horizontal-scroll-wrapper" id="piece-drawstring-scroll-wrapper-' + blockId + '">' +
+      '<div class="kraft2026zion-options-row" id="piece-drawstring-grid-' + blockId + '"></div>' +
+      '</div>' +
+      '<button type="button" class="kraft2026zion-scroll-arrow kraft2026zion-scroll-arrow-right" id="piece-drawstring-scroll-right-' + blockId + '" aria-label="Scroll right" style="display: none;">&#8250;</button>' +
+      '</div>' +
+      '</div></div>';
+    sectionNum++;
+  }
+
   pieceContent.innerHTML = html;
 
   this.renderPieceShapes(piece, pieceConfig);
@@ -498,6 +533,7 @@ CushionCalculator.prototype.switchToPiece = function(idx) {
   this.renderPieceRodPocketOptions(piece, pieceConfig);
   this.renderPieceTiesOptions(piece, pieceConfig);
   this.renderPieceFabricTiesOptions(piece, pieceConfig);
+  this.renderPieceDrawstringOptions(piece, pieceConfig);
 
   this.setupPieceSectionListeners();
   this.updatePieceDimensionValue(piece);
@@ -719,6 +755,19 @@ CushionCalculator.prototype.renderPieceRodPocketOptions = function(piece, pieceC
   this.initPieceSectionScrollArrows('piece-rodpocket');
 };
 
+CushionCalculator.prototype.renderPieceDrawstringOptions = function(piece, pieceConfig) {
+  var grid = document.getElementById('piece-drawstring-grid-' + this.blockId);
+  if (!grid) return;
+  var options = this.getFilteredDrawstringOptions(pieceConfig);
+  if (!options.length) { grid.innerHTML = '<p>No drawstring options available</p>'; return; }
+  grid.innerHTML = options.map(function(o) {
+    return '<div class="kraft2026zion-option-card' + (piece.drawstring && piece.drawstring.id === o.id ? ' kraft2026zion-selected' : '') + '" data-type="piece-drawstring" data-id="' + o.id + '">' +
+      (o.imageUrl ? '<img class="kraft2026zion-option-image" src="' + o.imageUrl + '" alt="' + o.name + '">' : '<div class="kraft2026zion-option-placeholder">No image</div>') +
+      '<div class="kraft2026zion-option-name" title="' + o.name + '">' + o.name + '</div><div class="kraft2026zion-option-price">+' + o.percent + '%</div></div>';
+  }).join('');
+  this.initPieceSectionScrollArrows('piece-drawstring');
+};
+
 CushionCalculator.prototype.initPieceSectionScrollArrows = function(prefix) {
   this.setupScrollArrows(
     document.getElementById(prefix + '-scroll-wrapper-' + this.blockId),
@@ -905,6 +954,18 @@ CushionCalculator.prototype.setupPieceSectionListeners = function() {
         c.classList.toggle('kraft2026zion-selected', c.dataset.id === id);
       });
       var valueEl = document.getElementById('piece-value-rodpocket-' + blockId);
+      if (valueEl) {
+        valueEl.textContent = opt ? opt.name : 'Not selected';
+        valueEl.classList.toggle('kraft2026zion-selected', !!opt);
+      }
+      self.calculatePrice();
+    } else if (type === 'piece-drawstring') {
+      var opt = self.getFilteredDrawstringOptions(pieceConfig).find(function(ds) { return ds.id === id; });
+      currentPiece.drawstring = opt || null;
+      pieceContent.querySelectorAll('[data-type="piece-drawstring"]').forEach(function(c) {
+        c.classList.toggle('kraft2026zion-selected', c.dataset.id === id);
+      });
+      var valueEl = document.getElementById('piece-value-drawstring-' + blockId);
       if (valueEl) {
         valueEl.textContent = opt ? opt.name : 'Not selected';
         valueEl.classList.toggle('kraft2026zion-selected', !!opt);

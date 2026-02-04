@@ -61,6 +61,7 @@ CushionCalculator.prototype.calculatePrice = function() {
   var effectiveRodPocket = this.selectedRodPocket;
   var effectiveTies = this.selectedTies;
   var effectiveFabricTies = this.selectedFabricTies;
+  var effectiveDrawstring = this.selectedDrawstring;
 
   if (visibility.showFillSection === false) effectiveFill = hidden.fillType || null;
   if (visibility.showFabricSection === false) effectiveFabric = hidden.fabric || null;
@@ -71,6 +72,7 @@ CushionCalculator.prototype.calculatePrice = function() {
   if (visibility.showRodPocketSection === false) effectiveRodPocket = hidden.rodPocket || null;
   if (visibility.showTiesSection === false) effectiveTies = hidden.ties || null;
   if (visibility.showFabricTiesSection === false) effectiveFabricTies = hidden.fabricTies || null;
+  if (visibility.showDrawstringSection === false) effectiveDrawstring = hidden.drawstring || null;
 
   if (!this.selectedShape || !effectiveFabric) { this.updatePriceDisplay({}); return; }
 
@@ -102,15 +104,17 @@ CushionCalculator.prototype.calculatePrice = function() {
   var buttonPct = effectiveButton ? (parseFloat(effectiveButton.percent) || 0) : 0;
   var antiSkidPct = effectiveAntiSkid ? (parseFloat(effectiveAntiSkid.percent) || 0) : 0;
   var rodPocketPct = effectiveRodPocket ? (parseFloat(effectiveRodPocket.percent) || 0) : 0;
+  var drawstringPct = effectiveDrawstring ? (parseFloat(effectiveDrawstring.percent) || 0) : 0;
   var profilePct = this.config.profile ? (parseFloat(this.config.profile.additionalPercent) || 0) : 0;
 
   var pipingCost = baseSubtotal * (pipingPct / 100);
   var buttonCost = baseSubtotal * (buttonPct / 100);
   var antiSkidCost = baseSubtotal * (antiSkidPct / 100);
   var rodPocketCost = baseSubtotal * (rodPocketPct / 100);
+  var drawstringCost = baseSubtotal * (drawstringPct / 100);
   var profileCost = baseSubtotal * (profilePct / 100);
 
-  var subtotalAfterAddons = baseSubtotal + designCost + pipingCost + tiesCost + fabricTiesCost + buttonCost + antiSkidCost + rodPocketCost + profileCost;
+  var subtotalAfterAddons = baseSubtotal + designCost + pipingCost + tiesCost + fabricTiesCost + buttonCost + antiSkidCost + rodPocketCost + drawstringCost + profileCost;
 
   var shippingPct = this.config.settings && this.config.settings.shippingPercent != null ? this.config.settings.shippingPercent : 100;
   var labourPct = this.config.settings && this.config.settings.labourPercent != null ? this.config.settings.labourPercent : 100;
@@ -150,6 +154,7 @@ CushionCalculator.prototype.calculatePrice = function() {
     designPct: designPct, designCost: designCost,
     pipingPct: pipingPct, pipingCost: pipingCost, buttonPct: buttonPct, buttonCost: buttonCost,
     antiSkidPct: antiSkidPct, antiSkidCost: antiSkidCost, rodPocketPct: rodPocketPct, rodPocketCost: rodPocketCost,
+    drawstringPct: drawstringPct, drawstringCost: drawstringCost,
     profilePct: profilePct, profileCost: profileCost,
     shippingPct: shippingPct, shippingCost: shippingCost, labourPct: labourPct, labourCost: labourCost,
     preTotalUnit: preTotalUnit, marginPct: marginPct, marginAmt: marginAmt,
@@ -219,6 +224,7 @@ CushionCalculator.prototype.calculateMultiPiecePrice = function() {
     var rodPocketVisible = pc.showRodPocketSection !== false;
     var tiesVisible = pc.showTiesSection !== false;
     var fabricTiesVisible = pc.showFabricTiesSection !== false;
+    var drawstringVisible = pc.showDrawstringSection !== false;
 
     var tiesCost = (tiesVisible && piece.ties) ? (parseFloat(piece.ties.price) || 0) * conversionMultiplier : 0;
     var fabricTiesCost = (fabricTiesVisible && piece.fabricTies) ? (parseFloat(piece.fabricTies.price) || 0) * conversionMultiplier : 0;
@@ -233,13 +239,15 @@ CushionCalculator.prototype.calculateMultiPiecePrice = function() {
     var buttonPct = (buttonVisible && piece.button) ? (parseFloat(piece.button.percent) || 0) : 0;
     var antiSkidPct = (antiSkidVisible && piece.antiSkid) ? (parseFloat(piece.antiSkid.percent) || 0) : 0;
     var rodPocketPct = (rodPocketVisible && piece.rodPocket) ? (parseFloat(piece.rodPocket.percent) || 0) : 0;
+    var drawstringPct = (drawstringVisible && piece.drawstring) ? (parseFloat(piece.drawstring.percent) || 0) : 0;
 
     var pipingCost = pieceBase * (pipingPct / 100);
     var buttonCost = pieceBase * (buttonPct / 100);
     var antiSkidCost = pieceBase * (antiSkidPct / 100);
     var rodPocketCost = pieceBase * (rodPocketPct / 100);
+    var drawstringCost = pieceBase * (drawstringPct / 100);
 
-    var pieceSubtotal = pieceBase + designCost + pipingCost + buttonCost + antiSkidCost + rodPocketCost + tiesCost + fabricTiesCost;
+    var pieceSubtotal = pieceBase + designCost + pipingCost + buttonCost + antiSkidCost + rodPocketCost + drawstringCost + tiesCost + fabricTiesCost;
     totalPiecesSubtotal += pieceSubtotal;
 
     // === INDEPENDENT PER-PIECE CALCULATION ===
@@ -295,6 +303,8 @@ CushionCalculator.prototype.calculateMultiPiecePrice = function() {
       antiSkidPct: antiSkidPct,
       rodPocketCost: rodPocketCost,
       rodPocketPct: rodPocketPct,
+      drawstringCost: drawstringCost,
+      drawstringPct: drawstringPct,
       subtotal: pieceSubtotal,
       // Per-piece calculated values
       profileCost: pieceProfileCost,
@@ -319,7 +329,8 @@ CushionCalculator.prototype.calculateMultiPiecePrice = function() {
       rodPocketName: piece.rodPocket ? piece.rodPocket.name : '',
       tiesName: piece.ties ? piece.ties.name : '',
       fabricTiesName: piece.fabricTies ? piece.fabricTies.name : '',
-      designName: piece.design ? piece.design.name : ''
+      designName: piece.design ? piece.design.name : '',
+      drawstringName: piece.drawstring ? piece.drawstring.name : ''
     });
   });
 
@@ -377,6 +388,9 @@ CushionCalculator.prototype.updateMultiPiecePriceDisplay = function(d) {
         }
         if (pb.tiesCost > 0) {
           html += '<div class="kraft2026zion-mp-detail-row"><span>Ties' + (pb.tiesName ? ' (' + pb.tiesName + ')' : '') + '</span><span>' + f(pb.tiesCost) + '</span></div>';
+        }
+        if (pb.drawstringCost > 0) {
+          html += '<div class="kraft2026zion-mp-detail-row"><span>Drawstring' + (pb.drawstringName ? ' (' + pb.drawstringName + ')' : '') + ' ' + pb.drawstringPct + '%</span><span>' + f(pb.drawstringCost) + '</span></div>';
         }
         html += '<div class="kraft2026zion-mp-detail-row mp-detail-subtotal"><span>Piece Subtotal</span><span>' + f(pb.subtotal) + '</span></div>';
 
@@ -494,6 +508,13 @@ CushionCalculator.prototype.updatePriceDisplay = function(d) {
   if (fabrictiesRow) {
     fabrictiesRow.style.display = (d.fabricTiesCost || 0) > 0 ? 'flex' : 'none';
     document.getElementById('bd-fabricties-' + blockId).textContent = f(d.fabricTiesCost);
+  }
+  // Drawstring row
+  var drawstringRow = document.getElementById('bd-drawstring-row-' + blockId);
+  if (drawstringRow) {
+    drawstringRow.style.display = (d.drawstringPct || 0) > 0 ? 'flex' : 'none';
+    document.getElementById('bd-drawstring-pct-' + blockId).textContent = d.drawstringPct || 0;
+    document.getElementById('bd-drawstring-' + blockId).textContent = f(d.drawstringCost);
   }
   var profileRow = document.getElementById('bd-profile-row-' + blockId);
   profileRow.style.display = (d.profilePct || 0) > 0 ? 'flex' : 'none';

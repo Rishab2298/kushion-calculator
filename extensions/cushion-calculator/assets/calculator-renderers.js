@@ -230,3 +230,15 @@ CushionCalculator.prototype.renderRodPocketOptions = function() {
   }).join('');
   this.initSectionScrollArrows('rodpocket');
 };
+
+CushionCalculator.prototype.renderDrawstringOptions = function() {
+  var grid = document.getElementById('drawstring-grid-' + this.blockId);
+  var opts = this.config.drawstringOptions || [];
+  if (!opts.length) { grid.innerHTML = '<p>No drawstring options available</p>'; return; }
+  grid.innerHTML = opts.map(function(o) {
+    return '<div class="kraft2026zion-option-card" data-type="drawstring" data-id="' + o.id + '">' +
+      (o.imageUrl ? '<img class="kraft2026zion-option-image" src="' + o.imageUrl + '" alt="' + o.name + '">' : '<div class="kraft2026zion-option-placeholder">No image</div>') +
+      '<div class="kraft2026zion-option-name" title="' + o.name + '">' + o.name + '</div><div class="kraft2026zion-option-price">+' + o.percent + '%</div></div>';
+  }).join('');
+  this.initSectionScrollArrows('drawstring');
+};

@@ -121,6 +121,16 @@ CushionCalculator.prototype.selectRodPocket = function(id) {
   this.calculatePrice();
 };
 
+CushionCalculator.prototype.selectDrawstring = function(id) {
+  var blockId = this.blockId;
+  var opts = this.config.drawstringOptions || [];
+  this.selectedDrawstring = id === 'none' ? null : opts.find(function(ds) { return ds.id === id; });
+  document.querySelectorAll('#drawstring-grid-' + blockId + ' .kraft2026zion-option-card').forEach(function(c) { c.classList.toggle('kraft2026zion-selected', c.dataset.id === id); });
+  document.getElementById('value-drawstring-' + blockId).textContent = this.selectedDrawstring ? this.selectedDrawstring.name : 'None';
+  document.getElementById('value-drawstring-' + blockId).classList.toggle('kraft2026zion-selected', !!this.selectedDrawstring);
+  this.calculatePrice();
+};
+
 CushionCalculator.prototype.updateDimensionValue = function() {
   var blockId = this.blockId;
   var keys = Object.keys(this.dimensions);

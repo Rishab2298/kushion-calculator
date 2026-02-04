@@ -34,6 +34,7 @@ CushionCalculator.prototype.setupEventListeners = function() {
     else if (type === 'rodpocket') self.selectRodPocket(id);
     else if (type === 'ties') self.selectTies(id);
     else if (type === 'fabricties') self.selectFabricTies(id);
+    else if (type === 'drawstring') self.selectDrawstring(id);
   });
 
   document.getElementById('quantity-' + blockId).addEventListener('input', function() { self.syncFloatingFooter(); self.calculatePrice(); });
