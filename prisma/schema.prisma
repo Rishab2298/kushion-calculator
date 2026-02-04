@@ -440,6 +440,24 @@ model RodPocketOption {
   @@index([shop])
 }
 
+// ============ DRAWSTRING OPTIONS ============
+model DrawstringOption {
+  id          String  @id @default(uuid())
+  shop        String
+  name        String
+  imageUrl    String?
+  percent     Float   @default(0) // % of subtotal
+  description String?
+  isActive    Boolean @default(true)
+  isDefault   Boolean @default(false)
+  sortOrder   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([shop])
+}
+
 // ============ CALCULATOR PROFILES ============
 // Profiles control which options appear in the calculator per product
 model CalculatorProfile {
@@ -469,8 +487,9 @@ model CalculatorProfile {
   showTiesSection       Boolean @default(true)
   showDesignSection     Boolean @default(true)
   showFabricTiesSection Boolean @default(true)
-  showRodPocketSection  Boolean @default(true)
-  showInstructions      Boolean @default(true)
+  showRodPocketSection    Boolean @default(true)
+  showDrawstringSection   Boolean @default(true)
+  showInstructions        Boolean @default(true)
 
   // Restrict to specific items (null = show all active items)
   // Store as JSON arrays of IDs, e.g., ["id1", "id2"]
@@ -484,7 +503,8 @@ model CalculatorProfile {
   allowedTiesIds       String? // JSON array of ties IDs (null = all)
   allowedDesignIds     String? // JSON array of design option IDs (null = all)
   allowedFabricTiesIds String? // JSON array of fabric ties option IDs (null = all)
-  allowedRodPocketIds  String? // JSON array of rod pocket option IDs (null = all)
+  allowedRodPocketIds    String? // JSON array of rod pocket option IDs (null = all)
+  allowedDrawstringIds   String? // JSON array of drawstring option IDs (null = all)
 
   // Hidden section values - used when a section is hidden but still needs to calculate
   // When section is hidden AND these IDs are set, the value will be included in calculation
@@ -497,7 +517,8 @@ model CalculatorProfile {
   hiddenTiesId       String? // Ties option to use when ties section is hidden
   hiddenDesignId     String? // Design option to use when design section is hidden
   hiddenFabricTiesId String? // Fabric ties option to use when fabric ties section is hidden
-  hiddenRodPocketId  String? // Rod pocket option to use when rod pocket section is hidden
+  hiddenRodPocketId    String? // Rod pocket option to use when rod pocket section is hidden
+  hiddenDrawstringId   String? // Drawstring option to use when drawstring section is hidden
 
   // Default profile for this shop (one per shop)
   isDefault Boolean @default(false)
@@ -534,8 +555,9 @@ model ProfilePiece {
   showAntiSkidSection   Boolean @default(true)
   showTiesSection       Boolean @default(true)
   showDesignSection     Boolean @default(true)
-  showFabricTiesSection Boolean @default(true)
-  showRodPocketSection  Boolean @default(true)
+  showFabricTiesSection   Boolean @default(true)
+  showRodPocketSection    Boolean @default(true)
+  showDrawstringSection   Boolean @default(true)
 
   // Per-piece allowed options (null = inherit from profile)
   allowedShapeIds      String?
@@ -545,8 +567,9 @@ model ProfilePiece {
   allowedAntiSkidIds   String?
   allowedTiesIds       String?
   allowedDesignIds     String?
-  allowedFabricTiesIds String?
-  allowedRodPocketIds  String?
+  allowedFabricTiesIds   String?
+  allowedRodPocketIds    String?
+  allowedDrawstringIds   String?
 
   // Per-piece hidden values
   hiddenShapeId      String?
@@ -556,8 +579,9 @@ model ProfilePiece {
   hiddenAntiSkidId   String?
   hiddenTiesId       String?
   hiddenDesignId     String?
-  hiddenFabricTiesId String?
-  hiddenRodPocketId  String?
+  hiddenFabricTiesId   String?
+  hiddenRodPocketId    String?
+  hiddenDrawstringId   String?
 
   // Defaults
   defaultShapeId String?

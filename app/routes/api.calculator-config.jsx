@@ -84,7 +84,7 @@ export const loader = async ({ request }) => {
     }
 
     // Fetch all configuration data with error handling for each
-    const [shapes, fillTypes, fabricCategories, uncategorizedFabrics, pipingOptions, buttonStyleOptions, antiSkidOptions, tiesOptions, designOptions, fabricTiesOptions, rodPocketOptions, settings, priceTiers, totalCategoryCount] = await Promise.all([
+    const [shapes, fillTypes, fabricCategories, uncategorizedFabrics, pipingOptions, buttonStyleOptions, antiSkidOptions, tiesOptions, designOptions, fabricTiesOptions, rodPocketOptions, drawstringOptions, settings, priceTiers, totalCategoryCount] = await Promise.all([
       safeQuery(() => prisma.shape.findMany({
         where: { shop, isActive: true },
         include: { inputFields: { orderBy: { sortOrder: "asc" } } },
@@ -150,6 +150,10 @@ export const loader = async ({ request }) => {
         where: { shop, isActive: true },
         orderBy: { sortOrder: "asc" },
       })),
+      safeQuery(() => prisma.drawstringOption.findMany({
+        where: { shop, isActive: true },
+        orderBy: { sortOrder: "asc" },
+      })),
       safeQuery(() => prisma.calculatorSettings.findUnique({
         where: { shop },
       }), null),
@@ -182,6 +186,7 @@ export const loader = async ({ request }) => {
     let filteredDesignOptions = designOptions;
     let filteredFabricTiesOptions = fabricTiesOptions;
     let filteredRodPocketOptions = rodPocketOptions;
+    let filteredDrawstringOptions = drawstringOptions;
     let filteredFabricCategories = fabricCategories;
     let filteredUncategorizedFabrics = uncategorizedFabrics;
 
@@ -196,6 +201,7 @@ export const loader = async ({ request }) => {
       showButtonSection: true,
       showAntiSkidSection: true,
       showRodPocketSection: true,
+      showDrawstringSection: true,
       showTiesSection: true,
       showFabricTiesSection: true,
       showInstructions: true,
@@ -212,6 +218,7 @@ export const loader = async ({ request }) => {
       hiddenButtonId: null,
       hiddenAntiSkidId: null,
       hiddenRodPocketId: null,
+      hiddenDrawstringId: null,
       hiddenTiesId: null,
       hiddenFabricTiesId: null,
     };
@@ -228,6 +235,7 @@ export const loader = async ({ request }) => {
         showButtonSection: profile.showButtonSection ?? true,
         showAntiSkidSection: profile.showAntiSkidSection ?? true,
         showRodPocketSection: profile.showRodPocketSection ?? true,
+        showDrawstringSection: profile.showDrawstringSection ?? true,
         showTiesSection: profile.showTiesSection ?? true,
         showFabricTiesSection: profile.showFabricTiesSection ?? true,
         showInstructions: profile.showInstructions ?? true,
@@ -246,6 +254,7 @@ export const loader = async ({ request }) => {
         hiddenButtonId: profile.hiddenButtonId || null,
         hiddenAntiSkidId: profile.hiddenAntiSkidId || null,
         hiddenRodPocketId: profile.hiddenRodPocketId || null,
+        hiddenDrawstringId: profile.hiddenDrawstringId || null,
         hiddenTiesId: profile.hiddenTiesId || null,
         hiddenFabricTiesId: profile.hiddenFabricTiesId || null,
       };
@@ -363,6 +372,16 @@ export const loader = async ({ request }) => {
           }
         } catch (e) { /* ignore parse errors */ }
       }
+
+      // Filter drawstring options if profile has allowed list
+      if (profile.allowedDrawstringIds) {
+        try {
+          const allowedIds = JSON.parse(profile.allowedDrawstringIds);
+          if (allowedIds.length > 0) {
+            filteredDrawstringOptions = drawstringOptions.filter(ds => allowedIds.includes(ds.id));
+          }
+        } catch (e) { /* ignore parse errors */ }
+      }
     }
 
     // Find defaults for each category
@@ -375,6 +394,7 @@ export const loader = async ({ request }) => {
     const defaultButtonOption = filteredButtonOptions.find(b => b.isDefault) || null;
     const defaultAntiSkidOption = filteredAntiSkidOptions.find(a => a.isDefault) || null;
     const defaultRodPocketOption = filteredRodPocketOptions.find(rp => rp.isDefault) || null;
+    const defaultDrawstringOption = filteredDrawstringOptions.find(ds => ds.isDefault) || null;
     const defaultTiesOption = filteredTiesOptions.find(t => t.isDefault) || null;
     const defaultFabricTiesOption = filteredFabricTiesOptions.find(ft => ft.isDefault) || null;
 
@@ -387,6 +407,7 @@ export const loader = async ({ request }) => {
     let hiddenButton = null;
     let hiddenAntiSkid = null;
     let hiddenRodPocket = null;
+    let hiddenDrawstring = null;
     let hiddenTies = null;
     let hiddenFabricTies = null;
 
@@ -425,6 +446,9 @@ export const loader = async ({ request }) => {
     if (hiddenValues.hiddenRodPocketId) {
       hiddenRodPocket = rodPocketOptions.find(rp => rp.id === hiddenValues.hiddenRodPocketId);
     }
+    if (hiddenValues.hiddenDrawstringId) {
+      hiddenDrawstring = drawstringOptions.find(ds => ds.id === hiddenValues.hiddenDrawstringId);
+    }
 
     const responseData = JSON.stringify({
       // Profile info
@@ -449,6 +473,7 @@ export const loader = async ({ request }) => {
           showButtonSection: p.showButtonSection ?? true,
           showAntiSkidSection: p.showAntiSkidSection ?? true,
           showRodPocketSection: p.showRodPocketSection ?? true,
+          showDrawstringSection: p.showDrawstringSection ?? true,
           showTiesSection: p.showTiesSection ?? true,
           showFabricTiesSection: p.showFabricTiesSection ?? true,
           allowedShapeIds: p.allowedShapeIds ? JSON.parse(p.allowedShapeIds) : null,
@@ -458,6 +483,7 @@ export const loader = async ({ request }) => {
           allowedButtonIds: p.allowedButtonIds ? JSON.parse(p.allowedButtonIds) : null,
           allowedAntiSkidIds: p.allowedAntiSkidIds ? JSON.parse(p.allowedAntiSkidIds) : null,
           allowedRodPocketIds: p.allowedRodPocketIds ? JSON.parse(p.allowedRodPocketIds) : null,
+          allowedDrawstringIds: p.allowedDrawstringIds ? JSON.parse(p.allowedDrawstringIds) : null,
           allowedTiesIds: p.allowedTiesIds ? JSON.parse(p.allowedTiesIds) : null,
           allowedFabricTiesIds: p.allowedFabricTiesIds ? JSON.parse(p.allowedFabricTiesIds) : null,
           hiddenShapeId: p.hiddenShapeId || null,
@@ -467,6 +493,7 @@ export const loader = async ({ request }) => {
           hiddenButtonId: p.hiddenButtonId || null,
           hiddenAntiSkidId: p.hiddenAntiSkidId || null,
           hiddenRodPocketId: p.hiddenRodPocketId || null,
+          hiddenDrawstringId: p.hiddenDrawstringId || null,
           hiddenTiesId: p.hiddenTiesId || null,
           hiddenFabricTiesId: p.hiddenFabricTiesId || null,
           defaultShapeId: p.defaultShapeId || null,
@@ -548,6 +575,11 @@ export const loader = async ({ request }) => {
           name: hiddenRodPocket.name,
           percent: hiddenRodPocket.percent,
         } : null,
+        drawstring: hiddenDrawstring ? {
+          id: hiddenDrawstring.id,
+          name: hiddenDrawstring.name,
+          percent: hiddenDrawstring.percent,
+        } : null,
       },
 
       // Filtered data
@@ -580,6 +612,7 @@ export const loader = async ({ request }) => {
       defaultButtonId: defaultButtonOption?.id || null,
       defaultAntiSkidId: defaultAntiSkidOption?.id || null,
       defaultRodPocketId: defaultRodPocketOption?.id || null,
+      defaultDrawstringId: defaultDrawstringOption?.id || null,
       defaultTiesId: defaultTiesOption?.id || null,
       defaultFabricTiesId: defaultFabricTiesOption?.id || null,
 
@@ -670,6 +703,14 @@ export const loader = async ({ request }) => {
         description: opt.description,
         isDefault: opt.isDefault,
       })),
+      drawstringOptions: filteredDrawstringOptions.map(opt => ({
+        id: opt.id,
+        name: opt.name,
+        imageUrl: opt.imageUrl,
+        percent: opt.percent ?? 0,
+        description: opt.description,
+        isDefault: opt.isDefault,
+      })),
       settings: {
         currencySymbol: settings?.currencySymbol || "$",
         enablePriceTiers: settings?.enablePriceTiers ?? true,
@@ -736,6 +777,7 @@ export const loader = async ({ request }) => {
       designOptions: [],
       fabricTiesOptions: [],
       rodPocketOptions: [],
+      drawstringOptions: [],
       priceTiers: [],
       settings: {
         currencySymbol: "$",
@@ -755,6 +797,7 @@ export const loader = async ({ request }) => {
         showButtonSection: true,
         showAntiSkidSection: true,
         showRodPocketSection: true,
+        showDrawstringSection: true,
         showTiesSection: true,
         showFabricTiesSection: true,
         showInstructions: true,

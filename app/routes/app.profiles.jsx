@@ -8,7 +8,7 @@ export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
   const shop = session.shop;
 
-  const [profiles, shapes, fillTypes, fabricCategories, fabrics, pipingOptions, buttonOptions, antiSkidOptions, tiesOptions, designOptions, fabricTiesOptions, rodPocketOptions] = await Promise.all([
+  const [profiles, shapes, fillTypes, fabricCategories, fabrics, pipingOptions, buttonOptions, antiSkidOptions, tiesOptions, designOptions, fabricTiesOptions, rodPocketOptions, drawstringOptions] = await Promise.all([
     prisma.calculatorProfile.findMany({
       where: { shop },
       orderBy: { sortOrder: "asc" },
@@ -25,9 +25,10 @@ export const loader = async ({ request }) => {
     prisma.designOption.findMany({ where: { shop, isActive: true }, orderBy: { sortOrder: "asc" } }),
     prisma.fabricTiesOption.findMany({ where: { shop, isActive: true }, orderBy: { sortOrder: "asc" } }),
     prisma.rodPocketOption.findMany({ where: { shop, isActive: true }, orderBy: { sortOrder: "asc" } }),
+    prisma.drawstringOption.findMany({ where: { shop, isActive: true }, orderBy: { sortOrder: "asc" } }),
   ]);
 
-  return { profiles, shapes, fillTypes, fabricCategories, fabrics, pipingOptions, buttonOptions, antiSkidOptions, tiesOptions, designOptions, fabricTiesOptions, rodPocketOptions };
+  return { profiles, shapes, fillTypes, fabricCategories, fabrics, pipingOptions, buttonOptions, antiSkidOptions, tiesOptions, designOptions, fabricTiesOptions, rodPocketOptions, drawstringOptions };
 };
 
 export const action = async ({ request }) => {
@@ -68,6 +69,7 @@ export const action = async ({ request }) => {
         showDesignSection: formData.get("showDesignSection") === "true",
         showFabricTiesSection: formData.get("showFabricTiesSection") === "true",
         showRodPocketSection: formData.get("showRodPocketSection") === "true",
+        showDrawstringSection: formData.get("showDrawstringSection") === "true",
         showInstructions: formData.get("showInstructions") === "true",
         allowedShapeIds: formData.get("allowedShapeIds") || null,
         allowedFillIds: formData.get("allowedFillIds") || null,
@@ -80,6 +82,7 @@ export const action = async ({ request }) => {
         allowedDesignIds: formData.get("allowedDesignIds") || null,
         allowedFabricTiesIds: formData.get("allowedFabricTiesIds") || null,
         allowedRodPocketIds: formData.get("allowedRodPocketIds") || null,
+        allowedDrawstringIds: formData.get("allowedDrawstringIds") || null,
         hiddenShapeId: formData.get("hiddenShapeId") || null,
         hiddenFillTypeId: formData.get("hiddenFillTypeId") || null,
         hiddenFabricId: formData.get("hiddenFabricId") || null,
@@ -90,6 +93,7 @@ export const action = async ({ request }) => {
         hiddenDesignId: formData.get("hiddenDesignId") || null,
         hiddenFabricTiesId: formData.get("hiddenFabricTiesId") || null,
         hiddenRodPocketId: formData.get("hiddenRodPocketId") || null,
+        hiddenDrawstringId: formData.get("hiddenDrawstringId") || null,
         isDefault: formData.get("isDefault") === "true",
         isActive: true,
         sortOrder: parseInt(formData.get("sortOrder")) || 0,
@@ -108,6 +112,7 @@ export const action = async ({ request }) => {
             showDesignSection: p.showDesignSection ?? true,
             showFabricTiesSection: p.showFabricTiesSection ?? true,
             showRodPocketSection: p.showRodPocketSection ?? true,
+            showDrawstringSection: p.showDrawstringSection ?? true,
             allowedShapeIds: p.allowedShapeIds || null,
             allowedFillIds: p.allowedFillIds || null,
             allowedPipingIds: p.allowedPipingIds || null,
@@ -117,6 +122,7 @@ export const action = async ({ request }) => {
             allowedDesignIds: p.allowedDesignIds || null,
             allowedFabricTiesIds: p.allowedFabricTiesIds || null,
             allowedRodPocketIds: p.allowedRodPocketIds || null,
+            allowedDrawstringIds: p.allowedDrawstringIds || null,
             hiddenShapeId: p.hiddenShapeId || null,
             hiddenFillTypeId: p.hiddenFillTypeId || null,
             hiddenPipingId: p.hiddenPipingId || null,
@@ -126,6 +132,7 @@ export const action = async ({ request }) => {
             hiddenDesignId: p.hiddenDesignId || null,
             hiddenFabricTiesId: p.hiddenFabricTiesId || null,
             hiddenRodPocketId: p.hiddenRodPocketId || null,
+            hiddenDrawstringId: p.hiddenDrawstringId || null,
             defaultShapeId: p.defaultShapeId || null,
             defaultFillId: p.defaultFillId || null,
           })),
@@ -172,6 +179,7 @@ export const action = async ({ request }) => {
         showDesignSection: formData.get("showDesignSection") === "true",
         showFabricTiesSection: formData.get("showFabricTiesSection") === "true",
         showRodPocketSection: formData.get("showRodPocketSection") === "true",
+        showDrawstringSection: formData.get("showDrawstringSection") === "true",
         showInstructions: formData.get("showInstructions") === "true",
         allowedShapeIds: formData.get("allowedShapeIds") || null,
         allowedFillIds: formData.get("allowedFillIds") || null,
@@ -184,6 +192,7 @@ export const action = async ({ request }) => {
         allowedDesignIds: formData.get("allowedDesignIds") || null,
         allowedFabricTiesIds: formData.get("allowedFabricTiesIds") || null,
         allowedRodPocketIds: formData.get("allowedRodPocketIds") || null,
+        allowedDrawstringIds: formData.get("allowedDrawstringIds") || null,
         hiddenShapeId: formData.get("hiddenShapeId") || null,
         hiddenFillTypeId: formData.get("hiddenFillTypeId") || null,
         hiddenFabricId: formData.get("hiddenFabricId") || null,
@@ -194,6 +203,7 @@ export const action = async ({ request }) => {
         hiddenDesignId: formData.get("hiddenDesignId") || null,
         hiddenFabricTiesId: formData.get("hiddenFabricTiesId") || null,
         hiddenRodPocketId: formData.get("hiddenRodPocketId") || null,
+        hiddenDrawstringId: formData.get("hiddenDrawstringId") || null,
         isDefault: formData.get("isDefault") === "true",
         isActive: formData.get("isActive") === "true",
         sortOrder: parseInt(formData.get("sortOrder")) || 0,
@@ -212,6 +222,7 @@ export const action = async ({ request }) => {
             showDesignSection: p.showDesignSection ?? true,
             showFabricTiesSection: p.showFabricTiesSection ?? true,
             showRodPocketSection: p.showRodPocketSection ?? true,
+            showDrawstringSection: p.showDrawstringSection ?? true,
             allowedShapeIds: p.allowedShapeIds || null,
             allowedFillIds: p.allowedFillIds || null,
             allowedPipingIds: p.allowedPipingIds || null,
@@ -221,6 +232,7 @@ export const action = async ({ request }) => {
             allowedDesignIds: p.allowedDesignIds || null,
             allowedFabricTiesIds: p.allowedFabricTiesIds || null,
             allowedRodPocketIds: p.allowedRodPocketIds || null,
+            allowedDrawstringIds: p.allowedDrawstringIds || null,
             hiddenShapeId: p.hiddenShapeId || null,
             hiddenFillTypeId: p.hiddenFillTypeId || null,
             hiddenPipingId: p.hiddenPipingId || null,
@@ -230,6 +242,7 @@ export const action = async ({ request }) => {
             hiddenDesignId: p.hiddenDesignId || null,
             hiddenFabricTiesId: p.hiddenFabricTiesId || null,
             hiddenRodPocketId: p.hiddenRodPocketId || null,
+            hiddenDrawstringId: p.hiddenDrawstringId || null,
             defaultShapeId: p.defaultShapeId || null,
             defaultFillId: p.defaultFillId || null,
           })),
@@ -248,7 +261,7 @@ export const action = async ({ request }) => {
 };
 
 export default function Profiles() {
-  const { profiles, shapes, fillTypes, fabricCategories, fabrics, pipingOptions, buttonOptions, antiSkidOptions, tiesOptions, designOptions, fabricTiesOptions, rodPocketOptions } = useLoaderData();
+  const { profiles, shapes, fillTypes, fabricCategories, fabrics, pipingOptions, buttonOptions, antiSkidOptions, tiesOptions, designOptions, fabricTiesOptions, rodPocketOptions, drawstringOptions } = useLoaderData();
   const fetcher = useFetcher();
   const shopify = useAppBridge();
   const [showForm, setShowForm] = useState(false);
@@ -273,6 +286,7 @@ export default function Profiles() {
     showDesignSection: true,
     showFabricTiesSection: true,
     showRodPocketSection: true,
+    showDrawstringSection: true,
     showInstructions: true,
     allowedShapeIds: [],
     allowedFillIds: [],
@@ -285,6 +299,7 @@ export default function Profiles() {
     allowedDesignIds: [],
     allowedFabricTiesIds: [],
     allowedRodPocketIds: [],
+    allowedDrawstringIds: [],
     hiddenShapeId: "",
     hiddenFillTypeId: "",
     hiddenFabricId: "",
@@ -295,6 +310,7 @@ export default function Profiles() {
     hiddenDesignId: "",
     hiddenFabricTiesId: "",
     hiddenRodPocketId: "",
+    hiddenDrawstringId: "",
     isDefault: false,
     isActive: true,
     sortOrder: profiles.length,
@@ -313,6 +329,7 @@ export default function Profiles() {
     showDesignSection: true,
     showFabricTiesSection: true,
     showRodPocketSection: true,
+    showDrawstringSection: true,
     allowedShapeIds: [],
     allowedFillIds: [],
     allowedPipingIds: [],
@@ -322,6 +339,7 @@ export default function Profiles() {
     allowedDesignIds: [],
     allowedFabricTiesIds: [],
     allowedRodPocketIds: [],
+    allowedDrawstringIds: [],
     hiddenShapeId: "",
     hiddenFillTypeId: "",
     hiddenPipingId: "",
@@ -331,6 +349,7 @@ export default function Profiles() {
     hiddenDesignId: "",
     hiddenFabricTiesId: "",
     hiddenRodPocketId: "",
+    hiddenDrawstringId: "",
     defaultShapeId: "",
     defaultFillId: "",
   };
@@ -367,6 +386,7 @@ export default function Profiles() {
         showDesignSection: p.showDesignSection ?? true,
         showFabricTiesSection: p.showFabricTiesSection ?? true,
         showRodPocketSection: p.showRodPocketSection ?? true,
+        showDrawstringSection: p.showDrawstringSection ?? true,
         allowedShapeIds: p.allowedShapeIds ? JSON.parse(p.allowedShapeIds) : [],
         allowedFillIds: p.allowedFillIds ? JSON.parse(p.allowedFillIds) : [],
         allowedPipingIds: p.allowedPipingIds ? JSON.parse(p.allowedPipingIds) : [],
@@ -376,6 +396,7 @@ export default function Profiles() {
         allowedDesignIds: p.allowedDesignIds ? JSON.parse(p.allowedDesignIds) : [],
         allowedFabricTiesIds: p.allowedFabricTiesIds ? JSON.parse(p.allowedFabricTiesIds) : [],
         allowedRodPocketIds: p.allowedRodPocketIds ? JSON.parse(p.allowedRodPocketIds) : [],
+        allowedDrawstringIds: p.allowedDrawstringIds ? JSON.parse(p.allowedDrawstringIds) : [],
         hiddenShapeId: p.hiddenShapeId || "",
         hiddenFillTypeId: p.hiddenFillTypeId || "",
         hiddenPipingId: p.hiddenPipingId || "",
@@ -385,6 +406,7 @@ export default function Profiles() {
         hiddenDesignId: p.hiddenDesignId || "",
         hiddenFabricTiesId: p.hiddenFabricTiesId || "",
         hiddenRodPocketId: p.hiddenRodPocketId || "",
+        hiddenDrawstringId: p.hiddenDrawstringId || "",
         defaultShapeId: p.defaultShapeId || "",
         defaultFillId: p.defaultFillId || "",
       })),
@@ -399,6 +421,7 @@ export default function Profiles() {
       showDesignSection: profile.showDesignSection ?? true,
       showFabricTiesSection: profile.showFabricTiesSection ?? true,
       showRodPocketSection: profile.showRodPocketSection ?? true,
+      showDrawstringSection: profile.showDrawstringSection ?? true,
       showInstructions: profile.showInstructions,
       allowedShapeIds: profile.allowedShapeIds ? JSON.parse(profile.allowedShapeIds) : [],
       allowedFillIds: profile.allowedFillIds ? JSON.parse(profile.allowedFillIds) : [],
@@ -411,6 +434,7 @@ export default function Profiles() {
       allowedDesignIds: profile.allowedDesignIds ? JSON.parse(profile.allowedDesignIds) : [],
       allowedFabricTiesIds: profile.allowedFabricTiesIds ? JSON.parse(profile.allowedFabricTiesIds) : [],
       allowedRodPocketIds: profile.allowedRodPocketIds ? JSON.parse(profile.allowedRodPocketIds) : [],
+      allowedDrawstringIds: profile.allowedDrawstringIds ? JSON.parse(profile.allowedDrawstringIds) : [],
       hiddenShapeId: profile.hiddenShapeId || "",
       hiddenFillTypeId: profile.hiddenFillTypeId || "",
       hiddenFabricId: profile.hiddenFabricId || "",
@@ -421,6 +445,7 @@ export default function Profiles() {
       hiddenDesignId: profile.hiddenDesignId || "",
       hiddenFabricTiesId: profile.hiddenFabricTiesId || "",
       hiddenRodPocketId: profile.hiddenRodPocketId || "",
+      hiddenDrawstringId: profile.hiddenDrawstringId || "",
       isDefault: profile.isDefault,
       isActive: profile.isActive,
       sortOrder: profile.sortOrder,
@@ -453,6 +478,7 @@ export default function Profiles() {
       allowedDesignIds: p.allowedDesignIds?.length > 0 ? JSON.stringify(p.allowedDesignIds) : null,
       allowedFabricTiesIds: p.allowedFabricTiesIds?.length > 0 ? JSON.stringify(p.allowedFabricTiesIds) : null,
       allowedRodPocketIds: p.allowedRodPocketIds?.length > 0 ? JSON.stringify(p.allowedRodPocketIds) : null,
+      allowedDrawstringIds: p.allowedDrawstringIds?.length > 0 ? JSON.stringify(p.allowedDrawstringIds) : null,
     }));
     data.append("pieces", JSON.stringify(piecesForSubmit));
     data.append("showShapeSection", form.showShapeSection.toString());
@@ -466,6 +492,7 @@ export default function Profiles() {
     data.append("showDesignSection", form.showDesignSection.toString());
     data.append("showFabricTiesSection", form.showFabricTiesSection.toString());
     data.append("showRodPocketSection", form.showRodPocketSection.toString());
+    data.append("showDrawstringSection", form.showDrawstringSection.toString());
     data.append("showInstructions", form.showInstructions.toString());
     data.append("allowedShapeIds", form.allowedShapeIds.length > 0 ? JSON.stringify(form.allowedShapeIds) : "");
     data.append("allowedFillIds", form.allowedFillIds.length > 0 ? JSON.stringify(form.allowedFillIds) : "");
@@ -478,6 +505,7 @@ export default function Profiles() {
     data.append("allowedDesignIds", form.allowedDesignIds.length > 0 ? JSON.stringify(form.allowedDesignIds) : "");
     data.append("allowedFabricTiesIds", form.allowedFabricTiesIds.length > 0 ? JSON.stringify(form.allowedFabricTiesIds) : "");
     data.append("allowedRodPocketIds", form.allowedRodPocketIds.length > 0 ? JSON.stringify(form.allowedRodPocketIds) : "");
+    data.append("allowedDrawstringIds", form.allowedDrawstringIds.length > 0 ? JSON.stringify(form.allowedDrawstringIds) : "");
     data.append("hiddenShapeId", form.hiddenShapeId);
     data.append("hiddenFillTypeId", form.hiddenFillTypeId);
     data.append("hiddenFabricId", form.hiddenFabricId);
@@ -488,6 +516,7 @@ export default function Profiles() {
     data.append("hiddenDesignId", form.hiddenDesignId);
     data.append("hiddenFabricTiesId", form.hiddenFabricTiesId);
     data.append("hiddenRodPocketId", form.hiddenRodPocketId);
+    data.append("hiddenDrawstringId", form.hiddenDrawstringId);
     data.append("isDefault", form.isDefault.toString());
     data.append("isActive", form.isActive.toString());
     data.append("sortOrder", form.sortOrder.toString());
@@ -559,6 +588,7 @@ export default function Profiles() {
     if (profile.showButtonSection) sections.push("Button");
     if (profile.showAntiSkidSection) sections.push("Anti-Skid");
     if (profile.showRodPocketSection) sections.push("Bottom Rod Pocket");
+    if (profile.showDrawstringSection) sections.push("Drawstring");
     if (profile.showTiesSection) sections.push("Ties");
     if (profile.showFabricTiesSection) sections.push("Fabric Ties");
     return sections.join(", ") || "None";
@@ -710,6 +740,10 @@ export default function Profiles() {
                                   <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                     <input type="checkbox" checked={piece.showRodPocketSection} onChange={(e) => updatePiece(idx, "showRodPocketSection", e.target.checked)} />
                                     Bottom Rod Pocket
+                                  </label>
+                                  <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                    <input type="checkbox" checked={piece.showDrawstringSection} onChange={(e) => updatePiece(idx, "showDrawstringSection", e.target.checked)} />
+                                    Drawstring
                                   </label>
                                 </div>
 
@@ -871,6 +905,20 @@ export default function Profiles() {
                                   </s-stack>
                                 )}
 
+                                {piece.showDrawstringSection && drawstringOptions.length > 0 && (
+                                  <s-stack direction="block" gap="tight">
+                                    <s-text fontWeight="medium" fontSize="small">Allowed Drawstring Options (leave empty for all)</s-text>
+                                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                                      {drawstringOptions.map((o) => (
+                                        <label key={o.id} style={{ display: "flex", alignItems: "center", gap: "4px", padding: "4px 8px", background: (piece.allowedDrawstringIds || []).includes(o.id) ? "#e0f0e0" : "#f5f5f5", borderRadius: "4px", cursor: "pointer", fontSize: "12px" }}>
+                                          <input type="checkbox" checked={(piece.allowedDrawstringIds || []).includes(o.id)} onChange={() => togglePieceArrayItem(idx, "allowedDrawstringIds", o.id)} />
+                                          {o.name}
+                                        </label>
+                                      ))}
+                                    </div>
+                                  </s-stack>
+                                )}
+
                                 {/* Hidden values for this piece */}
                                 <s-text fontWeight="medium">Hidden Values (when section is hidden)</s-text>
                                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "8px" }}>
@@ -955,6 +1003,15 @@ export default function Profiles() {
                                       </select>
                                     </div>
                                   )}
+                                  {!piece.showDrawstringSection && drawstringOptions.length > 0 && (
+                                    <div>
+                                      <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", fontSize: "12px" }}>Hidden Drawstring</label>
+                                      <select value={piece.hiddenDrawstringId} onChange={(e) => updatePiece(idx, "hiddenDrawstringId", e.target.value)} style={{ width: "100%", padding: "6px", borderRadius: "4px", border: "1px solid #ccc", fontSize: "12px" }}>
+                                        <option value="">None</option>
+                                        {drawstringOptions.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                                      </select>
+                                    </div>
+                                  )}
                                 </div>
                               </s-stack>
                             )}
@@ -1030,6 +1087,10 @@ export default function Profiles() {
                       <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         <input type="checkbox" checked={form.showRodPocketSection} onChange={(e) => setForm({ ...form, showRodPocketSection: e.target.checked })} />
                         Bottom Rod Pocket
+                      </label>
+                      <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <input type="checkbox" checked={form.showDrawstringSection} onChange={(e) => setForm({ ...form, showDrawstringSection: e.target.checked })} />
+                        Drawstring
                       </label>
                       <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         <input type="checkbox" checked={form.showFabricTiesSection} onChange={(e) => setForm({ ...form, showFabricTiesSection: e.target.checked })} />
@@ -1208,6 +1269,22 @@ export default function Profiles() {
                     </select>
                   </div>
                 )}
+
+                {!form.enableMultiPiece && !form.showDrawstringSection && drawstringOptions.length > 0 && (
+                  <div>
+                    <label style={{ display: "block", marginBottom: "4px", fontWeight: "500" }}>Hidden Drawstring Value</label>
+                    <select
+                      value={form.hiddenDrawstringId}
+                      onChange={(e) => setForm({ ...form, hiddenDrawstringId: e.target.value })}
+                      style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
+                    >
+                      <option value="">None (no drawstring cost)</option>
+                      {drawstringOptions.map((ds) => (
+                        <option key={ds.id} value={ds.id}>{ds.name} ({ds.percent}%)</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </s-stack>
 
               {/* Allowed Shapes */}
@@ -1363,6 +1440,22 @@ export default function Profiles() {
                     {rodPocketOptions.map((opt) => (
                       <label key={opt.id} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", background: form.allowedRodPocketIds.includes(opt.id) ? "#e0f0e0" : "#f5f5f5", borderRadius: "4px", cursor: "pointer" }}>
                         <input type="checkbox" checked={form.allowedRodPocketIds.includes(opt.id)} onChange={() => setForm({ ...form, allowedRodPocketIds: toggleArrayItem(form.allowedRodPocketIds, opt.id) })} />
+                        {opt.name}
+                      </label>
+                    ))}
+                  </div>
+                </s-stack>
+              )}
+
+              {/* Allowed Drawstring Options */}
+              {!form.enableMultiPiece && form.showDrawstringSection && drawstringOptions.length > 0 && (
+                <s-stack direction="block" gap="base">
+                  <s-text fontWeight="semibold">Allowed Drawstring Options</s-text>
+                  <s-text tone="subdued">Leave all unchecked to show all drawstring options</s-text>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                    {drawstringOptions.map((opt) => (
+                      <label key={opt.id} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", background: form.allowedDrawstringIds.includes(opt.id) ? "#e0f0e0" : "#f5f5f5", borderRadius: "4px", cursor: "pointer" }}>
+                        <input type="checkbox" checked={form.allowedDrawstringIds.includes(opt.id)} onChange={() => setForm({ ...form, allowedDrawstringIds: toggleArrayItem(form.allowedDrawstringIds, opt.id) })} />
                         {opt.name}
                       </label>
                     ))}

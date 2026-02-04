@@ -24,6 +24,7 @@
     let selectedButton = null;
     let selectedAntiSkid = null;
     let selectedRodPocket = null;
+    let selectedDrawstring = null;
     let selectedTies = null;
     let selectedDesign = null;
     let selectedFabricTies = null;
@@ -33,7 +34,7 @@
 
     // Multi-piece mode state
     let isMultiPieceMode = false;
-    let pieces = []; // Array of piece states: { id, name, label, shape, dimensions, fill, design, piping, button, antiSkid, rodPocket, ties, fabricTies, config }
+    let pieces = []; // Array of piece states: { id, name, label, shape, dimensions, fill, design, piping, button, antiSkid, rodPocket, drawstring, ties, fabricTies, config }
     let activePieceIndex = 0;
 
     let fabricNavLevel = 'categories';
@@ -100,6 +101,7 @@
       renderButtonOptions();
       renderAntiSkidOptions();
       renderRodPocketOptions();
+      renderDrawstringOptions();
       renderTiesOptions();
       renderFabricTiesOptions();
 
@@ -135,6 +137,7 @@
       if (config.defaultButtonId) selectButton(config.defaultButtonId);
       if (config.defaultAntiSkidId) selectAntiSkid(config.defaultAntiSkidId);
       if (config.defaultRodPocketId) selectRodPocket(config.defaultRodPocketId);
+      if (config.defaultDrawstringId) selectDrawstring(config.defaultDrawstringId);
       if (config.defaultTiesId) selectTies(config.defaultTiesId);
       if (config.defaultFabricTiesId) selectFabricTies(config.defaultFabricTiesId);
     }
@@ -169,6 +172,7 @@
           button: null,
           antiSkid: null,
           rodPocket: null,
+          drawstring: null,
           ties: null,
           fabricTies: null
         };
@@ -217,6 +221,9 @@
         if (pc.showRodPocketSection === false && pc.hiddenRodPocketId) {
           piece.rodPocket = (config.rodPocketOptions || []).find(function(rp) { return rp.id === pc.hiddenRodPocketId; }) || null;
         }
+        if (pc.showDrawstringSection === false && pc.hiddenDrawstringId) {
+          piece.drawstring = (config.drawstringOptions || []).find(function(ds) { return ds.id === pc.hiddenDrawstringId; }) || null;
+        }
         if (pc.showTiesSection === false && pc.hiddenTiesId) {
           piece.ties = (config.tiesOptions || []).find(function(t) { return t.id === pc.hiddenTiesId; }) || null;
         }
@@ -252,6 +259,9 @@
         }
         if (!piece.rodPocket && config.defaultRodPocketId && pc.showRodPocketSection !== false) {
           piece.rodPocket = (config.rodPocketOptions || []).find(function(rp) { return rp.id === config.defaultRodPocketId; }) || null;
+        }
+        if (!piece.drawstring && config.defaultDrawstringId && pc.showDrawstringSection !== false) {
+          piece.drawstring = (config.drawstringOptions || []).find(function(ds) { return ds.id === config.defaultDrawstringId; }) || null;
         }
         if (!piece.ties && config.defaultTiesId && pc.showTiesSection !== false) {
           piece.ties = (config.tiesOptions || []).find(function(t) { return t.id === config.defaultTiesId; }) || null;
@@ -354,6 +364,14 @@
       var allowed = parseAllowedIds(pieceConfig.allowedRodPocketIds);
       if (!Array.isArray(allowed) || allowed.length === 0) return opts;
       return opts.filter(function(rp) { return allowed.includes(rp.id); });
+    }
+
+    function getFilteredDrawstringOptions(pieceConfig) {
+      var opts = config.drawstringOptions || [];
+      if (!pieceConfig || !pieceConfig.allowedDrawstringIds) return opts;
+      var allowed = parseAllowedIds(pieceConfig.allowedDrawstringIds);
+      if (!Array.isArray(allowed) || allowed.length === 0) return opts;
+      return opts.filter(function(ds) { return allowed.includes(ds.id); });
     }
 
     function renderPieceTabs() {
@@ -588,6 +606,26 @@
         sectionNum++;
       }
 
+      // Drawstring section
+      if (pieceConfig.showDrawstringSection !== false && sv.showDrawstringSection !== false) {
+        html += '<div class="kraft2026zion-accordion-section" data-section="piece-drawstring">' +
+          '<div class="kraft2026zion-accordion-header" id="piece-header-drawstring-' + blockId + '">' +
+          '<span class="kraft2026zion-header-title">' + sectionNum + '. Drawstring</span>' +
+          '<span class="kraft2026zion-header-value' + (piece.drawstring ? ' kraft2026zion-selected' : '') + '" id="piece-value-drawstring-' + blockId + '">' + (piece.drawstring ? piece.drawstring.name : 'Not selected') + '</span>' +
+          '<span class="kraft2026zion-header-arrow">&#9662;</span>' +
+          '</div>' +
+          '<div class="kraft2026zion-accordion-content" id="piece-content-drawstring-' + blockId + '">' +
+          '<div class="kraft2026zion-horizontal-scroll-container" id="piece-drawstring-scroll-container-' + blockId + '">' +
+          '<button type="button" class="kraft2026zion-scroll-arrow kraft2026zion-scroll-arrow-left" id="piece-drawstring-scroll-left-' + blockId + '" aria-label="Scroll left" style="display: none;">&#8249;</button>' +
+          '<div class="kraft2026zion-horizontal-scroll-wrapper" id="piece-drawstring-scroll-wrapper-' + blockId + '">' +
+          '<div class="kraft2026zion-options-row" id="piece-drawstring-grid-' + blockId + '"></div>' +
+          '</div>' +
+          '<button type="button" class="kraft2026zion-scroll-arrow kraft2026zion-scroll-arrow-right" id="piece-drawstring-scroll-right-' + blockId + '" aria-label="Scroll right" style="display: none;">&#8250;</button>' +
+          '</div>' +
+          '</div></div>';
+        sectionNum++;
+      }
+
       // Ties section
       if (pieceConfig.showTiesSection !== false && sv.showTiesSection !== false) {
         html += '<div class="kraft2026zion-accordion-section" data-section="piece-ties">' +
@@ -640,6 +678,7 @@
       renderPieceButtonOptions(piece, pieceConfig);
       renderPieceAntiSkidOptions(piece, pieceConfig);
       renderPieceRodPocketOptions(piece, pieceConfig);
+      renderPieceDrawstringOptions(piece, pieceConfig);
       renderPieceTiesOptions(piece, pieceConfig);
       renderPieceFabricTiesOptions(piece, pieceConfig);
 
@@ -916,6 +955,25 @@
       }).join('');
 
       initPieceSectionScrollArrows('piece-rodpocket');
+    }
+
+    function renderPieceDrawstringOptions(piece, pieceConfig) {
+      var grid = document.getElementById('piece-drawstring-grid-' + blockId);
+      if (!grid) return;
+
+      var options = getFilteredDrawstringOptions(pieceConfig);
+      if (!options.length) {
+        grid.innerHTML = '<p>No drawstring options available</p>';
+        return;
+      }
+
+      grid.innerHTML = options.map(function(o) {
+        return '<div class="kraft2026zion-option-card' + (piece.drawstring && piece.drawstring.id === o.id ? ' kraft2026zion-selected' : '') + '" data-type="piece-drawstring" data-id="' + o.id + '">' +
+          (o.imageUrl ? '<img class="kraft2026zion-option-image" src="' + o.imageUrl + '" alt="' + o.name + '">' : '<div class="kraft2026zion-option-placeholder">No image</div>') +
+          '<div class="kraft2026zion-option-name" title="' + o.name + '">' + o.name + '</div><div class="kraft2026zion-option-price">+' + o.percent + '%</div></div>';
+      }).join('');
+
+      initPieceSectionScrollArrows('piece-drawstring');
     }
 
     function initPieceSectionScrollArrows(prefix) {
@@ -1265,6 +1323,18 @@
             valueEl.classList.toggle('kraft2026zion-selected', !!opt);
           }
           calculatePrice();
+        } else if (type === 'piece-drawstring') {
+          var opt = getFilteredDrawstringOptions(pieceConfig).find(function(ds) { return ds.id === id; });
+          currentPiece.drawstring = opt || null;
+          pieceContent.querySelectorAll('[data-type="piece-drawstring"]').forEach(function(c) {
+            c.classList.toggle('kraft2026zion-selected', c.dataset.id === id);
+          });
+          var valueEl = document.getElementById('piece-value-drawstring-' + blockId);
+          if (valueEl) {
+            valueEl.textContent = opt ? opt.name : 'Not selected';
+            valueEl.classList.toggle('kraft2026zion-selected', !!opt);
+          }
+          calculatePrice();
         }
       });
     }
@@ -1296,6 +1366,7 @@
         { key: 'button', show: v.showButtonSection !== false },
         { key: 'antiskid', show: v.showAntiSkidSection !== false },
         { key: 'rodpocket', show: v.showRodPocketSection !== false },
+        { key: 'drawstring', show: v.showDrawstringSection !== false },
         { key: 'ties', show: v.showTiesSection !== false },
         { key: 'fabricties', show: v.showFabricTiesSection !== false },
         { key: 'instructions', show: v.showInstructions !== false },
@@ -1318,8 +1389,8 @@
 
     function openFirstVisibleSection() {
       const v = config.sectionVisibility || {};
-      const order = ['shape', 'dimensions', 'fill', 'fabric', 'design', 'piping', 'button', 'antiskid', 'rodpocket', 'ties', 'fabricties', 'instructions'];
-      const map = { shape: v.showShapeSection !== false, dimensions: v.showDimensionsSection !== false, fill: v.showFillSection !== false, fabric: v.showFabricSection !== false, design: v.showDesignSection !== false, piping: v.showPipingSection !== false, button: v.showButtonSection !== false, antiskid: v.showAntiSkidSection !== false, rodpocket: v.showRodPocketSection !== false, ties: v.showTiesSection !== false, fabricties: v.showFabricTiesSection !== false, instructions: v.showInstructions !== false };
+      const order = ['shape', 'dimensions', 'fill', 'fabric', 'design', 'piping', 'button', 'antiskid', 'rodpocket', 'drawstring', 'ties', 'fabricties', 'instructions'];
+      const map = { shape: v.showShapeSection !== false, dimensions: v.showDimensionsSection !== false, fill: v.showFillSection !== false, fabric: v.showFabricSection !== false, design: v.showDesignSection !== false, piping: v.showPipingSection !== false, button: v.showButtonSection !== false, antiskid: v.showAntiSkidSection !== false, rodpocket: v.showRodPocketSection !== false, drawstring: v.showDrawstringSection !== false, ties: v.showTiesSection !== false, fabricties: v.showFabricTiesSection !== false, instructions: v.showInstructions !== false };
       for (var i = 0; i < order.length; i++) { if (map[order[i]]) { toggleSection(order[i], true); break; } }
     }
 
@@ -1719,6 +1790,18 @@
       initSectionScrollArrows('rodpocket');
     }
 
+    function renderDrawstringOptions() {
+      const grid = document.getElementById('drawstring-grid-' + blockId);
+      const opts = config.drawstringOptions || [];
+      if (!opts.length) { grid.innerHTML = '<p>No drawstring options available</p>'; return; }
+      grid.innerHTML = opts.map(function(o) {
+        return '<div class="kraft2026zion-option-card" data-type="drawstring" data-id="' + o.id + '">' +
+          (o.imageUrl ? '<img class="kraft2026zion-option-image" src="' + o.imageUrl + '" alt="' + o.name + '">' : '<div class="kraft2026zion-option-placeholder">No image</div>') +
+          '<div class="kraft2026zion-option-name" title="' + o.name + '">' + o.name + '</div><div class="kraft2026zion-option-price">+' + o.percent + '%</div></div>';
+      }).join('');
+      initSectionScrollArrows('drawstring');
+    }
+
     function setupScrollArrows(w, l, r) {
       if (!w || !l || !r) return;
       var s = 160;
@@ -1955,6 +2038,15 @@
       calculatePrice();
     }
 
+    function selectDrawstring(id) {
+      var opts = config.drawstringOptions || [];
+      selectedDrawstring = id === 'none' ? null : opts.find(function(ds) { return ds.id === id; });
+      document.querySelectorAll('#drawstring-grid-' + blockId + ' .kraft2026zion-option-card').forEach(function(c) { c.classList.toggle('kraft2026zion-selected', c.dataset.id === id); });
+      document.getElementById('value-drawstring-' + blockId).textContent = selectedDrawstring ? selectedDrawstring.name : 'None';
+      document.getElementById('value-drawstring-' + blockId).classList.toggle('kraft2026zion-selected', !!selectedDrawstring);
+      calculatePrice();
+    }
+
     function updateDimensionValue() {
       var keys = Object.keys(dimensions);
       if (keys.length === 0 || keys.every(function(k) { return !dimensions[k]; })) {
@@ -2024,6 +2116,7 @@
       var effectiveButton = selectedButton;
       var effectiveAntiSkid = selectedAntiSkid;
       var effectiveRodPocket = selectedRodPocket;
+      var effectiveDrawstring = selectedDrawstring;
       var effectiveTies = selectedTies;
       var effectiveFabricTies = selectedFabricTies;
 
@@ -2034,6 +2127,7 @@
       if (visibility.showButtonSection === false && hidden.button) effectiveButton = hidden.button;
       if (visibility.showAntiSkidSection === false && hidden.antiSkid) effectiveAntiSkid = hidden.antiSkid;
       if (visibility.showRodPocketSection === false && hidden.rodPocket) effectiveRodPocket = hidden.rodPocket;
+      if (visibility.showDrawstringSection === false && hidden.drawstring) effectiveDrawstring = hidden.drawstring;
       if (visibility.showTiesSection === false && hidden.ties) effectiveTies = hidden.ties;
       if (visibility.showFabricTiesSection === false && hidden.fabricTies) effectiveFabricTies = hidden.fabricTies;
 
@@ -2061,15 +2155,17 @@
       var buttonPct = effectiveButton ? (parseFloat(effectiveButton.percent) || 0) : 0;
       var antiSkidPct = effectiveAntiSkid ? (parseFloat(effectiveAntiSkid.percent) || 0) : 0;
       var rodPocketPct = effectiveRodPocket ? (parseFloat(effectiveRodPocket.percent) || 0) : 0;
+      var drawstringPct = effectiveDrawstring ? (parseFloat(effectiveDrawstring.percent) || 0) : 0;
       var profilePct = config.profile ? (parseFloat(config.profile.additionalPercent) || 0) : 0;
 
       var pipingCost = baseSubtotal * (pipingPct / 100);
       var buttonCost = baseSubtotal * (buttonPct / 100);
       var antiSkidCost = baseSubtotal * (antiSkidPct / 100);
       var rodPocketCost = baseSubtotal * (rodPocketPct / 100);
+      var drawstringCost = baseSubtotal * (drawstringPct / 100);
       var profileCost = baseSubtotal * (profilePct / 100);
 
-      var subtotalAfterAddons = baseSubtotal + designCost + pipingCost + tiesCost + fabricTiesCost + buttonCost + antiSkidCost + rodPocketCost + profileCost;
+      var subtotalAfterAddons = baseSubtotal + designCost + pipingCost + tiesCost + fabricTiesCost + buttonCost + antiSkidCost + rodPocketCost + drawstringCost + profileCost;
 
       var shippingPct = config.settings && config.settings.shippingPercent != null ? config.settings.shippingPercent : 100;
       var labourPct = config.settings && config.settings.labourPercent != null ? config.settings.labourPercent : 100;
@@ -2108,7 +2204,7 @@
         fabricCost: fabricCost, fillCost: fillCost, tiesCost: tiesCost, fabricTiesCost: fabricTiesCost, baseSubtotal: baseSubtotal,
         designPct: designPct, designCost: designCost,
         pipingPct: pipingPct, pipingCost: pipingCost, buttonPct: buttonPct, buttonCost: buttonCost,
-        antiSkidPct: antiSkidPct, antiSkidCost: antiSkidCost, rodPocketPct: rodPocketPct, rodPocketCost: rodPocketCost,
+        antiSkidPct: antiSkidPct, antiSkidCost: antiSkidCost, rodPocketPct: rodPocketPct, rodPocketCost: rodPocketCost, drawstringPct: drawstringPct, drawstringCost: drawstringCost,
         profilePct: profilePct, profileCost: profileCost,
         shippingPct: shippingPct, shippingCost: shippingCost, labourPct: labourPct, labourCost: labourCost,
         preTotalUnit: preTotalUnit, marginPct: marginPct, marginAmt: marginAmt,
@@ -2166,6 +2262,7 @@
         var buttonVisible = pc.showButtonSection !== false;
         var antiSkidVisible = pc.showAntiSkidSection !== false;
         var rodPocketVisible = pc.showRodPocketSection !== false;
+        var drawstringVisible = pc.showDrawstringSection !== false;
         var tiesVisible = pc.showTiesSection !== false;
         var fabricTiesVisible = pc.showFabricTiesSection !== false;
 
@@ -2182,13 +2279,15 @@
         var buttonPct = (buttonVisible && piece.button) ? (parseFloat(piece.button.percent) || 0) : 0;
         var antiSkidPct = (antiSkidVisible && piece.antiSkid) ? (parseFloat(piece.antiSkid.percent) || 0) : 0;
         var rodPocketPct = (rodPocketVisible && piece.rodPocket) ? (parseFloat(piece.rodPocket.percent) || 0) : 0;
+        var drawstringPct = (drawstringVisible && piece.drawstring) ? (parseFloat(piece.drawstring.percent) || 0) : 0;
 
         var pipingCost = pieceBase * (pipingPct / 100);
         var buttonCost = pieceBase * (buttonPct / 100);
         var antiSkidCost = pieceBase * (antiSkidPct / 100);
         var rodPocketCost = pieceBase * (rodPocketPct / 100);
+        var drawstringCost = pieceBase * (drawstringPct / 100);
 
-        var pieceSubtotal = pieceBase + designCost + pipingCost + buttonCost + antiSkidCost + rodPocketCost + tiesCost + fabricTiesCost;
+        var pieceSubtotal = pieceBase + designCost + pipingCost + buttonCost + antiSkidCost + rodPocketCost + drawstringCost + tiesCost + fabricTiesCost;
         totalPiecesSubtotal += pieceSubtotal;
 
         // === INDEPENDENT PER-PIECE CALCULATION ===
@@ -2244,6 +2343,8 @@
           antiSkidPct: antiSkidPct,
           rodPocketCost: rodPocketCost,
           rodPocketPct: rodPocketPct,
+          drawstringCost: drawstringCost,
+          drawstringPct: drawstringPct,
           subtotal: pieceSubtotal,
           // Per-piece calculated values
           profileCost: pieceProfileCost,
@@ -2433,6 +2534,13 @@
         document.getElementById('bd-rodpocket-pct-' + blockId).textContent = d.rodPocketPct || 0;
         document.getElementById('bd-rodpocket-' + blockId).textContent = f(d.rodPocketCost);
       }
+      // Drawstring row
+      var drawstringRow = document.getElementById('bd-drawstring-row-' + blockId);
+      if (drawstringRow) {
+        drawstringRow.style.display = (d.drawstringPct || 0) > 0 ? 'flex' : 'none';
+        document.getElementById('bd-drawstring-pct-' + blockId).textContent = d.drawstringPct || 0;
+        document.getElementById('bd-drawstring-' + blockId).textContent = f(d.drawstringCost);
+      }
       var tiesRow = document.getElementById('bd-ties-row-' + blockId);
       tiesRow.style.display = (d.tiesCost || 0) > 0 ? 'flex' : 'none';
       document.getElementById('bd-ties-' + blockId).textContent = f(d.tiesCost);
@@ -2543,6 +2651,7 @@
         else if (type === 'button') selectButton(id);
         else if (type === 'antiskid') selectAntiSkid(id);
         else if (type === 'rodpocket') selectRodPocket(id);
+        else if (type === 'drawstring') selectDrawstring(id);
         else if (type === 'ties') selectTies(id);
         else if (type === 'fabricties') selectFabricTies(id);
       });
@@ -2877,7 +2986,7 @@
 
       var visibility = config.sectionVisibility || {};
       var hidden = config.hiddenValues || {};
-      var effectiveFill = selectedFill, effectiveFabric = selectedFabric, effectiveDesign = selectedDesign, effectivePiping = selectedPiping, effectiveButton = selectedButton, effectiveAntiSkid = selectedAntiSkid, effectiveRodPocket = selectedRodPocket, effectiveTies = selectedTies, effectiveFabricTies = selectedFabricTies;
+      var effectiveFill = selectedFill, effectiveFabric = selectedFabric, effectiveDesign = selectedDesign, effectivePiping = selectedPiping, effectiveButton = selectedButton, effectiveAntiSkid = selectedAntiSkid, effectiveRodPocket = selectedRodPocket, effectiveDrawstring = selectedDrawstring, effectiveTies = selectedTies, effectiveFabricTies = selectedFabricTies;
       if (visibility.showFillSection === false && hidden.fillType) effectiveFill = hidden.fillType;
       if (visibility.showFabricSection === false && hidden.fabric) effectiveFabric = hidden.fabric;
       if (visibility.showDesignSection === false && hidden.design) effectiveDesign = hidden.design;
@@ -2885,6 +2994,7 @@
       if (visibility.showButtonSection === false && hidden.button) effectiveButton = hidden.button;
       if (visibility.showAntiSkidSection === false && hidden.antiSkid) effectiveAntiSkid = hidden.antiSkid;
       if (visibility.showRodPocketSection === false && hidden.rodPocket) effectiveRodPocket = hidden.rodPocket;
+      if (visibility.showDrawstringSection === false && hidden.drawstring) effectiveDrawstring = hidden.drawstring;
       if (visibility.showTiesSection === false && hidden.ties) effectiveTies = hidden.ties;
       if (visibility.showFabricTiesSection === false && hidden.fabricTies) effectiveFabricTies = hidden.fabricTies;
 
@@ -2904,9 +3014,10 @@
       var buttonPct = effectiveButton ? (parseFloat(effectiveButton.percent) || 0) : 0;
       var antiSkidPct = effectiveAntiSkid ? (parseFloat(effectiveAntiSkid.percent) || 0) : 0;
       var rodPocketPct = effectiveRodPocket ? (parseFloat(effectiveRodPocket.percent) || 0) : 0;
+      var drawstringPct = effectiveDrawstring ? (parseFloat(effectiveDrawstring.percent) || 0) : 0;
       var profilePct = config.profile ? (parseFloat(config.profile.additionalPercent) || 0) : 0;
 
-      var subtotalAfterAddons = baseSubtotal + designCost + (baseSubtotal * ((pipingPct + buttonPct + antiSkidPct + rodPocketPct + profilePct) / 100)) + tiesCost + fabricTiesCost;
+      var subtotalAfterAddons = baseSubtotal + designCost + (baseSubtotal * ((pipingPct + buttonPct + antiSkidPct + rodPocketPct + drawstringPct + profilePct) / 100)) + tiesCost + fabricTiesCost;
       var shippingPct = config.settings && config.settings.shippingPercent != null ? config.settings.shippingPercent : 100;
       var labourPct = config.settings && config.settings.labourPercent != null ? config.settings.labourPercent : 100;
       var tiesInShippingLabour = config.settings && config.settings.tiesIncludeInShippingLabour != null ? config.settings.tiesIncludeInShippingLabour : true;
@@ -2946,6 +3057,7 @@
         'Button Style': effectiveButton ? (debugMode ? effectiveButton.name + ' (' + buttonPct + '%)' : effectiveButton.name) : 'None',
         'Anti-Skid': effectiveAntiSkid ? (debugMode ? effectiveAntiSkid.name + ' (' + antiSkidPct + '%)' : effectiveAntiSkid.name) : 'None',
         'Bottom Rod Pocket': effectiveRodPocket ? (debugMode ? effectiveRodPocket.name + ' (' + rodPocketPct + '%)' : effectiveRodPocket.name) : 'None',
+        'Drawstring': effectiveDrawstring ? (debugMode ? effectiveDrawstring.name + ' (' + drawstringPct + '%)' : effectiveDrawstring.name) : 'None',
         'Ties': effectiveTies ? (debugMode ? effectiveTies.name + ' ($' + effectiveTies.price + ')' : effectiveTies.name) : 'None',
         'Fabric Ties': effectiveFabricTies ? (debugMode ? effectiveFabricTies.name + ' ($' + effectiveFabricTies.price + ')' : effectiveFabricTies.name) : 'None',
         'Discount': (debugMode && totalDiscountPct > 0) ? totalDiscountPct + '% off' : 'None',
@@ -2958,6 +3070,7 @@
         '_buttonId': effectiveButton ? effectiveButton.id : 'none',
         '_antiSkidId': effectiveAntiSkid ? effectiveAntiSkid.id : 'none',
         '_rodPocketId': effectiveRodPocket ? effectiveRodPocket.id : 'none',
+        '_drawstringId': effectiveDrawstring ? effectiveDrawstring.id : 'none',
         '_tiesId': effectiveTies ? effectiveTies.id : 'none',
         '_fabricTiesId': effectiveFabricTies ? effectiveFabricTies.id : 'none',
         '_dimensions': dimUrlStr,
