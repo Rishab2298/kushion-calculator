@@ -1377,7 +1377,7 @@
         if (el) {
           if (s.show) {
             el.style.display = 'block';
-            const title = el.querySelector('.header-title');
+            const title = el.querySelector('.kraft2026zion-header-title');
             if (title) title.textContent = num + '. ' + title.textContent.replace(/^\d+\.\s*/, '');
             num++;
           } else {

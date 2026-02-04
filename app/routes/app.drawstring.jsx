@@ -3,6 +3,7 @@ import { useLoaderData, useFetcher } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
+import { invalidateConfigCache } from "./api.calculator-config";
 
 export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
@@ -49,11 +50,13 @@ export const action = async ({ request }) => {
         data,
       });
     }
+    invalidateConfigCache(shop);
     return { success: true };
   }
 
   if (intent === "delete") {
     await prisma.drawstringOption.delete({ where: { id: formData.get("id") } });
+    invalidateConfigCache(shop);
     return { success: true };
   }
 
@@ -61,6 +64,7 @@ export const action = async ({ request }) => {
     const id = formData.get("id");
     await prisma.drawstringOption.updateMany({ where: { shop }, data: { isDefault: false } });
     await prisma.drawstringOption.update({ where: { id }, data: { isDefault: true } });
+    invalidateConfigCache(shop);
     return { success: true };
   }
 
