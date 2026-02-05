@@ -242,7 +242,11 @@ CushionCalculator.prototype.initGalleryIntegration = function() {
 
 // Inject shape image into gallery
 CushionCalculator.prototype.showShapeInGallery = function() {
-  if (!this.selectedShape || !this.selectedShape.imageUrl) return;
+  // In multi-piece mode, use the active piece's shape
+  var shape = this.isMultiPieceMode && this.pieces && this.pieces[this.activePieceIndex]
+    ? this.pieces[this.activePieceIndex].shape
+    : this.selectedShape;
+  if (!shape || !shape.imageUrl) return;
   if (!this.galleryElement) this.initGalleryIntegration();
   if (!this.galleryMainArea) return;
 
@@ -260,17 +264,17 @@ CushionCalculator.prototype.showShapeInGallery = function() {
   // Create or update shape slide
   var existingShapeSlide = this.galleryMainArea.querySelector('.kraft2026zion-shape-slide');
   if (existingShapeSlide) {
-    existingShapeSlide.querySelector('img').src = this.selectedShape.imageUrl;
+    existingShapeSlide.querySelector('img').src = shape.imageUrl;
     existingShapeSlide.querySelector('.kraft2026zion-shape-gallery-label').textContent =
-      'Dimension Reference: ' + this.selectedShape.name;
+      'Dimension Reference: ' + shape.name;
     existingShapeSlide.classList.add('is-active');
   } else {
     var shapeSlide = document.createElement('div');
     shapeSlide.className = 'custom-gallery__slide kraft2026zion-shape-slide is-active';
     shapeSlide.dataset.index = 'shape';
     shapeSlide.innerHTML = '<div class="kraft2026zion-shape-gallery-wrapper">' +
-      '<img src="' + this.selectedShape.imageUrl + '" alt="' + this.selectedShape.name + '">' +
-      '<div class="kraft2026zion-shape-gallery-label">Dimension Reference: ' + this.selectedShape.name + '</div>' +
+      '<img src="' + shape.imageUrl + '" alt="' + shape.name + '">' +
+      '<div class="kraft2026zion-shape-gallery-label">Dimension Reference: ' + shape.name + '</div>' +
       '</div>';
     this.galleryMainArea.insertBefore(shapeSlide, this.galleryMainArea.firstChild);
   }

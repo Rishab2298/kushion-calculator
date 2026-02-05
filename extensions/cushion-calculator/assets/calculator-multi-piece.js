@@ -801,6 +801,7 @@ CushionCalculator.prototype.setupPieceSectionListeners = function() {
       var section = header.closest('.kraft2026zion-accordion-section');
       var content = section.querySelector('.kraft2026zion-accordion-content');
       var isOpen = content.classList.contains('kraft2026zion-open');
+      var sectionType = section.dataset.section;
 
       pieceContent.querySelectorAll('.kraft2026zion-accordion-content').forEach(function(c) {
         c.classList.remove('kraft2026zion-open');
@@ -812,6 +813,17 @@ CushionCalculator.prototype.setupPieceSectionListeners = function() {
       if (!isOpen) {
         content.classList.add('kraft2026zion-open');
         header.classList.add('kraft2026zion-active');
+        // Gallery integration: show shape when piece-dimensions opens
+        if (sectionType === 'piece-dimensions') {
+          self.showShapeInGallery();
+        } else {
+          self.hideShapeFromGallery();
+        }
+      } else {
+        // Gallery integration: hide shape when piece-dimensions closes
+        if (sectionType === 'piece-dimensions') {
+          self.hideShapeFromGallery();
+        }
       }
     });
   });
@@ -859,6 +871,12 @@ CushionCalculator.prototype.setupPieceSectionListeners = function() {
         self.updatePieceDimensionValue(currentPiece);
         self.updatePieceTabStatuses();
         self.calculatePrice();
+
+        // Update gallery if dimensions section is currently open
+        var dimensionsContent = document.getElementById('piece-content-dimensions-' + blockId);
+        if (dimensionsContent && dimensionsContent.classList.contains('kraft2026zion-open')) {
+          self.showShapeInGallery();
+        }
       }
     } else if (type === 'piece-fill') {
       var fill = self.getFilteredFillTypes(pieceConfig).find(function(f) { return f.id === id; });
