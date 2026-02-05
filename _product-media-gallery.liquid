@@ -1,0 +1,208 @@
+
+{% render 'product-media-gallery-content',
+  media_presentation: block.settings.media_presentation,
+  block_settings: block.settings,
+  block_id: block.id,
+  block_shopify_attributes: block.shopify_attributes
+%}
+
+{% schema %}
+{
+  "name": "Product Media Gallery",
+  "tag": "div",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Gallery Style"
+    },
+    {
+      "type": "color",
+      "id": "gallery_border_color",
+      "label": "Main Image Border Color",
+      "default": "#E86F4A"
+    },
+    {
+      "type": "range",
+      "id": "gallery_border_width",
+      "label": "Main Image Border Width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "default": 3
+    },
+    {
+      "type": "range",
+      "id": "main_image_radius",
+      "label": "Main Image Corner Radius",
+      "min": 0,
+      "max": 32,
+      "step": 1,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "header",
+      "content": "Thumbnail Style"
+    },
+    {
+      "type": "color",
+      "id": "thumbnail_border_color",
+      "label": "Selected Thumbnail Border",
+      "default": "#E86F4A"
+    },
+    {
+      "type": "range",
+      "id": "thumbnail_size",
+      "label": "Thumbnail Size (Desktop)",
+      "min": 60,
+      "max": 160,
+      "step": 5,
+      "unit": "px",
+      "default": 120
+    },
+    {
+      "type": "range",
+      "id": "thumbnail_gap",
+      "label": "Gap Between Thumbnails",
+      "min": 4,
+      "max": 32,
+      "step": 2,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "thumbnail_radius",
+      "label": "Thumbnail Corner Radius",
+      "min": 0,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "thumbnails_visible",
+      "label": "Thumbnails Visible (Desktop)",
+      "min": 3,
+      "max": 8,
+      "step": 1,
+      "default": 4
+    },
+    {
+      "type": "range",
+      "id": "thumbnails_visible_mobile",
+      "label": "Thumbnails Visible (Mobile)",
+      "min": 2,
+      "max": 5,
+      "step": 1,
+      "default": 3
+    },
+    {
+      "type": "header",
+      "content": "Navigation Arrows"
+    },
+    {
+      "type": "color",
+      "id": "arrow_color",
+      "label": "Arrow Color",
+      "default": "#E86F4A"
+    },
+    {
+      "type": "header",
+      "content": "Zoom Icon"
+    },
+    {
+      "type": "color",
+      "id": "zoom_icon_color",
+      "label": "Zoom Icon Color",
+      "default": "#1a2456"
+    },
+    {
+      "type": "checkbox",
+      "id": "zoom",
+      "label": "Enable Zoom",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Media Settings"
+    },
+    {
+      "type": "select",
+      "id": "media_presentation",
+      "label": "Gallery Type",
+      "options": [
+        {
+          "value": "carousel",
+          "label": "Carousel"
+        }
+      ],
+      "default": "carousel",
+      "info": "Custom gallery layout with horizontal thumbnails"
+    },
+    {
+      "type": "checkbox",
+      "id": "video_loop",
+      "label": "Enable Video Looping",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_variants",
+      "default": false,
+      "label": "Hide Unselected Variant Media"
+    },
+    {
+      "type": "header",
+      "content": "Padding"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "Top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "Bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-start",
+      "label": "Left",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-end",
+      "label": "Right",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    }
+  ],
+  "presets": [
+    {
+      "name": "Product Media Gallery"
+    }
+  ]
+}
+{% endschema %}

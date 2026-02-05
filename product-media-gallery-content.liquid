@@ -1,0 +1,872 @@
+{% doc %}
+  Product Media Gallery Content - Custom Gallery Layout
+  Renders product media gallery with main image and horizontal thumbnails with navigation arrows.
+{% enddoc %}
+
+{%- liquid
+  assign selected_product = closest.product
+  assign selected_variant_media = selected_product.selected_or_first_available_variant.featured_media
+  assign first_3d_model = selected_product.media | where: 'media_type', 'model' | first
+
+  if block_settings.hide_variants
+    assign variant_images = selected_product.images | where: 'attached_to_variant?', true | map: 'src'
+  endif
+
+  assign sorted_media = '' | split: ','
+  if selected_variant_media
+    assign sorted_media = sorted_media | concat: selected_product.media | where: 'id', selected_variant_media.id
+
+    for media in selected_product.media
+      if block_settings.hide_variants and variant_images contains media.src and sorted_media.size > 0
+        continue
+      endif
+
+      if media.id != selected_variant_media.id
+        assign found_media = selected_product.media | where: 'id', media.id
+        assign sorted_media = sorted_media | concat: found_media
+      endif
+    endfor
+  else
+    assign sorted_media = selected_product.media
+  endif
+
+  # Get color settings with defaults
+  assign gallery_border_color = block_settings.gallery_border_color | default: '#E86F4A'
+  assign gallery_border_width = block_settings.gallery_border_width | default: 3
+  assign thumbnail_border_color = block_settings.thumbnail_border_color | default: '#E86F4A'
+  assign arrow_color = block_settings.arrow_color | default: '#E86F4A'
+  assign zoom_icon_color = block_settings.zoom_icon_color | default: '#1a2456'
+  assign thumbnail_size = block_settings.thumbnail_size | default: 120
+  assign thumbnail_gap = block_settings.thumbnail_gap | default: 16
+  assign main_image_radius = block_settings.main_image_radius | default: 8
+  assign thumbnail_radius = block_settings.thumbnail_radius | default: 8
+  assign thumbnails_visible = block_settings.thumbnails_visible | default: 4
+  assign thumbnails_visible_mobile = block_settings.thumbnails_visible_mobile | default: 3
+-%}
+
+{%- if block_settings.zoom -%}
+  <script src="{{ 'zoom-dialog.js' | asset_url }}" type="module"></script>
+  <script src="{{ 'drag-zoom-wrapper.js' | asset_url }}" type="module"></script>
+{%- endif -%}
+<script src="{{ 'media-gallery.js' | asset_url }}" type="module"></script>
+
+{% style %}
+
+.chs__content__text {
+    width: var(--left-column-width);
+    max-width: 100%;
+    font-family: "Poppins", sans-serif;
+    background-color: #f5f5f5;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 40px 50px;
+    border-radius: 15px;
+    box-sizing: border-box;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+  }
+
+  .chs__supporting-text {
+    color: #f96a42;
+    font-size: 20px;
+    font-weight: 600;
+    font-family: "Poppins", sans-serif;
+  }
+
+  .cushions-stars {
+    color: #fe8000;
+    padding: 20px 0;
+    font-size: 25px;
+  }
+
+  .chs__cta-button {
+    background-color: #282639;
+    padding: 15px 30px;
+    color: white;
+    border: 0;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 500;
+    font-family: "Poppins", sans-serif;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .chs__cta-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  }
+.product-list-card-heading {
+    font-size: 25px;
+    font-weight: 600;
+    line-height: 1.2;
+    color: white;
+    margin: 0;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .product-list-card-button {
+    color: black;
+    font-weight: 600;
+    font-size: 14px;
+    padding: 10px 20px;
+    border: 0px;
+    border-radius: 10px;
+    width: fit-content;
+    max-width: 100%;
+    margin-top: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background-color: white;
+    box-sizing: border-box;
+  }
+
+  .product-list-card-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .product-list-card-bottom {
+    height: 35%;
+    width: 100%;
+    max-width: 100%;
+    padding: 35px;
+    border-radius: 20px;
+    background-color: #fa6439;
+    display: flex;
+    justify-content: space-between;
+    box-sizing: border-box;
+    margin-top:20px;
+    margin-bottom:20px;
+  }
+
+  .product-list-card-bottom .product-list-card-heading {
+    margin-bottom: 10px;
+  }
+  .custom-gallery-{{ block_id }} {
+    --gallery-border-color: {{ gallery_border_color }};
+    --gallery-border-width: {{ gallery_border_width }}px;
+    --thumbnail-border-color: {{ thumbnail_border_color }};
+    --arrow-color: {{ arrow_color }};
+    --zoom-icon-color: {{ zoom_icon_color }};
+    --thumbnail-size: {{ thumbnail_size }}px;
+    --thumbnail-gap: {{ thumbnail_gap }}px;
+    --main-image-radius: {{ main_image_radius }}px;
+    --thumbnail-radius: {{ thumbnail_radius }}px;
+  }
+
+  .custom-gallery {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+  }
+
+  .custom-gallery__main {
+    position: relative;
+    width: 100%;
+    border: var(--gallery-border-width) solid var(--gallery-border-color);
+    border-radius: var(--main-image-radius);
+    overflow: hidden;
+    background: #fff;
+  }
+
+  .custom-gallery__main .product-media {
+    width: 100%;
+    aspect-ratio: 1;
+  }
+
+  .custom-gallery__main .product-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .custom-gallery__slide {
+    display: none;
+    cursor: zoom-in;
+  }
+
+  .custom-gallery__slide.is-active {
+    display: block;
+  }
+
+  .custom-gallery__zoom-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 44px;
+    height: 44px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    z-index: 1;
+    padding: 0;
+  }
+
+  .custom-gallery__zoom-btn svg {
+    width: 32px;
+    height: 32px;
+    stroke: var(--zoom-icon-color);
+    fill: none;
+    stroke-width: 1.5;
+  }
+
+  .custom-gallery__thumbs-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: center;
+  }
+
+  .custom-gallery__arrow {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .custom-gallery__arrow svg {
+    width: 24px;
+    height: 24px;
+    stroke: var(--arrow-color);
+    fill: none;
+    stroke-width: 2.5;
+  }
+
+  .custom-gallery__arrow:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  .custom-gallery__arrow--prev svg {
+    transform: rotate(180deg);
+  }
+
+  .custom-gallery__thumbs {
+    display: flex;
+    gap: var(--thumbnail-gap);
+    overflow: hidden;
+    transition: transform 0.3s ease;
+  }
+
+  .custom-gallery__thumb {
+    flex-shrink: 0;
+    width: var(--thumbnail-size);
+    height: var(--thumbnail-size);
+    border: 2px solid transparent;
+    border-radius: var(--thumbnail-radius);
+    overflow: hidden;
+    cursor: pointer;
+    background: #fff;
+    padding: 0;
+    position: relative;
+  }
+
+  .custom-gallery__thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .custom-gallery__thumb.is-active {
+    border-color: var(--thumbnail-border-color);
+  }
+
+  @media (max-width: 749px) {
+    .custom-gallery__thumb {
+      width: 80px;
+      height: 80px;
+    }
+    .custom-gallery__zoom-btn {
+      top: 10px;
+      right: 10px;
+      width: 36px;
+      height: 36px;
+    }
+    .custom-gallery__zoom-btn svg {
+      width: 26px;
+      height: 26px;
+    }
+  }
+
+  /* Zoom dialog full screen */
+  .custom-zoom-dialog {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: rgba(0,0,0,0.95);
+    z-index: 9999;
+  }
+
+  .custom-zoom-dialog::backdrop {
+    background: rgba(0,0,0,0.95);
+  }
+
+  .custom-zoom-dialog__close {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 44px;
+    height: 44px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    z-index: 10001;
+    padding: 0;
+  }
+
+  .custom-zoom-dialog__close svg {
+    width: 32px;
+    height: 32px;
+    stroke: #fff;
+    fill: none;
+    stroke-width: 2;
+  }
+
+  .custom-zoom-dialog__content {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .custom-zoom-dialog__slides {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+  }
+
+  .custom-zoom-dialog__slides::-webkit-scrollbar {
+    display: none;
+  }
+
+  .custom-zoom-dialog__slide {
+    flex: 0 0 100%;
+    width: 100%;
+    height: 100%;
+    scroll-snap-align: start;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    box-sizing: border-box;
+  }
+
+  .custom-zoom-dialog__slide img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+
+  .custom-zoom-dialog__nav {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    z-index: 10001;
+  }
+
+  .custom-zoom-dialog__nav-btn {
+    width: 50px;
+    height: 50px;
+    background: rgba(255,255,255,0.2);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .custom-zoom-dialog__nav-btn svg {
+    width: 24px;
+    height: 24px;
+    stroke: #fff;
+    fill: none;
+    stroke-width: 2;
+  }
+
+  .custom-zoom-dialog__nav-btn--prev svg {
+    transform: rotate(180deg);
+  }
+
+  .custom-zoom-dialog__counter {
+    position: fixed;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #fff;
+    font-size: 14px;
+    z-index: 10001;
+    background: rgba(0,0,0,0.5);
+    padding: 8px 16px;
+    border-radius: 20px;
+  }
+
+  .custom-zoom-dialog__thumbs {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    padding: 10px;
+    background: rgba(0,0,0,0.5);
+    border-radius: 8px;
+    z-index: 10001;
+  }
+
+  .custom-zoom-dialog__thumb {
+    width: 50px;
+    height: 50px;
+    border: 2px solid transparent;
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+    padding: 0;
+    background: transparent;
+  }
+
+  .custom-zoom-dialog__thumb.is-active {
+    border-color: #fff;
+  }
+
+  .custom-zoom-dialog__thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+{% endstyle %}
+
+{% if closest.product == blank %}
+  <div class="custom-gallery custom-gallery-{{ block_id }}" {{ block_shopify_attributes }}>
+    {{ 'product-apparel-1' | placeholder_svg_tag: 'placeholder-image' }}
+  </div>
+{% else %}
+  <div class="custom-gallery custom-gallery-{{ block_id }}" id="gallery-{{ block_id }}" {{ block_shopify_attributes }}>
+    <!-- Main Image -->
+    <div class="custom-gallery__main">
+      {% if block_settings.zoom %}
+        <button type="button" class="custom-gallery__zoom-btn" data-zoom-btn aria-label="Zoom">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </button>
+      {% endif %}
+
+      {% for media in sorted_media %}
+        <div class="custom-gallery__slide{% if forloop.first %} is-active{% endif %}" data-index="{{ forloop.index0 }}">
+          {{
+            media.preview_image
+            | image_url: width: 1200
+            | image_tag: loading: 'eager', alt: media.alt | default: selected_product.title
+          }}
+        </div>
+      {% endfor %}
+    </div>
+
+    <!-- Thumbnails -->
+    {% if sorted_media.size > 1 %}
+      <div class="custom-gallery__thumbs-wrap">
+        <button type="button" class="custom-gallery__arrow custom-gallery__arrow--prev" data-thumb-prev aria-label="Previous">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </button>
+
+        <div class="custom-gallery__thumbs" data-thumbs style="max-width: calc({{ thumbnails_visible }} * var(--thumbnail-size) + {{ thumbnails_visible | minus: 1 }} * var(--thumbnail-gap));">
+          {% for media in sorted_media %}
+            <button type="button" class="custom-gallery__thumb{% if forloop.first %} is-active{% endif %}" data-thumb="{{ forloop.index0 }}" aria-label="View image {{ forloop.index }}">
+              {{
+                media.preview_image
+                | image_url: width: 200
+                | image_tag: loading: 'lazy', alt: media.alt | default: selected_product.title
+              }}
+            </button>
+          {% endfor %}
+        </div>
+
+        <button type="button" class="custom-gallery__arrow custom-gallery__arrow--next" data-thumb-next aria-label="Next">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </button>
+      </div>
+    {% endif %}
+
+    <!-- Zoom Dialog -->
+    {% if block_settings.zoom %}
+      <dialog class="custom-zoom-dialog" id="zoom-{{ block_id }}">
+        <button type="button" class="custom-zoom-dialog__close" data-zoom-close aria-label="Close">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+
+        <div class="custom-zoom-dialog__content">
+          <div class="custom-zoom-dialog__slides" data-zoom-slides>
+            {% for media in sorted_media %}
+              <div class="custom-zoom-dialog__slide" data-zoom-slide="{{ forloop.index0 }}">
+                {{
+                  media.preview_image
+                  | image_url: width: 2000
+                  | image_tag: loading: 'lazy', alt: media.alt | default: selected_product.title
+                }}
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        {% if sorted_media.size > 1 %}
+          <div class="custom-zoom-dialog__thumbs" data-zoom-thumbs>
+            {% for media in sorted_media %}
+              <button type="button" class="custom-zoom-dialog__thumb{% if forloop.first %} is-active{% endif %}" data-zoom-thumb="{{ forloop.index0 }}" aria-label="View image {{ forloop.index }}">
+                {{
+                  media.preview_image
+                  | image_url: width: 100
+                  | image_tag: loading: 'lazy', alt: media.alt | default: selected_product.title
+                }}
+              </button>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </dialog>
+    {% endif %}
+  </div>
+
+  <script>
+    (function() {
+      const gallery = document.getElementById('gallery-{{ block_id }}');
+      if (!gallery) return;
+
+      const slides = gallery.querySelectorAll('.custom-gallery__slide');
+      const thumbs = gallery.querySelectorAll('.custom-gallery__thumb');
+      const thumbsContainer = gallery.querySelector('[data-thumbs]');
+      const prevBtn = gallery.querySelector('[data-thumb-prev]');
+      const nextBtn = gallery.querySelector('[data-thumb-next]');
+      const zoomBtn = gallery.querySelector('[data-zoom-btn]');
+      const dialog = document.getElementById('zoom-{{ block_id }}');
+
+      let current = 0;
+      let thumbOffset = 0;
+      const total = slides.length;
+      const visible = window.innerWidth < 750 ? {{ thumbnails_visible_mobile }} : {{ thumbnails_visible }};
+      const thumbSize = window.innerWidth < 750 ? 80 : {{ thumbnail_size }};
+      const thumbGap = {{ thumbnail_gap }};
+
+      function showSlide(index) {
+        slides.forEach((s, i) => s.classList.toggle('is-active', i === index));
+        thumbs.forEach((t, i) => t.classList.toggle('is-active', i === index));
+        current = index;
+        scrollThumbIntoView(index);
+      }
+
+      function scrollThumbIntoView(index) {
+        if (index < thumbOffset) thumbOffset = index;
+        else if (index >= thumbOffset + visible) thumbOffset = index - visible + 1;
+        updateThumbPosition();
+      }
+
+      function updateThumbPosition() {
+        if (!thumbsContainer) return;
+        const offset = thumbOffset * (thumbSize + thumbGap);
+        thumbsContainer.style.transform = `translateX(-${offset}px)`;
+        updateArrows();
+      }
+
+      function updateArrows() {
+        if (prevBtn) prevBtn.disabled = thumbOffset <= 0;
+        if (nextBtn) nextBtn.disabled = thumbOffset >= total - visible;
+      }
+
+      thumbs.forEach((thumb, i) => thumb.addEventListener('click', () => showSlide(i)));
+
+      if (prevBtn) prevBtn.addEventListener('click', () => {
+        thumbOffset = Math.max(0, thumbOffset - 1);
+        updateThumbPosition();
+      });
+
+      if (nextBtn) nextBtn.addEventListener('click', () => {
+        thumbOffset = Math.min(total - visible, thumbOffset + 1);
+        updateThumbPosition();
+      });
+
+      slides.forEach((slide, i) => {
+        slide.addEventListener('click', () => openZoom(i));
+      });
+
+      if (zoomBtn) zoomBtn.addEventListener('click', () => openZoom(current));
+
+      // Zoom dialog
+      if (dialog) {
+        const zoomSlides = dialog.querySelector('[data-zoom-slides]');
+        const zoomThumbs = dialog.querySelectorAll('[data-zoom-thumb]');
+        const closeBtn = dialog.querySelector('[data-zoom-close]');
+
+        function openZoom(index) {
+          dialog.showModal();
+          document.body.style.overflow = 'hidden';
+          scrollToZoomSlide(index);
+          updateZoomThumbs(index);
+        }
+
+        function closeZoom() {
+          dialog.close();
+          document.body.style.overflow = '';
+        }
+
+        function scrollToZoomSlide(index) {
+          const slide = zoomSlides.children[index];
+          if (slide) slide.scrollIntoView({ behavior: 'instant', inline: 'start' });
+        }
+
+        function updateZoomThumbs(index) {
+          zoomThumbs.forEach((t, i) => t.classList.toggle('is-active', i === index));
+        }
+
+        closeBtn?.addEventListener('click', closeZoom);
+        dialog.addEventListener('click', (e) => {
+          if (e.target === dialog) closeZoom();
+        });
+        dialog.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') closeZoom();
+          if (e.key === 'ArrowLeft') {
+            const newIndex = Math.max(0, current - 1);
+            scrollToZoomSlide(newIndex);
+            updateZoomThumbs(newIndex);
+            showSlide(newIndex);
+          }
+          if (e.key === 'ArrowRight') {
+            const newIndex = Math.min(total - 1, current + 1);
+            scrollToZoomSlide(newIndex);
+            updateZoomThumbs(newIndex);
+            showSlide(newIndex);
+          }
+        });
+
+        zoomThumbs.forEach((thumb, i) => {
+          thumb.addEventListener('click', () => {
+            scrollToZoomSlide(i);
+            updateZoomThumbs(i);
+            showSlide(i);
+          });
+        });
+
+        // Track scroll position for swipe
+        let scrollTimeout;
+        zoomSlides?.addEventListener('scroll', () => {
+          clearTimeout(scrollTimeout);
+          scrollTimeout = setTimeout(() => {
+            const slideWidth = zoomSlides.clientWidth;
+            const scrollPos = zoomSlides.scrollLeft;
+            const newIndex = Math.round(scrollPos / slideWidth);
+            if (newIndex !== current && newIndex >= 0 && newIndex < total) {
+              updateZoomThumbs(newIndex);
+              showSlide(newIndex);
+            }
+          }, 100);
+        });
+
+        window.openZoom = openZoom;
+      }
+
+      updateArrows();
+    })();
+  </script>
+{% endif %}
+
+{%- if first_3d_model -%}
+  <link rel="stylesheet" href="https://cdn.shopify.com/shopifycloud/model-viewer-ui/assets/v1.0/model-viewer-ui.css" media="print" onload="this.media='all'">
+{%- endif -%}
+ <div class="product-list-card-bottom">
+      <p class="product-list-card-heading">
+        Not sure which cushions offers the best comfort for you?
+      </p>
+      <button class="product-list-card-button">Take a Quiz for Better Choice</button>
+    </div>
+
+
+   <style>
+  .custom-cushions-cta {
+    width:100%;
+    display: flex;
+flex-direction:row;
+justify-content:space-between;
+    padding: 20px 0;
+  }
+
+  .custom-cushions-cta__banner {
+    background-color: #E8835C;
+    border-radius: 16px;
+    padding: 32px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 28px;
+  }
+
+  .custom-cushions-cta__banner-text {
+    font-size: 22px;
+    font-weight: 500;
+    font-style: italic;
+    color: #ffffff;
+    margin: 0;
+    line-height: 1.4;
+    max-width: 340px;
+  }
+
+  .custom-cushions-cta__button {
+    display: inline-block;
+    background-color: #ffffff;
+    color: #1a1a1a;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 14px 24px;
+    border-radius: 8px;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .custom-cushions-cta__button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .custom-cushions-cta__trust {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    min-width:100%;
+  }
+
+  .custom-cushions-cta__heading-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 4px;
+  }
+
+  .custom-cushions-cta__heading {
+    font-size: 32px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0;
+    line-height: 1.3;
+  }
+
+  .custom-cushions-cta__heading-line {
+    width: 40px;
+    height: 4px;
+    background-color: #E8835C;
+    border-radius: 2px;
+  }
+
+  .custom-cushions-cta__subtext {
+    font-size: 18px;
+    font-weight: 500;
+    color: #E8835C;
+    margin: 0;
+  }
+
+  .custom-cushions-cta__stars {
+    display: flex;
+    gap: 4px;
+    color: #E8835C;
+    padding-top: 8px;
+  }
+
+  .custom-cushions-cta__star {
+    width: 32px;
+    height: 32px;
+  }
+
+  @media (max-width: 749px) {
+    .custom-cushions-cta__banner {
+      flex-direction: column;
+      text-align: center;
+      padding: 24px 20px;
+      gap: 16px;
+    }
+
+    .custom-cushions-cta__banner-text {
+      font-size: 18px;
+      max-width: 100%;
+    }
+
+    .custom-cushions-cta__trust {
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .custom-cushions-cta__heading {
+      font-size: 22px;
+    }
+
+    .custom-cushions-cta__subtext {
+      font-size: 16px;
+    }
+
+    .custom-cushions-cta__star {
+      width: 26px;
+      height: 26px;
+    }
+  }
+</style>
+
+<div class="custom-cushions-cta">
+
+
+  <!-- Trust Section -->
+  <div class="custom-cushions-cta__trust">
+    <div class="custom-cushions-cta__trust-left">
+      <div class="custom-cushions-cta__heading-row">
+        <h2 class="custom-cushions-cta__heading">Custom Cushions, Made<br/> Fit For You!</h2>
+        
+      </div>
+      <p class="custom-cushions-cta__subtext">Trusted by over 50,000+</p>
+    </div>
+
+    <div class="custom-cushions-cta__stars">
+      <svg class="custom-cushions-cta__star" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+      </svg>
+      <svg class="custom-cushions-cta__star" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+      </svg>
+      <svg class="custom-cushions-cta__star" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+      </svg>
+      <svg class="custom-cushions-cta__star" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+      </svg>
+      <svg class="custom-cushions-cta__star" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+      </svg>
+    </div>
+  </div>
+</div>

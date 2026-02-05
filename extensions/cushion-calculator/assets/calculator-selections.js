@@ -14,6 +14,11 @@ CushionCalculator.prototype.selectShape = function(shape) {
   shape.inputFields.forEach(function(f) { var v = parseFloat(f.defaultValue); if (!isNaN(v) && v > 0) self.dimensions[f.key] = v; });
   this.updateDimensionValue();
   this.calculatePrice();
+  // Update gallery if dimensions section is currently open
+  var dimensionsContent = document.getElementById('content-dimensions-' + this.blockId);
+  if (dimensionsContent && dimensionsContent.classList.contains('kraft2026zion-open')) {
+    this.showShapeInGallery();
+  }
 };
 
 CushionCalculator.prototype.selectFill = function(fill) {

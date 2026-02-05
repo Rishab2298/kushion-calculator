@@ -88,6 +88,7 @@ CushionCalculator.prototype.init = async function() {
     }
 
     this.setupFloatingFooter();
+    this.initGalleryIntegration();
     await this.applyUrlConfiguration();
 
     if (!this.isMultiPieceMode) {
@@ -198,9 +199,19 @@ CushionCalculator.prototype.toggleSection = function(name, forceOpen) {
     });
     content.classList.add('kraft2026zion-open');
     header.classList.add('kraft2026zion-active');
+    // Gallery integration: show shape when dimensions opens
+    if (name === 'dimensions') {
+      this.showShapeInGallery();
+    } else {
+      this.hideShapeFromGallery();
+    }
   } else {
     content.classList.remove('kraft2026zion-open');
     header.classList.remove('kraft2026zion-active');
+    // Gallery integration: hide shape when dimensions closes
+    if (name === 'dimensions') {
+      this.hideShapeFromGallery();
+    }
   }
 };
 
@@ -218,6 +229,95 @@ CushionCalculator.prototype.setupScrollArrows = function(w, l, r) {
 
 CushionCalculator.prototype.initSectionScrollArrows = function(n) {
   this.setupScrollArrows(document.getElementById(n + '-scroll-wrapper-' + this.blockId), document.getElementById(n + '-scroll-left-' + this.blockId), document.getElementById(n + '-scroll-right-' + this.blockId));
+};
+
+// Find and cache gallery elements
+CushionCalculator.prototype.initGalleryIntegration = function() {
+  this.galleryElement = document.querySelector('.custom-gallery');
+  this.galleryMainArea = this.galleryElement ?
+    this.galleryElement.querySelector('.custom-gallery__main') : null;
+  this.shapeSlideInjected = false;
+  this.originalActiveIndex = 0;
+};
+
+// Inject shape image into gallery
+CushionCalculator.prototype.showShapeInGallery = function() {
+  if (!this.selectedShape || !this.selectedShape.imageUrl) return;
+  if (!this.galleryElement) this.initGalleryIntegration();
+  if (!this.galleryMainArea) return;
+
+  // Store current active slide
+  var currentActive = this.galleryMainArea.querySelector('.custom-gallery__slide.is-active');
+  if (currentActive && currentActive.dataset.index !== 'shape') {
+    this.originalActiveIndex = parseInt(currentActive.dataset.index) || 0;
+  }
+
+  // Hide all product slides
+  this.galleryMainArea.querySelectorAll('.custom-gallery__slide').forEach(function(slide) {
+    slide.classList.remove('is-active');
+  });
+
+  // Create or update shape slide
+  var existingShapeSlide = this.galleryMainArea.querySelector('.kraft2026zion-shape-slide');
+  if (existingShapeSlide) {
+    existingShapeSlide.querySelector('img').src = this.selectedShape.imageUrl;
+    existingShapeSlide.querySelector('.kraft2026zion-shape-gallery-label').textContent =
+      'Dimension Reference: ' + this.selectedShape.name;
+    existingShapeSlide.classList.add('is-active');
+  } else {
+    var shapeSlide = document.createElement('div');
+    shapeSlide.className = 'custom-gallery__slide kraft2026zion-shape-slide is-active';
+    shapeSlide.dataset.index = 'shape';
+    shapeSlide.innerHTML = '<div class="kraft2026zion-shape-gallery-wrapper">' +
+      '<img src="' + this.selectedShape.imageUrl + '" alt="' + this.selectedShape.name + '">' +
+      '<div class="kraft2026zion-shape-gallery-label">Dimension Reference: ' + this.selectedShape.name + '</div>' +
+      '</div>';
+    this.galleryMainArea.insertBefore(shapeSlide, this.galleryMainArea.firstChild);
+  }
+
+  this.shapeSlideInjected = true;
+
+  // Dim thumbnails
+  var thumbsWrap = this.galleryElement.querySelector('.custom-gallery__thumbs-wrap');
+  if (thumbsWrap) {
+    thumbsWrap.style.opacity = '0.4';
+    thumbsWrap.style.pointerEvents = 'none';
+  }
+};
+
+// Remove shape image and restore gallery
+CushionCalculator.prototype.hideShapeFromGallery = function() {
+  if (!this.shapeSlideInjected || !this.galleryMainArea) return;
+
+  var shapeSlide = this.galleryMainArea.querySelector('.kraft2026zion-shape-slide');
+  if (shapeSlide) shapeSlide.remove();
+
+  // Restore original slide
+  var slides = this.galleryMainArea.querySelectorAll('.custom-gallery__slide');
+  var targetIndex = this.originalActiveIndex;
+  var activated = false;
+  slides.forEach(function(slide) {
+    if (parseInt(slide.dataset.index) === targetIndex) {
+      slide.classList.add('is-active');
+      activated = true;
+    }
+  });
+  if (!activated && slides.length > 0) slides[0].classList.add('is-active');
+
+  // Restore thumbnails
+  var thumbsWrap = this.galleryElement.querySelector('.custom-gallery__thumbs-wrap');
+  if (thumbsWrap) {
+    thumbsWrap.style.opacity = '';
+    thumbsWrap.style.pointerEvents = '';
+  }
+
+  // Sync thumbnail active state
+  var thumbs = this.galleryElement.querySelectorAll('.custom-gallery__thumb');
+  thumbs.forEach(function(thumb, i) {
+    thumb.classList.toggle('is-active', i === targetIndex);
+  });
+
+  this.shapeSlideInjected = false;
 };
 
 // Entry point - runs after all deferred scripts have loaded
