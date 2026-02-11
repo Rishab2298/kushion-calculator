@@ -481,7 +481,7 @@ CushionCalculator.prototype.loadPaginatedFabrics = async function() {
   if (content.parentElement) content.parentElement.style.display = 'none';
 
   try {
-    var params = new URLSearchParams({ shop: this.shopDomain, page: this.browserCurrentPage, limit: 80 });
+    var params = new URLSearchParams({ shop: this.shopDomain, page: this.browserCurrentPage, limit: 30 });
 
     if (this.browserCurrentCategoryId && this.browserCurrentCategoryId !== 'all') {
       params.append('categoryId', this.browserCurrentCategoryId);
