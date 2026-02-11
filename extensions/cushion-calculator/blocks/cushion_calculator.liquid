@@ -614,29 +614,32 @@
   .kraft2026zion-fabric-browser-content::-webkit-scrollbar { width: 4px; }
   .kraft2026zion-fabric-browser-content::-webkit-scrollbar-track { background: #f1f5f9; }
   .kraft2026zion-fabric-browser-content::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
-  .kraft2026zion-fabric-browser-grid { flex: 1; overflow-y: auto; padding: 8px; display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 5px; align-content: start; }
+  .kraft2026zion-fabric-browser-grid { flex: 1; overflow-y: auto; padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 8px; align-content: start; }
   .kraft2026zion-fabric-browser-grid .kraft2026zion-fabric-thumb { position: relative; width: 100%; aspect-ratio: 1; border-radius: 4px; border: 2px solid transparent; cursor: pointer; overflow: hidden; transition: all 0.15s; background: #f5f5f5; }
   .kraft2026zion-fabric-browser-grid .kraft2026zion-fabric-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .kraft2026zion-fabric-browser-grid .kraft2026zion-fabric-thumb:hover { border-color: #fda488; transform: scale(1.05); }
+  .kraft2026zion-fabric-browser-grid .kraft2026zion-fabric-thumb:hover { border-color: #fda488; }
   .kraft2026zion-fabric-browser-grid .kraft2026zion-fabric-thumb.kraft2026zion-selected { border-color: #fa6439; box-shadow: 0 0 0 2px rgba(250, 100, 57, 0.3); }
   .kraft2026zion-fabric-browser-pagination { display: flex; justify-content: center; align-items: center; gap: 8px; padding: 6px 8px; border-top: 1px solid #e2e8f0; background: #f8fafc; }
   .kraft2026zion-pagination-btn { padding: 4px 10px; border: 1px solid #e2e8f0; border-radius: 4px; background: #fff; cursor: pointer; font-size: 0.75rem; font-weight: 600; color: #475569; }
   .kraft2026zion-pagination-btn:hover:not(:disabled) { border-color: #fa6439; color: #fa6439; }
   .kraft2026zion-pagination-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .kraft2026zion-pagination-info { font-size: 0.7rem; color: #64748b; }
-  .kraft2026zion-fabric-detail-panel { width: 240px; flex-shrink: 0; display: flex; flex-direction: column; background: #fafafa; overflow-y: auto; }
+  .kraft2026zion-fabric-detail-panel { width: 240px; flex-shrink: 0; display: flex; flex-direction: column; background: #fafafa; overflow: hidden; }
   .kraft2026zion-fabric-detail-placeholder { flex: 1; display: flex; align-items: center; justify-content: center; color: #999; font-size: 0.8rem; text-align: center; padding: 20px; }
-  .kraft2026zion-fabric-detail-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; min-height: 0; }
+  .kraft2026zion-fabric-detail-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
   .kraft2026zion-fabric-detail-image-wrap { padding: 12px; background: #fff; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; }
   .kraft2026zion-fabric-detail-image-wrap img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; display: block; }
-  .kraft2026zion-fabric-detail-info { flex: 1; padding: 12px; display: flex; flex-direction: column; min-height: 0; }
-  .kraft2026zion-fabric-detail-info h4 { margin: 0 0 10px; font-size: 0.9rem; font-weight: 600; color: #333; line-height: 1.3; }
-  .kraft2026zion-fabric-detail-meta { flex: 1; }
+  .kraft2026zion-fabric-detail-info { flex: 1; padding: 12px; padding-bottom: 16px; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; }
+  .kraft2026zion-fabric-detail-info::-webkit-scrollbar { width: 4px; }
+  .kraft2026zion-fabric-detail-info::-webkit-scrollbar-track { background: #f1f5f9; }
+  .kraft2026zion-fabric-detail-info::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+  .kraft2026zion-fabric-detail-info h4 { margin: 0 0 10px; font-size: 0.9rem; font-weight: 600; color: #333; line-height: 1.3; flex-shrink: 0; }
+  .kraft2026zion-fabric-detail-meta { flex-shrink: 0; }
   .kraft2026zion-detail-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 0.75rem; border-bottom: 1px solid #eee; }
   .kraft2026zion-detail-row:last-child { border-bottom: none; }
   .kraft2026zion-detail-label { color: #888; }
   .kraft2026zion-detail-row span:last-child { color: #333; font-weight: 500; text-align: right; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .kraft2026zion-fabric-detail-select-btn { width: 100%; padding: 10px; background: #fa6439; color: white; border: none; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; margin-top: auto; flex-shrink: 0; }
+  .kraft2026zion-fabric-detail-select-btn { width: 100%; padding: 10px; background: #fa6439; color: white; border: none; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; margin-top: 12px; flex-shrink: 0; }
   .kraft2026zion-fabric-detail-select-btn:hover { background: #e85a33; }
   .kraft2026zion-view-more-btn { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; padding: 8px 14px; background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.8rem; font-weight: 500; color: #fa6439; cursor: pointer; transition: all 0.2s; }
   .kraft2026zion-view-more-btn:hover { background: rgba(250, 100, 57, 0.05); border-color: #fa6439; }
