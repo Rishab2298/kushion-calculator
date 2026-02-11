@@ -3682,6 +3682,28 @@
       var tiesId = params.get('tiesId');
       if (tiesId && tiesId !== 'none') selectTies(tiesId);
 
+      var designId = params.get('designId');
+      if (designId && designId !== 'none') selectDesign(designId);
+
+      var rodPocketId = params.get('rodPocketId');
+      if (rodPocketId && rodPocketId !== 'none') selectRodPocket(rodPocketId);
+
+      var fabricTiesId = params.get('fabricTiesId');
+      if (fabricTiesId && fabricTiesId !== 'none') selectFabricTies(fabricTiesId);
+
+      var drawstringId = params.get('drawstringId');
+      if (drawstringId && drawstringId !== 'none') selectDrawstring(drawstringId);
+
+      var panelCountParam = params.get('panelCount');
+      if (panelCountParam) {
+        var pCount = parseInt(panelCountParam, 10);
+        if (!isNaN(pCount) && pCount >= 1) {
+          panelCount = pCount;
+          var panelInput = document.getElementById('panel-count-' + blockId);
+          if (panelInput) panelInput.value = pCount;
+        }
+      }
+
       var qty = params.get('qty');
       if (qty) {
         var qtyNum = parseInt(qty, 10);

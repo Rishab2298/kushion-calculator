@@ -17,7 +17,7 @@ CushionCalculator.prototype.addToCart = async function() {
 
   var visibility = this.config.sectionVisibility || {};
   var hidden = this.config.hiddenValues || {};
-  var effectiveFill = this.selectedFill, effectiveFabric = this.selectedFabric, effectiveDesign = this.selectedDesign, effectivePiping = this.selectedPiping, effectiveButton = this.selectedButton, effectiveAntiSkid = this.selectedAntiSkid, effectiveRodPocket = this.selectedRodPocket, effectiveTies = this.selectedTies, effectiveFabricTies = this.selectedFabricTies;
+  var effectiveFill = this.selectedFill, effectiveFabric = this.selectedFabric, effectiveDesign = this.selectedDesign, effectivePiping = this.selectedPiping, effectiveButton = this.selectedButton, effectiveAntiSkid = this.selectedAntiSkid, effectiveRodPocket = this.selectedRodPocket, effectiveTies = this.selectedTies, effectiveFabricTies = this.selectedFabricTies, effectiveDrawstring = this.selectedDrawstring;
   if (visibility.showFillSection === false && hidden.fillType) effectiveFill = hidden.fillType;
   if (visibility.showFabricSection === false && hidden.fabric) effectiveFabric = hidden.fabric;
   if (visibility.showDesignSection === false && hidden.design) effectiveDesign = hidden.design;
@@ -27,52 +27,28 @@ CushionCalculator.prototype.addToCart = async function() {
   if (visibility.showRodPocketSection === false && hidden.rodPocket) effectiveRodPocket = hidden.rodPocket;
   if (visibility.showTiesSection === false && hidden.ties) effectiveTies = hidden.ties;
   if (visibility.showFabricTiesSection === false && hidden.fabricTies) effectiveFabricTies = hidden.fabricTies;
+  if (visibility.showDrawstringSection === false && hidden.drawstring) effectiveDrawstring = hidden.drawstring;
 
-  var surfaceArea = this.evaluateFormula(this.selectedShape.surfaceAreaFormula, dimensions);
-  var volume = this.evaluateFormula(this.selectedShape.volumeFormula, dimensions);
+  // Use the already-calculated price from calculatePrice() instead of recalculating
+  // this.calculatedPrice is the total (unit * qty), so divide by qty to get unit price
+  var unitPrice = this.calculatedPrice / qty;
+  if (unitPrice < 1) unitPrice = 1;
 
-  var conversionMultiplier = 1 + ((this.config.settings && this.config.settings.conversionPercent != null ? this.config.settings.conversionPercent : 0) / 100);
-  var fabricCost = surfaceArea * (parseFloat(effectiveFabric.pricePerSqInch) || 0) * conversionMultiplier;
-  var fillCost = volume * (parseFloat(effectiveFill.pricePerCubicInch) || 0) * conversionMultiplier;
-  var tiesCost = effectiveTies ? (parseFloat(effectiveTies.price) || 0) * conversionMultiplier : 0;
-  var fabricTiesCost = effectiveFabricTies ? (parseFloat(effectiveFabricTies.price) || 0) * conversionMultiplier : 0;
-  var baseSubtotal = fabricCost + fillCost;
-
+  // Get addon percentages for display in cart properties (not for price calculation)
   var designPct = effectiveDesign ? (parseFloat(effectiveDesign.percent) || 0) : 0;
-  var designCost = fabricCost * (designPct / 100);
   var pipingPct = effectivePiping ? (parseFloat(effectivePiping.percent) || 0) : 0;
   var buttonPct = effectiveButton ? (parseFloat(effectiveButton.percent) || 0) : 0;
   var antiSkidPct = effectiveAntiSkid ? (parseFloat(effectiveAntiSkid.percent) || 0) : 0;
   var rodPocketPct = effectiveRodPocket ? (parseFloat(effectiveRodPocket.percent) || 0) : 0;
-  var profilePct = this.config.profile ? (parseFloat(this.config.profile.additionalPercent) || 0) : 0;
+  var drawstringPct = effectiveDrawstring ? (parseFloat(effectiveDrawstring.percent) || 0) : 0;
+  var totalDiscountPct = ((effectiveFabric && effectiveFabric.discountEnabled) ? (parseFloat(effectiveFabric.discountPercent) || 0) : 0) +
+                         ((effectiveFill && effectiveFill.discountEnabled) ? (parseFloat(effectiveFill.discountPercent) || 0) : 0);
 
-  var subtotalAfterAddons = baseSubtotal + designCost + (baseSubtotal * ((pipingPct + buttonPct + antiSkidPct + rodPocketPct + profilePct) / 100)) + tiesCost + fabricTiesCost;
-  var shippingPct = this.config.settings && this.config.settings.shippingPercent != null ? this.config.settings.shippingPercent : 100;
-  var labourPct = this.config.settings && this.config.settings.labourPercent != null ? this.config.settings.labourPercent : 100;
-  var tiesInShippingLabour = this.config.settings && this.config.settings.tiesIncludeInShippingLabour != null ? this.config.settings.tiesIncludeInShippingLabour : true;
-  var shippingLabourBase = tiesInShippingLabour ? subtotalAfterAddons : (subtotalAfterAddons - tiesCost);
-  var preTotalUnit = subtotalAfterAddons + shippingLabourBase * ((shippingPct + labourPct) / 100);
-  var marginTier = this.getMarginTier(preTotalUnit);
-  var marginPct = marginTier ? marginTier.adjustmentPercent : 0;
-  var unitPrice = preTotalUnit * (1 + marginPct / 100);
-
-  // Apply discount from total (fabric + fill discounts are additive)
-  var fabricDiscountPct = (effectiveFabric && effectiveFabric.discountEnabled) ? (parseFloat(effectiveFabric.discountPercent) || 0) : 0;
-  var fillDiscountPct = (effectiveFill && effectiveFill.discountEnabled) ? (parseFloat(effectiveFill.discountPercent) || 0) : 0;
-  var totalDiscountPct = fabricDiscountPct + fillDiscountPct;
-  if (totalDiscountPct > 0) {
-    unitPrice = unitPrice * (1 - totalDiscountPct / 100);
-  }
-
-  // Apply panel multiplier for 2D shapes
+  // Get panel count for cart properties
   var effectivePanelCount = 1;
   if (this.selectedShape && this.selectedShape.is2D && this.selectedShape.enablePanels && this.panelCount > 1) {
     effectivePanelCount = this.panelCount;
-    unitPrice = unitPrice * this.panelCount;
   }
-
-  if (unitPrice <= 0) unitPrice = preTotalUnit;
-  if (unitPrice < 1) unitPrice = 1;
 
   var dimUrlStr = this.selectedShape.inputFields.map(function(f) { return f.key + ':' + (dimensions[f.key] || 0); }).join(',');
 
@@ -88,6 +64,7 @@ CushionCalculator.prototype.addToCart = async function() {
     'Bottom Rod Pocket': effectiveRodPocket ? (debugMode ? effectiveRodPocket.name + ' (' + rodPocketPct + '%)' : effectiveRodPocket.name) : 'None',
     'Ties': effectiveTies ? (debugMode ? effectiveTies.name + ' ($' + effectiveTies.price + ')' : effectiveTies.name) : 'None',
     'Fabric Ties': effectiveFabricTies ? (debugMode ? effectiveFabricTies.name + ' ($' + effectiveFabricTies.price + ')' : effectiveFabricTies.name) : 'None',
+    'Drawstring': effectiveDrawstring ? (debugMode ? effectiveDrawstring.name + ' (' + drawstringPct + '%)' : effectiveDrawstring.name) : 'None',
     'Discount': (debugMode && totalDiscountPct > 0) ? totalDiscountPct + '% off' : 'None',
     'Unit Price': '$' + unitPrice.toFixed(2),
     '_shapeId': this.selectedShape.id,
@@ -100,6 +77,7 @@ CushionCalculator.prototype.addToCart = async function() {
     '_rodPocketId': effectiveRodPocket ? effectiveRodPocket.id : 'none',
     '_tiesId': effectiveTies ? effectiveTies.id : 'none',
     '_fabricTiesId': effectiveFabricTies ? effectiveFabricTies.id : 'none',
+    '_drawstringId': effectiveDrawstring ? effectiveDrawstring.id : 'none',
     '_dimensions': dimUrlStr,
     '_productHandle': this.productHandle,
     '_profileId': this.profileId || '',
@@ -197,18 +175,26 @@ CushionCalculator.prototype.addMultiPieceToCart = async function() {
     properties[prefix + ' - Shape'] = piece.shape.name;
     properties[prefix + ' - Dimensions'] = dimStr;
     properties[prefix + ' - Fill'] = piece.fill.name;
+    properties[prefix + ' - Design'] = piece.design ? piece.design.name : 'None';
     properties[prefix + ' - Piping'] = piece.piping ? piece.piping.name : 'None';
     properties[prefix + ' - Button'] = piece.button ? piece.button.name : 'None';
     properties[prefix + ' - Anti-Skid'] = piece.antiSkid ? piece.antiSkid.name : 'None';
+    properties[prefix + ' - Rod Pocket'] = piece.rodPocket ? piece.rodPocket.name : 'None';
     properties[prefix + ' - Ties'] = piece.ties ? piece.ties.name : 'None';
+    properties[prefix + ' - Fabric Ties'] = piece.fabricTies ? piece.fabricTies.name : 'None';
+    properties[prefix + ' - Drawstring'] = piece.drawstring ? piece.drawstring.name : 'None';
 
     // Hidden IDs for reorder
     properties['_piece' + idx + '_shapeId'] = piece.shape.id;
     properties['_piece' + idx + '_fillId'] = piece.fill.id;
+    properties['_piece' + idx + '_designId'] = piece.design ? piece.design.id : 'none';
     properties['_piece' + idx + '_pipingId'] = piece.piping ? piece.piping.id : 'none';
     properties['_piece' + idx + '_buttonId'] = piece.button ? piece.button.id : 'none';
     properties['_piece' + idx + '_antiSkidId'] = piece.antiSkid ? piece.antiSkid.id : 'none';
+    properties['_piece' + idx + '_rodPocketId'] = piece.rodPocket ? piece.rodPocket.id : 'none';
     properties['_piece' + idx + '_tiesId'] = piece.ties ? piece.ties.id : 'none';
+    properties['_piece' + idx + '_fabricTiesId'] = piece.fabricTies ? piece.fabricTies.id : 'none';
+    properties['_piece' + idx + '_drawstringId'] = piece.drawstring ? piece.drawstring.id : 'none';
 
     var dimUrlStr = piece.shape.inputFields.map(function(f) {
       return f.key + ':' + (piece.dimensions[f.key] || 0);
@@ -459,6 +445,28 @@ CushionCalculator.prototype.applyUrlConfiguration = async function() {
 
   var tiesId = params.get('tiesId');
   if (tiesId && tiesId !== 'none') this.selectTies(tiesId);
+
+  var designId = params.get('designId');
+  if (designId && designId !== 'none') this.selectDesign(designId);
+
+  var rodPocketId = params.get('rodPocketId');
+  if (rodPocketId && rodPocketId !== 'none') this.selectRodPocket(rodPocketId);
+
+  var fabricTiesId = params.get('fabricTiesId');
+  if (fabricTiesId && fabricTiesId !== 'none') this.selectFabricTies(fabricTiesId);
+
+  var drawstringId = params.get('drawstringId');
+  if (drawstringId && drawstringId !== 'none') this.selectDrawstring(drawstringId);
+
+  var panelCountParam = params.get('panelCount');
+  if (panelCountParam) {
+    var pCount = parseInt(panelCountParam, 10);
+    if (!isNaN(pCount) && pCount >= 1) {
+      this.panelCount = pCount;
+      var panelInput = document.getElementById('panel-count-' + blockId);
+      if (panelInput) panelInput.value = pCount;
+    }
+  }
 
   var qty = params.get('qty');
   if (qty) {
