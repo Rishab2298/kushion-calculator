@@ -461,13 +461,15 @@
             <div class="kraft2026zion-fabric-detail-info">
               <h4 id="fabric-detail-name-{{ block.id }}"></h4>
               <div class="kraft2026zion-fabric-detail-meta">
-                <div class="kraft2026zion-detail-row"><span class="kraft2026zion-detail-label">Category:</span><span id="fabric-detail-category-{{ block.id }}">-</span></div>
+                 <div class="kraft2026zion-detail-row"><span class="kraft2026zion-detail-label">Brand:</span><span id="fabric-detail-brand-{{ block.id }}">-</span></div>
                 <div class="kraft2026zion-detail-row"><span class="kraft2026zion-detail-label">Pattern:</span><span id="fabric-detail-pattern-{{ block.id }}">-</span></div>
-                <div class="kraft2026zion-detail-row"><span class="kraft2026zion-detail-label">Color:</span><span id="fabric-detail-color-{{ block.id }}">-</span></div>
-                <div class="kraft2026zion-detail-row"><span class="kraft2026zion-detail-label">Brand:</span><span id="fabric-detail-brand-{{ block.id }}">-</span></div>
-                <div class="kraft2026zion-detail-row"><span class="kraft2026zion-detail-label">Price Tier:</span><span id="fabric-detail-tier-{{ block.id }}">-</span></div>
-                  <div class="kraft2026zion-detail-row"><span class="kraft2026zion-detail-label">Material:</span><span id="fabric-detail-material-{{ block.id }}">-</span></div>
-              </div>
+            
+                   <div class="kraft2026zion-detail-row"><span class="kraft2026zion-detail-label">Color:</span><span id="fabric-detail-color-{{ block.id }}">-</span></div>
+                <div class="kraft2026zion-detail-row"><span class="kraft2026zion-detail-label">Material:</span><span id="fabric-detail-material-{{ block.id }}">-</span></div>
+          <div class="kraft2026zion-detail-row"><span class="kraft2026zion-detail-label">Price Tier:</span><span id="fabric-detail-tier-{{ block.id }}">-</span></div>
+              <div class="kraft2026zion-detail-row"><span class="kraft2026zion-detail-label">Category:</span><span id="fabric-detail-category-{{ block.id }}">-</span></div>
+            
+                      </div>
               <button type="button" class="kraft2026zion-fabric-detail-select-btn" id="fabric-browser-select-{{ block.id }}">Select This Fabric</button>
             </div>
           </div>
@@ -592,7 +594,7 @@
 
   /* Fabric Browser Popup Styles - Split Panel Design */
   .kraft2026zion-fabric-browser-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 10000; animation: kraft2026zion-fadeIn 0.25s ease-out; }
-  .kraft2026zion-fabric-browser-modal { background: #fff; border-radius: 12px; max-width: 800px; width: 95%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25); animation: kraft2026zion-slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); overflow: hidden; }
+  .kraft2026zion-fabric-browser-modal { background: #fff; border-radius: 12px; max-width: 800px; width: 95%; max-height: 60vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25); animation: kraft2026zion-slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); overflow: hidden; }
   .kraft2026zion-fabric-browser-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #fa6439; }
   .kraft2026zion-fabric-browser-title { font-size: 0.95rem; font-weight: 600; color: #fff; margin: 0; }
   .kraft2026zion-fabric-browser-close { background: rgba(255,255,255,0.2); border: none; width: 26px; height: 26px; border-radius: 6px; font-size: 16px; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
