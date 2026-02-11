@@ -53,39 +53,86 @@ CushionCalculator.prototype.addToCart = async function() {
   var dimUrlStr = this.selectedShape.inputFields.map(function(f) { return f.key + ':' + (dimensions[f.key] || 0); }).join(',');
 
   var debugMode = this.config.settings && this.config.settings.debugPricing;
+
+  // Start with base properties that are always shown
   var properties = {
-    'Shape': this.selectedShape.name, 'Dimensions': dimStr,
-    'Panels': effectivePanelCount > 1 ? effectivePanelCount + ' panels' : '1 panel',
-    'Fill Type': effectiveFill.name, 'Fabric': effectiveFabric.name,
-    'Design': effectiveDesign ? (debugMode ? effectiveDesign.name + ' (' + designPct + '%)' : effectiveDesign.name) : 'None',
-    'Piping': effectivePiping ? (debugMode ? effectivePiping.name + ' (' + pipingPct + '%)' : effectivePiping.name) : 'None',
-    'Button Style': effectiveButton ? (debugMode ? effectiveButton.name + ' (' + buttonPct + '%)' : effectiveButton.name) : 'None',
-    'Anti-Skid': effectiveAntiSkid ? (debugMode ? effectiveAntiSkid.name + ' (' + antiSkidPct + '%)' : effectiveAntiSkid.name) : 'None',
-    'Bottom Rod Pocket': effectiveRodPocket ? (debugMode ? effectiveRodPocket.name + ' (' + rodPocketPct + '%)' : effectiveRodPocket.name) : 'None',
-    'Ties': effectiveTies ? (debugMode ? effectiveTies.name + ' ($' + effectiveTies.price + ')' : effectiveTies.name) : 'None',
-    'Fabric Ties': effectiveFabricTies ? (debugMode ? effectiveFabricTies.name + ' ($' + effectiveFabricTies.price + ')' : effectiveFabricTies.name) : 'None',
-    'Drawstring': effectiveDrawstring ? (debugMode ? effectiveDrawstring.name + ' (' + drawstringPct + '%)' : effectiveDrawstring.name) : 'None',
-    'Discount': (debugMode && totalDiscountPct > 0) ? totalDiscountPct + '% off' : 'None',
-    'Unit Price': '$' + unitPrice.toFixed(2),
-    '_shapeId': this.selectedShape.id,
-    '_fillId': effectiveFill.id,
-    '_fabricId': effectiveFabric.id,
-    '_designId': effectiveDesign ? effectiveDesign.id : 'none',
-    '_pipingId': effectivePiping ? effectivePiping.id : 'none',
-    '_buttonId': effectiveButton ? effectiveButton.id : 'none',
-    '_antiSkidId': effectiveAntiSkid ? effectiveAntiSkid.id : 'none',
-    '_rodPocketId': effectiveRodPocket ? effectiveRodPocket.id : 'none',
-    '_tiesId': effectiveTies ? effectiveTies.id : 'none',
-    '_fabricTiesId': effectiveFabricTies ? effectiveFabricTies.id : 'none',
-    '_drawstringId': effectiveDrawstring ? effectiveDrawstring.id : 'none',
-    '_dimensions': dimUrlStr,
-    '_productHandle': this.productHandle,
-    '_profileId': this.profileId || '',
-    '_qty': qty.toString(),
-    '_panelCount': effectivePanelCount.toString(),
-    '_priceDisplay': '$' + unitPrice.toFixed(2),
-    '_totalDisplay': '$' + (unitPrice * qty).toFixed(2)
+    'Shape': this.selectedShape.name,
+    'Dimensions': dimStr,
+    'Fill Type': effectiveFill.name,
+    'Fabric': effectiveFabric.name
   };
+  // Only show panels if more than 1
+  if (effectivePanelCount > 1) {
+    properties['Panels'] = effectivePanelCount + ' panels';
+  }
+
+  // Conditionally add optional properties only if section is visible AND something is selected
+  if (visibility.showDesignSection !== false && effectiveDesign) {
+    properties['Design'] = debugMode ? effectiveDesign.name + ' (' + designPct + '%)' : effectiveDesign.name;
+  }
+  if (visibility.showPipingSection !== false && effectivePiping) {
+    properties['Piping'] = debugMode ? effectivePiping.name + ' (' + pipingPct + '%)' : effectivePiping.name;
+  }
+  if (visibility.showButtonSection !== false && effectiveButton) {
+    properties['Button Style'] = debugMode ? effectiveButton.name + ' (' + buttonPct + '%)' : effectiveButton.name;
+  }
+  if (visibility.showAntiSkidSection !== false && effectiveAntiSkid) {
+    properties['Anti-Skid'] = debugMode ? effectiveAntiSkid.name + ' (' + antiSkidPct + '%)' : effectiveAntiSkid.name;
+  }
+  if (visibility.showRodPocketSection !== false && effectiveRodPocket) {
+    properties['Bottom Rod Pocket'] = debugMode ? effectiveRodPocket.name + ' (' + rodPocketPct + '%)' : effectiveRodPocket.name;
+  }
+  if (visibility.showTiesSection !== false && effectiveTies) {
+    properties['Ties'] = debugMode ? effectiveTies.name + ' ($' + effectiveTies.price + ')' : effectiveTies.name;
+  }
+  if (visibility.showFabricTiesSection !== false && effectiveFabricTies) {
+    properties['Fabric Ties'] = debugMode ? effectiveFabricTies.name + ' ($' + effectiveFabricTies.price + ')' : effectiveFabricTies.name;
+  }
+  if (visibility.showDrawstringSection !== false && effectiveDrawstring) {
+    properties['Drawstring'] = debugMode ? effectiveDrawstring.name + ' (' + drawstringPct + '%)' : effectiveDrawstring.name;
+  }
+  if (debugMode && totalDiscountPct > 0) {
+    properties['Discount'] = totalDiscountPct + '% off';
+  }
+
+  // Add price and hidden IDs
+  properties['Unit Price'] = '$' + unitPrice.toFixed(2);
+  properties['_shapeId'] = this.selectedShape.id;
+  properties['_fillId'] = effectiveFill.id;
+  properties['_fabricId'] = effectiveFabric.id;
+  properties['_dimensions'] = dimUrlStr;
+  properties['_productHandle'] = this.productHandle;
+  properties['_profileId'] = this.profileId || '';
+  properties['_qty'] = qty.toString();
+  properties['_panelCount'] = effectivePanelCount.toString();
+  properties['_priceDisplay'] = '$' + unitPrice.toFixed(2);
+  properties['_totalDisplay'] = '$' + (unitPrice * qty).toFixed(2);
+
+  // Conditionally add hidden IDs only for visible sections
+  if (visibility.showDesignSection !== false) {
+    properties['_designId'] = effectiveDesign ? effectiveDesign.id : 'none';
+  }
+  if (visibility.showPipingSection !== false) {
+    properties['_pipingId'] = effectivePiping ? effectivePiping.id : 'none';
+  }
+  if (visibility.showButtonSection !== false) {
+    properties['_buttonId'] = effectiveButton ? effectiveButton.id : 'none';
+  }
+  if (visibility.showAntiSkidSection !== false) {
+    properties['_antiSkidId'] = effectiveAntiSkid ? effectiveAntiSkid.id : 'none';
+  }
+  if (visibility.showRodPocketSection !== false) {
+    properties['_rodPocketId'] = effectiveRodPocket ? effectiveRodPocket.id : 'none';
+  }
+  if (visibility.showTiesSection !== false) {
+    properties['_tiesId'] = effectiveTies ? effectiveTies.id : 'none';
+  }
+  if (visibility.showFabricTiesSection !== false) {
+    properties['_fabricTiesId'] = effectiveFabricTies ? effectiveFabricTies.id : 'none';
+  }
+  if (visibility.showDrawstringSection !== false) {
+    properties['_drawstringId'] = effectiveDrawstring ? effectiveDrawstring.id : 'none';
+  }
   if (instructions) {
     properties['Special Instructions'] = instructions;
     properties['_instructions'] = encodeURIComponent(instructions);
@@ -156,6 +203,7 @@ CushionCalculator.prototype.addMultiPieceToCart = async function() {
   var qty = parseInt(document.getElementById('quantity-' + blockId).value) || 1;
   var instructions = document.getElementById('instructions-text-' + blockId).value;
   var debugMode = this.config.settings && this.config.settings.debugPricing;
+  var visibility = this.config.sectionVisibility || {};
 
   // Build properties for each piece
   var properties = {
@@ -165,36 +213,73 @@ CushionCalculator.prototype.addMultiPieceToCart = async function() {
     '_pieceCount': this.pieces.length.toString()
   };
 
-  // Add each piece's details
+  // Add each piece's details (only for visible sections)
   this.pieces.forEach(function(piece, idx) {
     var prefix = piece.label;
     var dimStr = piece.shape.inputFields.map(function(f) {
       return (piece.dimensions[f.key] || 0) + '"';
     }).join(' x ');
 
+    // Base properties always shown
     properties[prefix + ' - Shape'] = piece.shape.name;
     properties[prefix + ' - Dimensions'] = dimStr;
     properties[prefix + ' - Fill'] = piece.fill.name;
-    properties[prefix + ' - Design'] = piece.design ? piece.design.name : 'None';
-    properties[prefix + ' - Piping'] = piece.piping ? piece.piping.name : 'None';
-    properties[prefix + ' - Button'] = piece.button ? piece.button.name : 'None';
-    properties[prefix + ' - Anti-Skid'] = piece.antiSkid ? piece.antiSkid.name : 'None';
-    properties[prefix + ' - Rod Pocket'] = piece.rodPocket ? piece.rodPocket.name : 'None';
-    properties[prefix + ' - Ties'] = piece.ties ? piece.ties.name : 'None';
-    properties[prefix + ' - Fabric Ties'] = piece.fabricTies ? piece.fabricTies.name : 'None';
-    properties[prefix + ' - Drawstring'] = piece.drawstring ? piece.drawstring.name : 'None';
 
-    // Hidden IDs for reorder
+    // Conditionally add optional properties only if section is visible AND something is selected
+    if (visibility.showDesignSection !== false && piece.design) {
+      properties[prefix + ' - Design'] = piece.design.name;
+    }
+    if (visibility.showPipingSection !== false && piece.piping) {
+      properties[prefix + ' - Piping'] = piece.piping.name;
+    }
+    if (visibility.showButtonSection !== false && piece.button) {
+      properties[prefix + ' - Button'] = piece.button.name;
+    }
+    if (visibility.showAntiSkidSection !== false && piece.antiSkid) {
+      properties[prefix + ' - Anti-Skid'] = piece.antiSkid.name;
+    }
+    if (visibility.showRodPocketSection !== false && piece.rodPocket) {
+      properties[prefix + ' - Rod Pocket'] = piece.rodPocket.name;
+    }
+    if (visibility.showTiesSection !== false && piece.ties) {
+      properties[prefix + ' - Ties'] = piece.ties.name;
+    }
+    if (visibility.showFabricTiesSection !== false && piece.fabricTies) {
+      properties[prefix + ' - Fabric Ties'] = piece.fabricTies.name;
+    }
+    if (visibility.showDrawstringSection !== false && piece.drawstring) {
+      properties[prefix + ' - Drawstring'] = piece.drawstring.name;
+    }
+
+    // Hidden IDs for reorder (base properties always included)
     properties['_piece' + idx + '_shapeId'] = piece.shape.id;
     properties['_piece' + idx + '_fillId'] = piece.fill.id;
-    properties['_piece' + idx + '_designId'] = piece.design ? piece.design.id : 'none';
-    properties['_piece' + idx + '_pipingId'] = piece.piping ? piece.piping.id : 'none';
-    properties['_piece' + idx + '_buttonId'] = piece.button ? piece.button.id : 'none';
-    properties['_piece' + idx + '_antiSkidId'] = piece.antiSkid ? piece.antiSkid.id : 'none';
-    properties['_piece' + idx + '_rodPocketId'] = piece.rodPocket ? piece.rodPocket.id : 'none';
-    properties['_piece' + idx + '_tiesId'] = piece.ties ? piece.ties.id : 'none';
-    properties['_piece' + idx + '_fabricTiesId'] = piece.fabricTies ? piece.fabricTies.id : 'none';
-    properties['_piece' + idx + '_drawstringId'] = piece.drawstring ? piece.drawstring.id : 'none';
+
+    // Conditionally add hidden IDs only for visible sections
+    if (visibility.showDesignSection !== false) {
+      properties['_piece' + idx + '_designId'] = piece.design ? piece.design.id : 'none';
+    }
+    if (visibility.showPipingSection !== false) {
+      properties['_piece' + idx + '_pipingId'] = piece.piping ? piece.piping.id : 'none';
+    }
+    if (visibility.showButtonSection !== false) {
+      properties['_piece' + idx + '_buttonId'] = piece.button ? piece.button.id : 'none';
+    }
+    if (visibility.showAntiSkidSection !== false) {
+      properties['_piece' + idx + '_antiSkidId'] = piece.antiSkid ? piece.antiSkid.id : 'none';
+    }
+    if (visibility.showRodPocketSection !== false) {
+      properties['_piece' + idx + '_rodPocketId'] = piece.rodPocket ? piece.rodPocket.id : 'none';
+    }
+    if (visibility.showTiesSection !== false) {
+      properties['_piece' + idx + '_tiesId'] = piece.ties ? piece.ties.id : 'none';
+    }
+    if (visibility.showFabricTiesSection !== false) {
+      properties['_piece' + idx + '_fabricTiesId'] = piece.fabricTies ? piece.fabricTies.id : 'none';
+    }
+    if (visibility.showDrawstringSection !== false) {
+      properties['_piece' + idx + '_drawstringId'] = piece.drawstring ? piece.drawstring.id : 'none';
+    }
 
     var dimUrlStr = piece.shape.inputFields.map(function(f) {
       return f.key + ':' + (piece.dimensions[f.key] || 0);
