@@ -129,69 +129,162 @@ export default function Documentation() {
             <div>
               <h1 style={headingStyle}>Getting Started</h1>
               <p style={paragraphStyle}>
-                Welcome to the Cushion Calculator app! This documentation will guide you through setting up and using all features of the calculator.
+                Welcome to the Cushion Calculator app! This powerful tool allows your customers to configure custom cushions, pillows, mattresses, and similar products with real-time pricing based on their exact specifications.
               </p>
 
-              <div style={tipBoxStyle}>
-                <strong style={{ color: "#108043" }}>Quick Setup Steps:</strong>
-                <ol style={{ ...listStyle, marginTop: 8, marginBottom: 0 }}>
-                  <li style={listItemStyle}>Create Shapes (define dimensions and formulas)</li>
-                  <li style={listItemStyle}>Add Fill Types (foam, polyester, etc.)</li>
-                  <li style={listItemStyle}>Set up Fabrics (with pricing per square inch)</li>
-                  <li style={listItemStyle}>Create a Profile (combine everything together)</li>
-                  <li style={listItemStyle}>Link Profile to your Shopify product</li>
-                </ol>
+              <h2 style={subheadingStyle}>Understanding the App Structure</h2>
+              <p style={paragraphStyle}>
+                The Cushion Calculator is built around a hierarchical system where <strong>Profiles</strong> serve as the central configuration point. Think of it as a layered architecture:
+              </p>
+
+              <div style={{ ...stepBoxStyle, backgroundColor: "#e8f4fd", border: "1px solid #b3d4fc" }}>
+                <div style={{ textAlign: "center", padding: "12px 0" }}>
+                  <div style={{ fontSize: "1rem", fontWeight: 600, color: "#0066cc", marginBottom: 8 }}>App Architecture</div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                    <div style={{ backgroundColor: "#008060", color: "white", padding: "10px 24px", borderRadius: 6, fontWeight: 600 }}>PROFILE</div>
+                    <div style={{ color: "#6d7175", fontSize: "0.8rem" }}>controls &amp; combines</div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+                      <div style={{ backgroundColor: "#f6f6f7", padding: "8px 12px", borderRadius: 4, fontSize: "0.85rem" }}>Shapes</div>
+                      <div style={{ backgroundColor: "#f6f6f7", padding: "8px 12px", borderRadius: 4, fontSize: "0.85rem" }}>Fill Types</div>
+                      <div style={{ backgroundColor: "#f6f6f7", padding: "8px 12px", borderRadius: 4, fontSize: "0.85rem" }}>Fabrics</div>
+                      <div style={{ backgroundColor: "#f6f6f7", padding: "8px 12px", borderRadius: 4, fontSize: "0.85rem" }}>Add-ons</div>
+                    </div>
+                    <div style={{ color: "#6d7175", fontSize: "0.8rem" }}>linked to</div>
+                    <div style={{ backgroundColor: "#5c6ac4", color: "white", padding: "8px 20px", borderRadius: 6, fontSize: "0.9rem" }}>Shopify Product</div>
+                  </div>
+                </div>
               </div>
 
-              <h2 style={subheadingStyle}>How the Calculator Works</h2>
+              <h2 style={subheadingStyle}>What is a Profile?</h2>
               <p style={paragraphStyle}>
-                The calculator computes custom cushion prices based on:
+                A <strong>Profile</strong> is the master configuration for a specific type of product. It determines:
               </p>
               <ul style={listStyle}>
-                <li style={listItemStyle}><strong>Shape &amp; Dimensions:</strong> Customer enters measurements, which calculate surface area and volume</li>
-                <li style={listItemStyle}><strong>Fabric Cost:</strong> Surface area x Price per square inch of selected fabric</li>
-                <li style={listItemStyle}><strong>Fill Cost:</strong> Volume x Price per cubic inch of selected fill type</li>
-                <li style={listItemStyle}><strong>Add-ons:</strong> Piping, buttons, ties, and other options add fixed prices</li>
-                <li style={listItemStyle}><strong>Additional Percentage:</strong> Optional markup percentage applied to the final price</li>
+                <li style={listItemStyle}><strong>Which sections are visible</strong> — Show or hide shape selection, fabric picker, fill options, add-ons, etc.</li>
+                <li style={listItemStyle}><strong>Which options are available</strong> — Restrict to specific shapes, fabrics, or fills for this product type</li>
+                <li style={listItemStyle}><strong>Hidden defaults</strong> — Pre-select options without showing them to customers (e.g., always use a specific fill)</li>
+                <li style={listItemStyle}><strong>Pricing adjustments</strong> — Apply additional percentage markup for this product category</li>
+                <li style={listItemStyle}><strong>Multi-piece support</strong> — Enable for products with multiple cushion pieces (like sofas)</li>
               </ul>
 
-              <h2 style={subheadingStyle}>Recommended Order of Setup</h2>
+              <div style={tipBoxStyle}>
+                <strong style={{ color: "#108043" }}>Example Use Cases:</strong>
+                <ul style={{ ...listStyle, marginTop: 8, marginBottom: 0 }}>
+                  <li style={listItemStyle}><strong>"Outdoor Seat Cushions"</strong> — Shows weatherproof fabrics only, includes ties option</li>
+                  <li style={listItemStyle}><strong>"Bench Pads"</strong> — Rectangle shape only, no piping, specific fill types</li>
+                  <li style={listItemStyle}><strong>"Sofa Cushion Set"</strong> — Multi-piece mode with seat + back pieces</li>
+                  <li style={listItemStyle}><strong>"Custom Curtains"</strong> — 2D shapes with panel count, no fill section</li>
+                </ul>
+              </div>
+
+              <h2 style={subheadingStyle}>The Building Blocks</h2>
+              <p style={paragraphStyle}>
+                Before creating profiles, you need to set up the individual components that profiles will use:
+              </p>
+
               <div style={stepBoxStyle}>
-                <strong>Step 1: Shapes</strong>
+                <strong>1. Shapes</strong>
                 <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
-                  Define the cushion shapes your customers can choose (Rectangle, Circle, etc.) with measurement formulas.
+                  Define the geometric forms customers can choose (Rectangle, Circle, L-Shape, etc.). Each shape has custom input fields (length, width, radius) and mathematical formulas that calculate surface area (for fabric cost) and volume (for fill cost).
                 </p>
               </div>
+
               <div style={stepBoxStyle}>
-                <strong>Step 2: Fill Types</strong>
+                <strong>2. Fill Types</strong>
                 <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
-                  Add fill options like Foam, Polyester, or Feather with prices per cubic inch.
+                  The stuffing materials inside cushions — Foam, Polyester, Memory Foam, Feather, etc. Each fill type has a price per cubic inch. The calculator multiplies this by the cushion's volume to get fill cost.
                 </p>
               </div>
+
               <div style={stepBoxStyle}>
-                <strong>Step 3: Fabrics</strong>
+                <strong>3. Fabrics</strong>
                 <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
-                  Create fabric categories and individual fabrics with prices per square inch.
+                  The covering materials — organized into categories (Outdoor, Indoor, Premium) with attributes like brand, pattern, and color. Each fabric has a price per square inch. The calculator multiplies this by the cushion's surface area to get fabric cost.
                 </p>
               </div>
+
               <div style={stepBoxStyle}>
-                <strong>Step 4: Additional Options</strong>
+                <strong>4. Add-on Options</strong>
                 <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
-                  Set up piping, buttons, ties, anti-skid, and other add-on options.
+                  Extra customizations with fixed prices — Piping styles, Button/Tufting patterns, Ties, Anti-skid backing, Drawstrings, Rod pockets, and Design options. These add flat fees to the total regardless of cushion size.
                 </p>
               </div>
-              <div style={stepBoxStyle}>
-                <strong>Step 5: Profiles</strong>
-                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
-                  Create calculator profiles that determine which options appear and how pricing works.
+
+              <h2 style={subheadingStyle}>How Pricing Works</h2>
+              <p style={paragraphStyle}>
+                The calculator computes prices dynamically based on customer inputs:
+              </p>
+              <div style={{ ...stepBoxStyle, backgroundColor: "#fff8e1", border: "1px solid #ffe082" }}>
+                <code style={{ fontSize: "0.9rem", color: "#5d4037" }}>
+                  Final Price = (Fabric Cost + Fill Cost + Add-ons) × (1 + Additional %) − Discounts
+                </code>
+                <div style={{ marginTop: 12, fontSize: "0.85rem", color: "#6d7175" }}>
+                  <div>• <strong>Fabric Cost</strong> = Surface Area × Price per sq inch</div>
+                  <div>• <strong>Fill Cost</strong> = Volume × Price per cubic inch</div>
+                  <div>• <strong>Add-ons</strong> = Sum of selected option prices</div>
+                  <div>• <strong>Additional %</strong> = Profile markup percentage</div>
+                </div>
+              </div>
+
+              <h2 style={subheadingStyle}>Setup Workflow</h2>
+              <p style={paragraphStyle}>
+                Follow this order to set up your calculator:
+              </p>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", backgroundColor: "#008060", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: "0.85rem" }}>1</div>
+                  <div><strong>Shapes</strong> — Create at least one shape with formulas</div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", backgroundColor: "#008060", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: "0.85rem" }}>2</div>
+                  <div><strong>Fill Types</strong> — Add fill materials with pricing</div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", backgroundColor: "#008060", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: "0.85rem" }}>3</div>
+                  <div><strong>Fabrics</strong> — Set up fabric categories and individual fabrics</div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", backgroundColor: "#6d7175", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: "0.85rem" }}>4</div>
+                  <div><strong>Add-ons</strong> <span style={{ color: "#6d7175" }}>(optional)</span> — Configure piping, ties, buttons, etc.</div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", backgroundColor: "#008060", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: "0.85rem" }}>5</div>
+                  <div><strong>Profiles</strong> — Create profiles that combine the above components</div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", backgroundColor: "#008060", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: "0.85rem" }}>6</div>
+                  <div><strong>Link to Products</strong> — Connect profiles to Shopify products</div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", backgroundColor: "#5c6ac4", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: "0.85rem" }}>7</div>
+                  <div><strong>Enable App Embed</strong> — Turn on the calculator in your theme</div>
+                </div>
+              </div>
+
+              <div style={{ ...warningBoxStyle, marginTop: 20 }}>
+                <strong style={{ color: "#e65100" }}>Important:</strong>
+                <p style={{ margin: "8px 0 0", color: "#e65100" }}>
+                  Components (shapes, fills, fabrics) must be created <strong>before</strong> you can use them in profiles. A profile with no available shapes or fabrics won't display anything to customers.
                 </p>
               </div>
-              <div style={stepBoxStyle}>
-                <strong>Step 6: Product Linking</strong>
-                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
-                  Connect your profile to a Shopify product to enable the calculator on your storefront.
-                </p>
-              </div>
+
+              <h2 style={subheadingStyle}>Customer Experience</h2>
+              <p style={paragraphStyle}>
+                When a customer visits a product page with a linked profile, they see an interactive calculator that guides them through:
+              </p>
+              <ol style={listStyle}>
+                <li style={listItemStyle}>Selecting a shape (if multiple are available)</li>
+                <li style={listItemStyle}>Entering dimensions (length, width, thickness, etc.)</li>
+                <li style={listItemStyle}>Choosing fabric from visual swatches</li>
+                <li style={listItemStyle}>Selecting fill type</li>
+                <li style={listItemStyle}>Adding optional extras (piping, ties, etc.)</li>
+                <li style={listItemStyle}>Viewing real-time price updates</li>
+                <li style={listItemStyle}>Adding the customized item to cart</li>
+              </ol>
+              <p style={paragraphStyle}>
+                All selections are saved as line item properties in the cart, so you'll see the complete specifications when processing orders.
+              </p>
             </div>
           )}
 
