@@ -12,6 +12,7 @@ export default function Documentation() {
     { id: "additional-options", label: "Additional Options" },
     { id: "pricing", label: "Pricing Calculation" },
     { id: "product-linking", label: "Product Linking" },
+    { id: "settings", label: "Settings" },
   ];
 
   const sidebarStyle = {
@@ -2459,6 +2460,378 @@ export default function Documentation() {
                   - Profile is linked to the product<br />
                   - Profile has at least one visible section<br />
                   - Shapes, fabrics, and fills exist and are active
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Settings */}
+          {activeSection === "settings" && (
+            <div>
+              <h1 style={headingStyle}>Settings</h1>
+              <p style={paragraphStyle}>
+                The Settings page contains global configuration options that affect how the calculator performs calculations across your entire store. These settings control debug visibility, cost markups, and margin calculation methods.
+              </p>
+
+              <div style={{ ...stepBoxStyle, backgroundColor: "#e8f4fd", border: "1px solid #b3d4fc" }}>
+                <strong style={{ color: "#0066cc" }}>Settings Location</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Access settings via <strong>Settings</strong> in the sidebar navigation. Changes affect all calculations immediately after saving.
+                </p>
+              </div>
+
+              {/* Debug Settings */}
+              <h2 style={subheadingStyle}>Debug Settings</h2>
+              <p style={paragraphStyle}>
+                Debug settings control whether pricing information is visible throughout the calculator interface.
+              </p>
+
+              <div style={stepBoxStyle}>
+                <strong>Enable Debug Pricing</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  A toggle that controls price visibility across the calculator.
+                </p>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px", marginBottom: "24px" }}>
+                <div style={{ ...stepBoxStyle, margin: 0, backgroundColor: "#e8f5e9", borderLeft: "4px solid #4caf50" }}>
+                  <strong style={{ color: "#388e3c" }}>When Enabled (Debug Mode)</strong>
+                  <ul style={{ margin: "8px 0 0", paddingLeft: "20px", color: "#555", fontSize: "0.85rem" }}>
+                    <li>Prices shown on option cards</li>
+                    <li>Fabric prices visible in browser</li>
+                    <li>Prices shown in modals</li>
+                    <li>Full price breakdown displayed</li>
+                  </ul>
+                </div>
+                <div style={{ ...stepBoxStyle, margin: 0, backgroundColor: "#ffebee", borderLeft: "4px solid #f44336" }}>
+                  <strong style={{ color: "#c62828" }}>When Disabled (Production Mode)</strong>
+                  <ul style={{ margin: "8px 0 0", paddingLeft: "20px", color: "#555", fontSize: "0.85rem" }}>
+                    <li>Prices hidden from option cards</li>
+                    <li>Fabric prices hidden</li>
+                    <li>Modal prices hidden</li>
+                    <li>Only final "Add to Cart" price shown</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div style={tipBoxStyle}>
+                <strong style={{ color: "#108043" }}>Tip:</strong>
+                <p style={{ margin: "8px 0 0", color: "#108043" }}>
+                  Enable debug pricing during setup and testing to verify calculations. Disable it for production if you don't want customers to see individual component prices.
+                </p>
+              </div>
+
+              {/* Cost Markup Settings */}
+              <h2 style={subheadingStyle}>Cost Markup Settings</h2>
+              <p style={paragraphStyle}>
+                These settings add percentage-based markups to your base costs. Understanding the calculation order is crucial for accurate pricing.
+              </p>
+
+              <h3 style={{ fontSize: "1rem", fontWeight: "600", marginTop: "16px", marginBottom: "12px" }}>The Three Markup Types</h3>
+
+              <div style={stepBoxStyle}>
+                <strong>Conversion Markup (%)</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Applied FIRST to raw material costs (Fabric + Fill + Ties) before any other calculations. This accounts for manufacturing conversion costs.
+                </p>
+                <p style={{ margin: "8px 0 0", color: "#555", fontSize: "0.85rem" }}>
+                  <strong>Example:</strong> Raw materials = $100, Conversion = 20% → $100 × 1.20 = $120
+                </p>
+              </div>
+
+              <div style={stepBoxStyle}>
+                <strong>Shipping Cost (%)</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Percentage of the subtotal (after conversion) to add for shipping. Default is 100%.
+                </p>
+                <p style={{ margin: "8px 0 0", color: "#555", fontSize: "0.85rem" }}>
+                  <strong>Example:</strong> Subtotal = $150, Shipping = 100% → $150 × 1.00 = $150 shipping cost
+                </p>
+              </div>
+
+              <div style={stepBoxStyle}>
+                <strong>Labour Cost (%)</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Percentage of the subtotal (after conversion) to add for labour. Default is 100%.
+                </p>
+                <p style={{ margin: "8px 0 0", color: "#555", fontSize: "0.85rem" }}>
+                  <strong>Example:</strong> Subtotal = $150, Labour = 100% → $150 × 1.00 = $150 labour cost
+                </p>
+              </div>
+
+              {/* Calculation Order */}
+              <h3 style={{ fontSize: "1rem", fontWeight: "600", marginTop: "24px", marginBottom: "12px" }}>Calculation Order</h3>
+              <p style={paragraphStyle}>
+                Understanding the order of operations is essential. Here's how the pricing formula works:
+              </p>
+
+              <div style={{ ...stepBoxStyle, backgroundColor: "#f5f5f5" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <span style={{ backgroundColor: "#1976d2", color: "white", padding: "4px 10px", borderRadius: "4px", fontSize: "0.8rem", fontWeight: 600 }}>Step 1</span>
+                    <span style={{ fontSize: "0.9rem" }}>Raw Materials = (Fabric + Fill + Ties)</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <span style={{ backgroundColor: "#388e3c", color: "white", padding: "4px 10px", borderRadius: "4px", fontSize: "0.8rem", fontWeight: 600 }}>Step 2</span>
+                    <span style={{ fontSize: "0.9rem" }}>After Conversion = Raw Materials × (1 + Conversion %)</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <span style={{ backgroundColor: "#f57c00", color: "white", padding: "4px 10px", borderRadius: "4px", fontSize: "0.8rem", fontWeight: 600 }}>Step 3</span>
+                    <span style={{ fontSize: "0.9rem" }}>Subtotal = After Conversion + Add-ons (Piping, Button, etc.)</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <span style={{ backgroundColor: "#7b1fa2", color: "white", padding: "4px 10px", borderRadius: "4px", fontSize: "0.8rem", fontWeight: 600 }}>Step 4</span>
+                    <span style={{ fontSize: "0.9rem" }}>Shipping = Subtotal × Shipping %</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <span style={{ backgroundColor: "#c62828", color: "white", padding: "4px 10px", borderRadius: "4px", fontSize: "0.8rem", fontWeight: 600 }}>Step 5</span>
+                    <span style={{ fontSize: "0.9rem" }}>Labour = Subtotal × Labour %</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px", borderTop: "2px solid #008060", paddingTop: "8px", marginTop: "4px" }}>
+                    <span style={{ backgroundColor: "#008060", color: "white", padding: "4px 10px", borderRadius: "4px", fontSize: "0.8rem", fontWeight: 600 }}>Total</span>
+                    <span style={{ fontSize: "0.9rem", fontWeight: 600 }}>Total = Subtotal + Shipping + Labour</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Example Calculation */}
+              <h3 style={{ fontSize: "1rem", fontWeight: "600", marginTop: "24px", marginBottom: "12px" }}>Example Calculation</h3>
+              <div style={{ ...stepBoxStyle, backgroundColor: "#f0f9ff" }}>
+                <p style={{ margin: "0 0 12px", fontWeight: 600, color: "#0066cc" }}>Settings: Conversion 20%, Shipping 100%, Labour 100%</p>
+                <table style={{ width: "100%", fontSize: "0.9rem" }}>
+                  <tbody>
+                    <tr><td style={{ padding: "4px 0", color: "#6d7175" }}>Fabric + Fill + Ties (Raw Materials)</td><td style={{ textAlign: "right" }}>$100.00</td></tr>
+                    <tr><td style={{ padding: "4px 0" }}>After Conversion (×1.20)</td><td style={{ textAlign: "right" }}>$120.00</td></tr>
+                    <tr><td style={{ padding: "4px 0" }}>Add-ons (Piping 10% = $12)</td><td style={{ textAlign: "right" }}>$12.00</td></tr>
+                    <tr style={{ borderTop: "1px solid #ddd" }}><td style={{ padding: "8px 0 4px" }}><strong>Subtotal</strong></td><td style={{ textAlign: "right" }}><strong>$132.00</strong></td></tr>
+                    <tr><td style={{ padding: "4px 0" }}>Shipping (100% of $132)</td><td style={{ textAlign: "right" }}>$132.00</td></tr>
+                    <tr><td style={{ padding: "4px 0" }}>Labour (100% of $132)</td><td style={{ textAlign: "right" }}>$132.00</td></tr>
+                    <tr style={{ borderTop: "2px solid #008060" }}><td style={{ padding: "8px 0 4px" }}><strong style={{ color: "#008060" }}>Total</strong></td><td style={{ textAlign: "right" }}><strong style={{ color: "#008060" }}>$396.00</strong></td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Margin Calculation Method */}
+              <h2 style={subheadingStyle}>Margin Calculation Method</h2>
+              <p style={paragraphStyle}>
+                Choose how margin adjustments are calculated. This determines how much markup is applied on top of the subtotal before shipping and labour.
+              </p>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px", marginBottom: "24px" }}>
+                <div style={{ ...stepBoxStyle, margin: 0, borderLeft: "4px solid #1976d2" }}>
+                  <strong style={{ color: "#1976d2" }}>Tier-Based (Price Ranges)</strong>
+                  <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                    Uses predefined price ranges with fixed margin percentages. Configure tiers in the <strong>Margins</strong> page.
+                  </p>
+                  <p style={{ margin: "8px 0 0", color: "#555", fontSize: "0.85rem" }}>
+                    <strong>Best for:</strong> Simple pricing, clear percentage brackets
+                  </p>
+                </div>
+                <div style={{ ...stepBoxStyle, margin: 0, borderLeft: "4px solid #7b1fa2" }}>
+                  <strong style={{ color: "#7b1fa2" }}>Formula-Based (Logarithmic)</strong>
+                  <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                    Uses natural logarithm (ln) formulas for smooth, dynamic margin curves.
+                  </p>
+                  <p style={{ margin: "8px 0 0", color: "#555", fontSize: "0.85rem" }}>
+                    <strong>Best for:</strong> Precise control, smooth margin transitions
+                  </p>
+                </div>
+              </div>
+
+              {/* Tier-Based Method */}
+              <h3 style={{ fontSize: "1rem", fontWeight: "600", marginTop: "24px", marginBottom: "12px" }}>Tier-Based Method</h3>
+              <p style={paragraphStyle}>
+                With tier-based margins, you define price ranges and the margin percentage for each:
+              </p>
+              <div style={stepBoxStyle}>
+                <p style={{ margin: "0", fontSize: "0.9rem" }}>
+                  <strong>Example Tiers:</strong><br />
+                  $0 - $100 → 50% margin<br />
+                  $101 - $300 → 35% margin<br />
+                  $301 - $500 → 25% margin<br />
+                  $501+ → 15% margin
+                </p>
+              </div>
+              <p style={paragraphStyle}>
+                Configure your tiers in the <strong>Margins</strong> page (separate from Settings).
+              </p>
+
+              {/* Formula-Based Method */}
+              <h3 style={{ fontSize: "1rem", fontWeight: "600", marginTop: "24px", marginBottom: "12px" }}>Formula-Based Method</h3>
+              <p style={paragraphStyle}>
+                The formula-based method uses logarithmic calculations to create smooth margin curves. It has three zones:
+              </p>
+
+              {/* Zone 1: Flat Margin */}
+              <div style={{ ...stepBoxStyle, backgroundColor: "#fff3cd", borderLeft: "4px solid #ffc107" }}>
+                <strong style={{ color: "#856404" }}>Zone 1: Flat Margin (Subtotal ≤ Threshold)</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  For very small orders, a flat margin percentage is applied instead of the formula. This prevents unreasonably high margins on low-value items.
+                </p>
+                <div style={{ marginTop: "12px", padding: "10px", backgroundColor: "#fff", borderRadius: "4px" }}>
+                  <p style={{ margin: "0", fontSize: "0.85rem" }}>
+                    <strong>Fields:</strong><br />
+                    • <code style={codeStyle}>Flat Margin Threshold</code> - Dollar amount (default: $50)<br />
+                    • <code style={codeStyle}>Flat Margin Percent</code> - Fixed margin % (default: 100%)
+                  </p>
+                  <p style={{ margin: "8px 0 0", fontSize: "0.85rem" }}>
+                    <strong>Example:</strong> If subtotal is $30 and threshold is $50, apply 100% flat margin → $30 × 2 = $60 final
+                  </p>
+                </div>
+              </div>
+
+              {/* Zone 2: Low Range Formula */}
+              <div style={{ ...stepBoxStyle, backgroundColor: "#e8f4f0", borderLeft: "4px solid #4caf50" }}>
+                <strong style={{ color: "#2e7d32" }}>Zone 2: Low Range Formula (Threshold &lt; Subtotal ≤ Formula Threshold)</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  For mid-range orders, uses the low range logarithmic formula.
+                </p>
+                <div style={{ marginTop: "12px", padding: "10px", backgroundColor: "#fff", borderRadius: "4px" }}>
+                  <p style={{ margin: "0", fontFamily: "monospace", fontSize: "0.9rem" }}>
+                    Margin % = <code style={codeStyle}>Low Constant</code> - <code style={codeStyle}>Low Coefficient</code> × ln(subtotal)
+                  </p>
+                  <p style={{ margin: "8px 0 0", fontSize: "0.85rem" }}>
+                    <strong>Default:</strong> Margin % = 300 - 52 × ln(subtotal)
+                  </p>
+                  <p style={{ margin: "8px 0 0", fontSize: "0.85rem" }}>
+                    <strong>Example:</strong> Subtotal $100 → 300 - 52 × ln(100) = 300 - 52 × 4.61 = 60.3% margin
+                  </p>
+                </div>
+              </div>
+
+              {/* Zone 3: High Range Formula */}
+              <div style={{ ...stepBoxStyle, backgroundColor: "#f3e5f5", borderLeft: "4px solid #9c27b0" }}>
+                <strong style={{ color: "#7b1fa2" }}>Zone 3: High Range Formula (Subtotal &gt; Formula Threshold)</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  For high-value orders, uses the high range logarithmic formula with gentler decay.
+                </p>
+                <div style={{ marginTop: "12px", padding: "10px", backgroundColor: "#fff", borderRadius: "4px" }}>
+                  <p style={{ margin: "0", fontFamily: "monospace", fontSize: "0.9rem" }}>
+                    Margin % = <code style={codeStyle}>High Constant</code> - <code style={codeStyle}>High Coefficient</code> × ln(subtotal)
+                  </p>
+                  <p style={{ margin: "8px 0 0", fontSize: "0.85rem" }}>
+                    <strong>Default:</strong> Margin % = 120 - 20 × ln(subtotal)
+                  </p>
+                  <p style={{ margin: "8px 0 0", fontSize: "0.85rem" }}>
+                    <strong>Example:</strong> Subtotal $500 → 120 - 20 × ln(500) = 120 - 20 × 6.21 = -4.2% → 0% (minimum)
+                  </p>
+                </div>
+              </div>
+
+              {/* Formula Example Table */}
+              <h3 style={{ fontSize: "1rem", fontWeight: "600", marginTop: "24px", marginBottom: "12px" }}>Sample Formula Calculations</h3>
+              <div style={{ overflowX: "auto", marginBottom: "24px" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
+                  <thead>
+                    <tr style={{ backgroundColor: "#f5f5f5" }}>
+                      <th style={{ padding: "10px", textAlign: "left", borderBottom: "2px solid #ddd" }}>Subtotal</th>
+                      <th style={{ padding: "10px", textAlign: "left", borderBottom: "2px solid #ddd" }}>Zone</th>
+                      <th style={{ padding: "10px", textAlign: "left", borderBottom: "2px solid #ddd" }}>Margin %</th>
+                      <th style={{ padding: "10px", textAlign: "left", borderBottom: "2px solid #ddd" }}>Final Price</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee" }}>$30</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", color: "#856404" }}>Flat (≤$50)</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee" }}>100%</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee" }}>$60.00</td>
+                    </tr>
+                    <tr style={{ backgroundColor: "#fafafa" }}>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee" }}>$100</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", color: "#2e7d32" }}>Low Range</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee" }}>60.3%</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee" }}>$160.30</td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee" }}>$200</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", color: "#2e7d32" }}>Low Range</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee" }}>24.4%</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee" }}>$248.80</td>
+                    </tr>
+                    <tr style={{ backgroundColor: "#fafafa" }}>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee" }}>$400</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", color: "#2e7d32" }}>Low Range</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee" }}>-11.5% → 0%</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee" }}>$400.00</td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee" }}>$500</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", color: "#7b1fa2" }}>High Range</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee" }}>-4.2% → 0%</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee" }}>$500.00</td>
+                    </tr>
+                    <tr style={{ backgroundColor: "#fafafa" }}>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee" }}>$1000</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", color: "#7b1fa2" }}>High Range</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee" }}>-18.2% → 0%</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee" }}>$1000.00</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={warningBoxStyle}>
+                <strong style={{ color: "#e65100" }}>Note on Negative Margins:</strong>
+                <p style={{ margin: "8px 0 0", color: "#e65100" }}>
+                  When the formula produces a negative margin, it's treated as 0% (no additional markup). The default formula constants are designed to reduce margins for higher-value orders, eventually reaching 0% for very large orders.
+                </p>
+              </div>
+
+              {/* Setup Guide */}
+              <h2 style={subheadingStyle}>Step-by-Step Setup Guide</h2>
+              <ol style={listStyle}>
+                <li style={listItemStyle}>
+                  <strong>Enable Debug Pricing</strong> - Start with debug mode on to see all prices during setup
+                </li>
+                <li style={listItemStyle}>
+                  <strong>Set Conversion Markup</strong> - Determine your manufacturing overhead (typically 10-30%)
+                </li>
+                <li style={listItemStyle}>
+                  <strong>Configure Shipping %</strong> - Set based on your average shipping costs relative to product value
+                </li>
+                <li style={listItemStyle}>
+                  <strong>Configure Labour %</strong> - Set based on your manufacturing labour costs
+                </li>
+                <li style={listItemStyle}>
+                  <strong>Choose Margin Method</strong> - Tier-based for simplicity, formula-based for precision
+                </li>
+                <li style={listItemStyle}>
+                  <strong>Test Calculations</strong> - Use the example calculator in Settings to verify pricing
+                </li>
+                <li style={listItemStyle}>
+                  <strong>Disable Debug Pricing</strong> - Turn off for production when satisfied with calculations
+                </li>
+              </ol>
+
+              {/* Tips */}
+              <h2 style={subheadingStyle}>Tips & Best Practices</h2>
+
+              <div style={tipBoxStyle}>
+                <strong style={{ color: "#108043" }}>Test with Real Scenarios:</strong>
+                <p style={{ margin: "8px 0 0", color: "#108043" }}>
+                  Create test orders with small, medium, and large cushion sizes to verify your pricing works across the range. Check that margins are acceptable at each price point.
+                </p>
+              </div>
+
+              <div style={tipBoxStyle}>
+                <strong style={{ color: "#108043" }}>Monitor Margin Consistency:</strong>
+                <p style={{ margin: "8px 0 0", color: "#108043" }}>
+                  If using formula-based margins, watch for unexpected results at the boundaries between zones. Adjust constants if margins jump too abruptly.
+                </p>
+              </div>
+
+              <div style={tipBoxStyle}>
+                <strong style={{ color: "#108043" }}>Consider Your Business Model:</strong>
+                <p style={{ margin: "8px 0 0", color: "#108043" }}>
+                  Higher shipping/labour percentages work well for custom manufacturing. Lower percentages suit businesses with streamlined operations. Adjust to match your actual cost structure.
+                </p>
+              </div>
+
+              <div style={warningBoxStyle}>
+                <strong style={{ color: "#e65100" }}>Remember to Save:</strong>
+                <p style={{ margin: "8px 0 0", color: "#e65100" }}>
+                  Settings changes only take effect after clicking "Save Settings". The example calculation in the Settings page updates in real-time, but actual calculator pricing uses saved values.
                 </p>
               </div>
             </div>
