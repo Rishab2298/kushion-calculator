@@ -1720,83 +1720,603 @@ export default function Documentation() {
             <div>
               <h1 style={headingStyle}>Additional Options</h1>
               <p style={paragraphStyle}>
-                Beyond shapes, fills, and fabrics, the calculator supports various add-on options that enhance cushion customization.
+                Beyond shapes, fills, and fabrics, the calculator supports 8 add-on option types that enhance cushion customization. These options allow customers to personalize their cushions with decorative elements, functional features, and finishing touches.
               </p>
 
-              <h2 style={subheadingStyle}>Available Add-on Types</h2>
-
-              <div style={stepBoxStyle}>
-                <strong>Piping</strong>
-                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
-                  Decorative cord sewn into cushion seams. Set fixed prices for different piping styles.
-                </p>
-              </div>
-
-              <div style={stepBoxStyle}>
-                <strong>Button Style</strong>
-                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
-                  Tufted or button details on cushions. Can have fixed prices.
-                </p>
-              </div>
-
-              <div style={stepBoxStyle}>
-                <strong>Design</strong>
-                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
-                  Visual design options like quilting patterns or edge styles.
-                </p>
-              </div>
-
-              <div style={stepBoxStyle}>
-                <strong>Anti-Skid Bottom</strong>
-                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
-                  Non-slip backing for the cushion bottom.
-                </p>
-              </div>
-
-              <div style={stepBoxStyle}>
-                <strong>Ties</strong>
-                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
-                  Attachment ties for securing cushions to furniture.
-                </p>
-              </div>
-
-              <div style={stepBoxStyle}>
-                <strong>Fabric Ties</strong>
-                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
-                  Matching fabric ties made from the selected cushion fabric.
-                </p>
-              </div>
-
-              <div style={stepBoxStyle}>
-                <strong>Bottom Rod Pocket</strong>
-                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
-                  Rod pocket at the bottom for curtain-style applications.
-                </p>
-              </div>
-
-              <div style={stepBoxStyle}>
-                <strong>Drawstring</strong>
-                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
-                  Drawstring closure option for cushion covers.
-                </p>
-              </div>
-
-              <h2 style={subheadingStyle}>Setting Up Options</h2>
+              {/* Overview of All Option Types */}
+              <h2 style={subheadingStyle}>Overview: The 8 Option Types</h2>
               <p style={paragraphStyle}>
-                Each option type has its own page in the sidebar. The setup is similar:
+                Each option type has its own dedicated page in the sidebar. Here's a quick overview:
               </p>
-              <ol style={listStyle}>
-                <li style={listItemStyle}>Navigate to the option type (e.g., Piping)</li>
-                <li style={listItemStyle}>Click Add to create a new option</li>
-                <li style={listItemStyle}>Enter name, price, and optional image</li>
-                <li style={listItemStyle}>Set sort order and active status</li>
-                <li style={listItemStyle}>Save the option</li>
-              </ol>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px", marginBottom: "24px" }}>
+                <div style={{ ...stepBoxStyle, margin: 0 }}>
+                  <strong>Design</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Quilting patterns, edge styles, visual designs
+                  </p>
+                </div>
+                <div style={{ ...stepBoxStyle, margin: 0 }}>
+                  <strong>Piping</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Decorative cord sewn into seams
+                  </p>
+                </div>
+                <div style={{ ...stepBoxStyle, margin: 0 }}>
+                  <strong>Button Style</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Tufted or button details
+                  </p>
+                </div>
+                <div style={{ ...stepBoxStyle, margin: 0 }}>
+                  <strong>Anti-Skid Bottom</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Non-slip backing material
+                  </p>
+                </div>
+                <div style={{ ...stepBoxStyle, margin: 0 }}>
+                  <strong>Bottom Rod Pocket</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Rod pocket for curtain-style items
+                  </p>
+                </div>
+                <div style={{ ...stepBoxStyle, margin: 0 }}>
+                  <strong>Drawstring</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Drawstring closure option
+                  </p>
+                </div>
+                <div style={{ ...stepBoxStyle, margin: 0 }}>
+                  <strong>Ties</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Attachment ties (fixed price)
+                  </p>
+                </div>
+                <div style={{ ...stepBoxStyle, margin: 0 }}>
+                  <strong>Fabric Ties</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Matching fabric ties (fixed price)
+                  </p>
+                </div>
+              </div>
+
+              {/* Understanding Pricing Models */}
+              <h2 style={subheadingStyle}>Understanding Pricing Models</h2>
+              <p style={paragraphStyle}>
+                Additional options use two different pricing models. Understanding this difference is crucial for accurate pricing:
+              </p>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px", marginBottom: "24px" }}>
+                <div style={{ ...stepBoxStyle, margin: 0, backgroundColor: "#e3f2fd", borderLeft: "4px solid #2196f3" }}>
+                  <strong style={{ color: "#1976d2" }}>Percentage-Based Options</strong>
+                  <p style={{ margin: "8px 0 4px", color: "#1976d2", fontSize: "0.9rem" }}>
+                    Add a % of subtotal (or fabric cost)
+                  </p>
+                  <ul style={{ margin: "8px 0 0", paddingLeft: "20px", color: "#555", fontSize: "0.85rem" }}>
+                    <li>Design (% of fabric cost)</li>
+                    <li>Piping (% of subtotal)</li>
+                    <li>Button Style (% of subtotal)</li>
+                    <li>Anti-Skid (% of subtotal)</li>
+                    <li>Rod Pocket (% of subtotal)</li>
+                    <li>Drawstring (% of subtotal)</li>
+                  </ul>
+                </div>
+                <div style={{ ...stepBoxStyle, margin: 0, backgroundColor: "#e8f5e9", borderLeft: "4px solid #4caf50" }}>
+                  <strong style={{ color: "#388e3c" }}>Fixed Dollar Amount Options</strong>
+                  <p style={{ margin: "8px 0 4px", color: "#388e3c", fontSize: "0.9rem" }}>
+                    Add a flat fee regardless of size
+                  </p>
+                  <ul style={{ margin: "8px 0 0", paddingLeft: "20px", color: "#555", fontSize: "0.85rem" }}>
+                    <li>Ties ($X per option)</li>
+                    <li>Fabric Ties ($X per option)</li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Percentage Calculation */}
+              <div style={{ ...stepBoxStyle, backgroundColor: "#f5f5f5" }}>
+                <strong>Percentage Calculation Example</strong>
+                <p style={{ margin: "8px 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  If subtotal is $100 and Piping is set to 10%:
+                </p>
+                <div style={{ backgroundColor: "#fff", padding: "12px", borderRadius: "6px", fontFamily: "monospace" }}>
+                  Piping Cost = $100 × 10% = <strong>$10.00</strong>
+                </div>
+              </div>
+
+              {/* Fixed Amount Calculation */}
+              <div style={{ ...stepBoxStyle, backgroundColor: "#f5f5f5" }}>
+                <strong>Fixed Dollar Amount Example</strong>
+                <p style={{ margin: "8px 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  If "4 Ties" is priced at $12:
+                </p>
+                <div style={{ backgroundColor: "#fff", padding: "12px", borderRadius: "6px", fontFamily: "monospace" }}>
+                  Ties Cost = <strong>$12.00</strong> (regardless of cushion size)
+                </div>
+              </div>
+
+              {/* Design Options */}
+              <h2 style={subheadingStyle}>1. Design Options</h2>
+              <p style={paragraphStyle}>
+                Design options control visual styling like quilting patterns, edge treatments, or custom designs. Access via <strong>Design</strong> in the sidebar.
+              </p>
+
+              <div style={warningBoxStyle}>
+                <strong style={{ color: "#e65100" }}>Important - Unique Pricing:</strong>
+                <p style={{ margin: "8px 0 0", color: "#e65100" }}>
+                  Design is the only option that calculates percentage of <strong>fabric cost</strong> specifically, not the full subtotal. This makes sense because design complexity often relates to fabric coverage.
+                </p>
+              </div>
+
+              <h3 style={{ fontSize: "1rem", fontWeight: "600", marginTop: "16px", marginBottom: "12px" }}>Design Option Fields</h3>
+              <div style={stepBoxStyle}>
+                <strong>Name</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Display name shown to customers (e.g., "Custom Pattern", "Quilted Diamond", "Box Stitch")
+                </p>
+              </div>
+              <div style={stepBoxStyle}>
+                <strong>Image URL</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Optional image showing the design style. Highly recommended for visual options.
+                </p>
+              </div>
+              <div style={stepBoxStyle}>
+                <strong>Percentage of Fabric Cost (%)</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  The percentage of fabric cost to add. Example: If fabric = $50 and design = 20%, adds $10.
+                </p>
+              </div>
+              <div style={stepBoxStyle}>
+                <strong>Description</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Optional details about the design (shown as help text to customers).
+                </p>
+              </div>
+
+              <div style={{ ...stepBoxStyle, backgroundColor: "#e8f4fd" }}>
+                <strong>Design Cost Calculation</strong>
+                <div style={{ marginTop: "8px", fontFamily: "monospace", fontSize: "0.95rem" }}>
+                  Design Cost = Fabric Cost × Design Percentage
+                </div>
+                <p style={{ margin: "12px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  <strong>Example:</strong> Fabric costs $64.00, "Quilted Diamond" design at 25%<br />
+                  Design Cost = $64.00 × 25% = <strong>$16.00</strong>
+                </p>
+              </div>
+
+              {/* Piping Options */}
+              <h2 style={subheadingStyle}>2. Piping Options</h2>
+              <p style={paragraphStyle}>
+                Piping is decorative cord sewn into cushion seams, adding a finished look and durability to edges. Access via <strong>Piping</strong> in the sidebar.
+              </p>
+
+              <h3 style={{ fontSize: "1rem", fontWeight: "600", marginTop: "16px", marginBottom: "12px" }}>Piping Option Fields</h3>
+              <div style={stepBoxStyle}>
+                <strong>Name</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Display name (e.g., "Standard Piping", "Premium Piping", "Double Piping", "No Piping")
+                </p>
+              </div>
+              <div style={stepBoxStyle}>
+                <strong>Percentage of Subtotal (%)</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  The percentage of subtotal to add. Set to 0 for "No Piping" option.
+                </p>
+              </div>
+              <div style={stepBoxStyle}>
+                <strong>Image URL / Description</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Optional visual and description to help customers choose.
+                </p>
+              </div>
+
+              <div style={{ ...stepBoxStyle, backgroundColor: "#e8f4fd" }}>
+                <strong>Piping Cost Calculation</strong>
+                <div style={{ marginTop: "8px", fontFamily: "monospace", fontSize: "0.95rem" }}>
+                  Piping Cost = Subtotal × Piping Percentage
+                </div>
+                <p style={{ margin: "12px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  <strong>Example:</strong> Subtotal is $136.00, "Premium Piping" at 8%<br />
+                  Piping Cost = $136.00 × 8% = <strong>$10.88</strong>
+                </p>
+              </div>
+
+              {/* Button Style Options */}
+              <h2 style={subheadingStyle}>3. Button Style Options</h2>
+              <p style={paragraphStyle}>
+                Button style options add tufted or button details to cushions, creating visual interest and a classic look. Access via <strong>Button Style</strong> in the sidebar.
+              </p>
+
+              <h3 style={{ fontSize: "1rem", fontWeight: "600", marginTop: "16px", marginBottom: "12px" }}>Button Style Option Fields</h3>
+              <div style={stepBoxStyle}>
+                <strong>Name</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Display name (e.g., "Tufted", "Diamond Tufted", "Single Button", "No Buttons")
+                </p>
+              </div>
+              <div style={stepBoxStyle}>
+                <strong>Percentage of Subtotal (%)</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  The percentage of subtotal to add. Tufting typically ranges 5-15%.
+                </p>
+              </div>
+              <div style={stepBoxStyle}>
+                <strong>Image URL / Description</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Optional visual showing button pattern.
+                </p>
+              </div>
+
+              <div style={{ ...stepBoxStyle, backgroundColor: "#e8f4fd" }}>
+                <strong>Button Style Cost Calculation</strong>
+                <div style={{ marginTop: "8px", fontFamily: "monospace", fontSize: "0.95rem" }}>
+                  Button Style Cost = Subtotal × Button Style Percentage
+                </div>
+                <p style={{ margin: "12px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  <strong>Example:</strong> Subtotal is $136.00, "Diamond Tufted" at 12%<br />
+                  Button Style Cost = $136.00 × 12% = <strong>$16.32</strong>
+                </p>
+              </div>
+
+              {/* Anti-Skid Bottom Options */}
+              <h2 style={subheadingStyle}>4. Anti-Skid Bottom Options</h2>
+              <p style={paragraphStyle}>
+                Anti-skid options add non-slip backing to the cushion bottom, preventing sliding on chairs or benches. Access via <strong>Anti-Skid Bottom</strong> in the sidebar.
+              </p>
+
+              <h3 style={{ fontSize: "1rem", fontWeight: "600", marginTop: "16px", marginBottom: "12px" }}>Anti-Skid Option Fields</h3>
+              <div style={stepBoxStyle}>
+                <strong>Name</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Display name (e.g., "Standard Anti-Skid", "Premium Grip", "No Anti-Skid")
+                </p>
+              </div>
+              <div style={stepBoxStyle}>
+                <strong>Percentage of Subtotal (%)</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  The percentage of subtotal to add. Typically 3-8%.
+                </p>
+              </div>
+              <div style={stepBoxStyle}>
+                <strong>Image URL / Description</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Optional visual showing the anti-skid material.
+                </p>
+              </div>
+
+              <div style={{ ...stepBoxStyle, backgroundColor: "#e8f4fd" }}>
+                <strong>Anti-Skid Cost Calculation</strong>
+                <div style={{ marginTop: "8px", fontFamily: "monospace", fontSize: "0.95rem" }}>
+                  Anti-Skid Cost = Subtotal × Anti-Skid Percentage
+                </div>
+                <p style={{ margin: "12px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  <strong>Example:</strong> Subtotal is $136.00, "Premium Grip" at 5%<br />
+                  Anti-Skid Cost = $136.00 × 5% = <strong>$6.80</strong>
+                </p>
+              </div>
+
+              {/* Bottom Rod Pocket Options */}
+              <h2 style={subheadingStyle}>5. Bottom Rod Pocket Options</h2>
+              <p style={paragraphStyle}>
+                Rod pocket options add a sleeve at the bottom for inserting a rod, commonly used for curtain-style applications or weighted bottoms. Access via <strong>Bottom Rod Pocket</strong> in the sidebar.
+              </p>
+
+              <h3 style={{ fontSize: "1rem", fontWeight: "600", marginTop: "16px", marginBottom: "12px" }}>Rod Pocket Option Fields</h3>
+              <div style={stepBoxStyle}>
+                <strong>Name</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Display name (e.g., "Standard Rod Pocket", "Wide Rod Pocket", "No Rod Pocket")
+                </p>
+              </div>
+              <div style={stepBoxStyle}>
+                <strong>Percentage of Subtotal (%)</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  The percentage of subtotal to add. Typically 4-10%.
+                </p>
+              </div>
+              <div style={stepBoxStyle}>
+                <strong>Image URL / Description</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Optional visual showing rod pocket style.
+                </p>
+              </div>
+
+              <div style={{ ...stepBoxStyle, backgroundColor: "#e8f4fd" }}>
+                <strong>Rod Pocket Cost Calculation</strong>
+                <div style={{ marginTop: "8px", fontFamily: "monospace", fontSize: "0.95rem" }}>
+                  Rod Pocket Cost = Subtotal × Rod Pocket Percentage
+                </div>
+                <p style={{ margin: "12px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  <strong>Example:</strong> Subtotal is $136.00, "Standard Rod Pocket" at 6%<br />
+                  Rod Pocket Cost = $136.00 × 6% = <strong>$8.16</strong>
+                </p>
+              </div>
+
+              {/* Drawstring Options */}
+              <h2 style={subheadingStyle}>6. Drawstring Options</h2>
+              <p style={paragraphStyle}>
+                Drawstring options add a drawstring closure to cushion covers, making them easy to remove for washing. Access via <strong>Drawstring</strong> in the sidebar.
+              </p>
+
+              <h3 style={{ fontSize: "1rem", fontWeight: "600", marginTop: "16px", marginBottom: "12px" }}>Drawstring Option Fields</h3>
+              <div style={stepBoxStyle}>
+                <strong>Name</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Display name (e.g., "Standard Drawstring", "Heavy-Duty Drawstring", "No Drawstring")
+                </p>
+              </div>
+              <div style={stepBoxStyle}>
+                <strong>Percentage of Subtotal (%)</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  The percentage of subtotal to add. Typically 3-7%.
+                </p>
+              </div>
+              <div style={stepBoxStyle}>
+                <strong>Image URL / Description</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Optional visual showing drawstring style.
+                </p>
+              </div>
+
+              <div style={{ ...stepBoxStyle, backgroundColor: "#e8f4fd" }}>
+                <strong>Drawstring Cost Calculation</strong>
+                <div style={{ marginTop: "8px", fontFamily: "monospace", fontSize: "0.95rem" }}>
+                  Drawstring Cost = Subtotal × Drawstring Percentage
+                </div>
+                <p style={{ margin: "12px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  <strong>Example:</strong> Subtotal is $136.00, "Standard Drawstring" at 4%<br />
+                  Drawstring Cost = $136.00 × 4% = <strong>$5.44</strong>
+                </p>
+              </div>
+
+              {/* Ties Options */}
+              <h2 style={subheadingStyle}>7. Ties Options</h2>
+              <p style={paragraphStyle}>
+                Ties are attachment straps for securing cushions to furniture, preventing them from sliding off. Access via <strong>Ties</strong> in the sidebar.
+              </p>
+
+              <div style={warningBoxStyle}>
+                <strong style={{ color: "#e65100" }}>Different Pricing Model:</strong>
+                <p style={{ margin: "8px 0 0", color: "#e65100" }}>
+                  Ties use a <strong>fixed dollar amount</strong> instead of a percentage. The price you set is added directly to the total regardless of cushion size.
+                </p>
+              </div>
+
+              <h3 style={{ fontSize: "1rem", fontWeight: "600", marginTop: "16px", marginBottom: "12px" }}>Ties Option Fields</h3>
+              <div style={stepBoxStyle}>
+                <strong>Name</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Display name (e.g., "2 Ties", "4 Ties", "6 Ties", "No Ties")
+                </p>
+              </div>
+              <div style={stepBoxStyle}>
+                <strong>Price ($)</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Fixed dollar amount added to the total (e.g., $6.00 for 2 ties, $12.00 for 4 ties).
+                </p>
+              </div>
+              <div style={stepBoxStyle}>
+                <strong>Image URL / Description</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Optional visual showing tie placement.
+                </p>
+              </div>
+
+              <h3 style={{ fontSize: "1rem", fontWeight: "600", marginTop: "16px", marginBottom: "12px" }}>Special Setting: Include in Shipping & Labour</h3>
+              <div style={{ ...stepBoxStyle, backgroundColor: "#fff3e0", borderLeft: "4px solid #ff9800" }}>
+                <strong style={{ color: "#e65100" }}>Include ties in shipping & labour calculation</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  This toggle (found in the Ties Settings section) controls whether ties cost is included in the base amount used to calculate shipping and labour percentages.
+                </p>
+                <div style={{ marginTop: "12px", padding: "12px", backgroundColor: "#fff", borderRadius: "6px" }}>
+                  <p style={{ margin: "0 0 8px", fontSize: "0.85rem" }}>
+                    <strong>When ENABLED:</strong> Ties cost IS included in the base for shipping/labour % calculations.
+                  </p>
+                  <p style={{ margin: "0", fontSize: "0.85rem" }}>
+                    <strong>When DISABLED:</strong> Ties cost is NOT included in the base, but still added to final price.
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ ...stepBoxStyle, backgroundColor: "#e8f4fd" }}>
+                <strong>Ties Cost Example</strong>
+                <p style={{ margin: "12px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Customer selects "4 Ties" priced at $12.00<br />
+                  Ties Cost = <strong>$12.00</strong> (same whether cushion is small or large)
+                </p>
+              </div>
+
+              {/* Fabric Ties Options */}
+              <h2 style={subheadingStyle}>8. Fabric Ties Options</h2>
+              <p style={paragraphStyle}>
+                Fabric ties are matching ties made from the same fabric as the cushion or curtain, providing a coordinated look. Access via <strong>Fabric Ties</strong> in the sidebar.
+              </p>
 
               <div style={tipBoxStyle}>
-                <strong style={{ color: "#108043" }}>Option Pricing:</strong>
+                <strong style={{ color: "#108043" }}>Fabric Ties vs Regular Ties:</strong>
                 <p style={{ margin: "8px 0 0", color: "#108043" }}>
-                  Most add-on options have a fixed price that's added to the total, regardless of cushion size.
+                  Fabric ties are typically more expensive than regular ties because they're custom-made from the customer's selected fabric. Regular ties use standard materials.
+                </p>
+              </div>
+
+              <h3 style={{ fontSize: "1rem", fontWeight: "600", marginTop: "16px", marginBottom: "12px" }}>Fabric Ties Option Fields</h3>
+              <div style={stepBoxStyle}>
+                <strong>Name</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Display name (e.g., "2 Fabric Ties", "4 Fabric Ties", "No Fabric Ties")
+                </p>
+              </div>
+              <div style={stepBoxStyle}>
+                <strong>Price ($)</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Fixed dollar amount (typically higher than regular ties due to custom fabric).
+                </p>
+              </div>
+              <div style={stepBoxStyle}>
+                <strong>Image URL / Description</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Optional visual showing fabric tie style.
+                </p>
+              </div>
+
+              <div style={{ ...stepBoxStyle, backgroundColor: "#e8f4fd" }}>
+                <strong>Fabric Ties Cost Example</strong>
+                <p style={{ margin: "12px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Customer selects "4 Fabric Ties" priced at $18.00<br />
+                  Fabric Ties Cost = <strong>$18.00</strong> (fixed amount)
+                </p>
+              </div>
+
+              {/* Pricing Model Comparison Table */}
+              <h2 style={subheadingStyle}>Pricing Model Comparison</h2>
+              <p style={paragraphStyle}>
+                Quick reference for how each option type is priced:
+              </p>
+
+              <div style={{ overflowX: "auto", marginBottom: "24px" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
+                  <thead>
+                    <tr style={{ backgroundColor: "#f5f5f5" }}>
+                      <th style={{ padding: "12px", textAlign: "left", borderBottom: "2px solid #ddd" }}>Option Type</th>
+                      <th style={{ padding: "12px", textAlign: "left", borderBottom: "2px solid #ddd" }}>Pricing Model</th>
+                      <th style={{ padding: "12px", textAlign: "left", borderBottom: "2px solid #ddd" }}>Typical Range</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>Design</td>
+                      <td style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>% of <strong>Fabric Cost</strong></td>
+                      <td style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>10% - 30%</td>
+                    </tr>
+                    <tr style={{ backgroundColor: "#fafafa" }}>
+                      <td style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>Piping</td>
+                      <td style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>% of Subtotal</td>
+                      <td style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>5% - 15%</td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>Button Style</td>
+                      <td style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>% of Subtotal</td>
+                      <td style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>5% - 15%</td>
+                    </tr>
+                    <tr style={{ backgroundColor: "#fafafa" }}>
+                      <td style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>Anti-Skid Bottom</td>
+                      <td style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>% of Subtotal</td>
+                      <td style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>3% - 8%</td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>Bottom Rod Pocket</td>
+                      <td style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>% of Subtotal</td>
+                      <td style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>4% - 10%</td>
+                    </tr>
+                    <tr style={{ backgroundColor: "#fafafa" }}>
+                      <td style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>Drawstring</td>
+                      <td style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>% of Subtotal</td>
+                      <td style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>3% - 7%</td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>Ties</td>
+                      <td style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}><strong>Fixed $</strong></td>
+                      <td style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>$4 - $15</td>
+                    </tr>
+                    <tr style={{ backgroundColor: "#fafafa" }}>
+                      <td style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>Fabric Ties</td>
+                      <td style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}><strong>Fixed $</strong></td>
+                      <td style={{ padding: "10px 12px", borderBottom: "1px solid #eee" }}>$8 - $25</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Common Fields */}
+              <h2 style={subheadingStyle}>Common Fields (All Option Types)</h2>
+              <p style={paragraphStyle}>
+                All 8 option types share these configuration fields:
+              </p>
+
+              <div style={stepBoxStyle}>
+                <strong>Sort Order</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Numeric value controlling display order (lower numbers appear first). Options are sorted ascending.
+                </p>
+              </div>
+              <div style={stepBoxStyle}>
+                <strong>Is Active</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Toggle to enable/disable the option. Inactive options appear grayed out in admin and are hidden from customers.
+                </p>
+              </div>
+              <div style={stepBoxStyle}>
+                <strong>Is Default</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Pre-select this option for customers. Only ONE option per type can be default. Setting a new default automatically clears the previous one.
+                </p>
+              </div>
+
+              {/* Step-by-Step Creation */}
+              <h2 style={subheadingStyle}>Step-by-Step: Creating an Option</h2>
+              <p style={paragraphStyle}>
+                The process is similar for all 8 option types:
+              </p>
+
+              <ol style={listStyle}>
+                <li style={listItemStyle}>
+                  <strong>Navigate to the option page</strong> (e.g., Piping, Button Style, Ties)
+                </li>
+                <li style={listItemStyle}>
+                  <strong>Click "Add [Option Type]"</strong> button in the top right
+                </li>
+                <li style={listItemStyle}>
+                  <strong>Enter the name</strong> - Make it descriptive (e.g., "Premium Double Piping" not just "Option 1")
+                </li>
+                <li style={listItemStyle}>
+                  <strong>Set the price/percentage</strong> - Either percentage (for % options) or fixed dollar amount (for Ties/Fabric Ties)
+                </li>
+                <li style={listItemStyle}>
+                  <strong>Add image URL</strong> (optional but recommended for visual options)
+                </li>
+                <li style={listItemStyle}>
+                  <strong>Add description</strong> (optional help text for customers)
+                </li>
+                <li style={listItemStyle}>
+                  <strong>Set sort order</strong> (determines display position)
+                </li>
+                <li style={listItemStyle}>
+                  <strong>Configure status</strong> - Check "Active" to enable, "Default" to pre-select
+                </li>
+                <li style={listItemStyle}>
+                  <strong>Click Create/Update</strong> to save
+                </li>
+              </ol>
+
+              {/* Tips */}
+              <h2 style={subheadingStyle}>Tips & Best Practices</h2>
+
+              <div style={tipBoxStyle}>
+                <strong style={{ color: "#108043" }}>Include a "None" Option:</strong>
+                <p style={{ margin: "8px 0 0", color: "#108043" }}>
+                  For optional add-ons, create a "No [Option]" entry with 0% or $0. Set this as the default so customers aren't forced to choose an upgrade. Example: "No Piping" at 0%, "No Ties" at $0.
+                </p>
+              </div>
+
+              <div style={tipBoxStyle}>
+                <strong style={{ color: "#108043" }}>Use Descriptive Names:</strong>
+                <p style={{ margin: "8px 0 0", color: "#108043" }}>
+                  Instead of "Standard" and "Premium", use specific descriptions like "Single Welt Piping" and "Double Welt Piping with Contrast Color". This helps customers understand what they're choosing.
+                </p>
+              </div>
+
+              <div style={tipBoxStyle}>
+                <strong style={{ color: "#108043" }}>Add Images for Visual Options:</strong>
+                <p style={{ margin: "8px 0 0", color: "#108043" }}>
+                  Design, Piping, Button Style, and Ties benefit greatly from images. Customers can see exactly what they're selecting, reducing confusion and returns.
+                </p>
+              </div>
+
+              <div style={warningBoxStyle}>
+                <strong style={{ color: "#e65100" }}>Test Your Calculations:</strong>
+                <p style={{ margin: "8px 0 0", color: "#e65100" }}>
+                  Before going live, test the calculator with various combinations to ensure prices are accurate. Check that percentage-based options scale correctly with different cushion sizes.
                 </p>
               </div>
             </div>
