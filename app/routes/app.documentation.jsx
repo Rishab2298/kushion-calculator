@@ -982,35 +982,239 @@ export default function Documentation() {
           {activeSection === "fill-types" && (
             <div>
               <h1 style={headingStyle}>Fill Types</h1>
+
+              <h2 style={subheadingStyle}>What is a Fill Type?</h2>
               <p style={paragraphStyle}>
-                Fill types represent the stuffing materials for cushions. The fill cost is calculated by multiplying the cushion's volume by the price per cubic inch.
+                A <strong>Fill Type</strong> represents the stuffing or interior material used inside cushions. Fill types determine the comfort, durability, and feel of the finished cushion. The fill cost is calculated based on the cushion's volume.
               </p>
 
-              <h2 style={subheadingStyle}>Creating a Fill Type</h2>
-              <ol style={listStyle}>
-                <li style={listItemStyle}>Go to <strong>Fill Types</strong> in the sidebar</li>
-                <li style={listItemStyle}>Click <strong>Add Fill Type</strong></li>
-                <li style={listItemStyle}>Enter the fill name (e.g., "High Density Foam")</li>
-                <li style={listItemStyle}>Set the price per cubic inch</li>
-                <li style={listItemStyle}>Optionally add an image and description</li>
-                <li style={listItemStyle}>Save the fill type</li>
-              </ol>
+              <div style={{ ...stepBoxStyle, backgroundColor: "#e8f4fd", border: "1px solid #b3d4fc" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ fontWeight: 600, color: "#0066cc" }}>Fill Cost Formula:</div>
+                  <div style={{ backgroundColor: "#f6f6f7", padding: 12, borderRadius: 4, fontFamily: "monospace", fontSize: "0.95rem" }}>
+                    <span style={{ color: "#5c6ac4" }}>Fill Cost = Volume (cubic inches) × Price per Cubic Inch</span>
+                  </div>
+                </div>
+              </div>
 
-              <h2 style={subheadingStyle}>Fill Type Settings</h2>
-              <ul style={listStyle}>
-                <li style={listItemStyle}><strong>Name:</strong> Display name shown to customers</li>
-                <li style={listItemStyle}><strong>Price per Cubic Inch:</strong> Cost calculation rate (e.g., 0.05 = $0.05 per cubic inch)</li>
-                <li style={listItemStyle}><strong>Image URL:</strong> Product image for the fill material</li>
-                <li style={listItemStyle}><strong>Active/Inactive:</strong> Toggle availability</li>
-                <li style={listItemStyle}><strong>Sort Order:</strong> Display order in the calculator</li>
-              </ul>
+              {/* Basic Information */}
+              <h2 style={subheadingStyle}>Basic Information</h2>
+
+              <div style={stepBoxStyle}>
+                <strong>Fill Name</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  A descriptive name customers will see when selecting a fill type. Common examples: "High Density Foam", "Memory Foam", "Polyfill", "Microfiber", "Down Alternative", "Economy Foam".
+                </p>
+              </div>
+
+              <div style={stepBoxStyle}>
+                <strong>Image URL</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  A URL to an image showing the fill material. This helps customers visualize the material they're selecting. The image appears in the fill selection area of the calculator.
+                </p>
+              </div>
+
+              <div style={stepBoxStyle}>
+                <strong>Description</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Additional details about the fill material such as comfort level, durability, intended use (indoor/outdoor), care instructions, or any other relevant information.
+                </p>
+              </div>
+
+              {/* Pricing Configuration */}
+              <h2 style={subheadingStyle}>Pricing Configuration</h2>
+
+              <div style={stepBoxStyle}>
+                <strong>Price per Cubic Inch</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  The cost rate used to calculate fill pricing. This value is multiplied by the cushion's volume (calculated from the shape's volume formula) to determine the fill cost.
+                </p>
+              </div>
+
+              <div style={{ ...stepBoxStyle, backgroundColor: "#f6f6f7" }}>
+                <strong>Pricing Example:</strong>
+                <div style={{ marginTop: 12, fontSize: "0.9rem" }}>
+                  <div style={{ marginBottom: 8 }}>
+                    <strong>Cushion dimensions:</strong> 20" × 18" × 4"
+                  </div>
+                  <div style={{ marginBottom: 8 }}>
+                    <strong>Volume:</strong> 20 × 18 × 4 = <span style={{ color: "#008060", fontWeight: 600 }}>1,440 cubic inches</span>
+                  </div>
+                  <div style={{ marginBottom: 8 }}>
+                    <strong>Price per cubic inch:</strong> $0.05
+                  </div>
+                  <div style={{ backgroundColor: "#e8f4fd", padding: 8, borderRadius: 4 }}>
+                    <strong>Fill Cost:</strong> 1,440 × $0.05 = <span style={{ color: "#008060", fontWeight: 600 }}>$72.00</span>
+                  </div>
+                </div>
+              </div>
 
               <div style={tipBoxStyle}>
-                <strong style={{ color: "#108043" }}>Pricing Tip:</strong>
-                <p style={{ margin: "8px 0 0", color: "#108043" }}>
-                  Fill cost = Volume (cubic inches) x Price per cubic inch.<br />
-                  Example: A 20x18x4 inch cushion = 1,440 cubic inches. At $0.05/cu in = $72 fill cost.
+                <strong style={{ color: "#108043" }}>Pricing Tips:</strong>
+                <ul style={{ ...listStyle, marginTop: 8, marginBottom: 0 }}>
+                  <li style={listItemStyle}>Start with small decimal values (e.g., $0.02 - $0.10 per cubic inch)</li>
+                  <li style={listItemStyle}>Premium materials like memory foam should cost more than basic polyfill</li>
+                  <li style={listItemStyle}>Test with sample dimensions to ensure prices are reasonable</li>
+                </ul>
+              </div>
+
+              {/* Enable Discount from Total - KEY FEATURE */}
+              <h2 style={subheadingStyle}>Enable Discount from Total</h2>
+
+              <div style={{ ...warningBoxStyle, backgroundColor: "#e8f4fd", borderColor: "#b3d4fc" }}>
+                <strong style={{ color: "#0066cc" }}>Key Feature:</strong>
+                <p style={{ margin: "8px 0 0", color: "#0066cc" }}>
+                  This feature allows you to offer promotional pricing by automatically applying a percentage discount to the <strong>entire order total</strong> when a customer selects this fill type.
                 </p>
+              </div>
+
+              <div style={stepBoxStyle}>
+                <strong>Enable Discount from Total</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  When this checkbox is enabled, you can specify a discount percentage that will be automatically deducted from the <strong>final total price</strong> (not just the fill cost, but the entire order including fabric, fill, and all additional options).
+                </p>
+              </div>
+
+              <div style={stepBoxStyle}>
+                <strong>Discount Percentage</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  The percentage to deduct from the total price (0-100%). This discount is applied after all other costs are calculated.
+                </p>
+              </div>
+
+              <div style={{ ...stepBoxStyle, backgroundColor: "#fff8e1", border: "1px solid #ffe082" }}>
+                <strong style={{ color: "#5d4037" }}>How It Works:</strong>
+                <ol style={{ ...listStyle, marginTop: 12, marginBottom: 0 }}>
+                  <li style={listItemStyle}>Customer selects this fill type in the calculator</li>
+                  <li style={listItemStyle}>Calculator computes normal total (fabric + fill + all options)</li>
+                  <li style={listItemStyle}>Discount percentage is applied to the final total</li>
+                  <li style={listItemStyle}>Customer sees the discounted price</li>
+                </ol>
+              </div>
+
+              <div style={{ ...stepBoxStyle, backgroundColor: "#e6f9f0", border: "1px solid #9fdfbf" }}>
+                <strong style={{ color: "#008060" }}>Discount Calculation Example:</strong>
+                <div style={{ marginTop: 12, fontSize: "0.9rem" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <tbody>
+                      <tr>
+                        <td style={{ padding: "6px 0", borderBottom: "1px solid #9fdfbf" }}>Fabric Cost:</td>
+                        <td style={{ padding: "6px 0", borderBottom: "1px solid #9fdfbf", textAlign: "right" }}>$80.00</td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: "6px 0", borderBottom: "1px solid #9fdfbf" }}>Fill Cost (Economy Foam):</td>
+                        <td style={{ padding: "6px 0", borderBottom: "1px solid #9fdfbf", textAlign: "right" }}>$50.00</td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: "6px 0", borderBottom: "1px solid #9fdfbf" }}>Additional Options:</td>
+                        <td style={{ padding: "6px 0", borderBottom: "1px solid #9fdfbf", textAlign: "right" }}>$20.00</td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: "6px 0", borderBottom: "1px solid #9fdfbf", fontWeight: 600 }}>Subtotal:</td>
+                        <td style={{ padding: "6px 0", borderBottom: "1px solid #9fdfbf", textAlign: "right", fontWeight: 600 }}>$150.00</td>
+                      </tr>
+                      <tr style={{ color: "#d32f2f" }}>
+                        <td style={{ padding: "6px 0", borderBottom: "1px solid #9fdfbf" }}>Discount (15% off total):</td>
+                        <td style={{ padding: "6px 0", borderBottom: "1px solid #9fdfbf", textAlign: "right" }}>-$22.50</td>
+                      </tr>
+                      <tr style={{ backgroundColor: "#c8f7dc" }}>
+                        <td style={{ padding: "8px 0", fontWeight: 700, fontSize: "1rem" }}>Final Total:</td>
+                        <td style={{ padding: "8px 0", textAlign: "right", fontWeight: 700, fontSize: "1rem", color: "#008060" }}>$127.50</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div style={tipBoxStyle}>
+                <strong style={{ color: "#108043" }}>Use Cases for Discount from Total:</strong>
+                <ul style={{ ...listStyle, marginTop: 8, marginBottom: 0 }}>
+                  <li style={listItemStyle}><strong>Promotional fill types:</strong> "Economy Foam - Save 10% on your order!"</li>
+                  <li style={listItemStyle}><strong>Clearance materials:</strong> Discount older inventory to move stock faster</li>
+                  <li style={listItemStyle}><strong>Seasonal sales:</strong> Enable discounts during holiday promotions</li>
+                  <li style={listItemStyle}><strong>Customer incentives:</strong> Encourage customers to choose certain materials</li>
+                </ul>
+              </div>
+
+              <div style={warningBoxStyle}>
+                <strong style={{ color: "#e65100" }}>Important Note:</strong>
+                <p style={{ margin: "8px 0 0", color: "#e65100" }}>
+                  The discount applies to the <strong>entire order total</strong>, not just the fill cost. Be mindful when setting high percentages, as this will significantly reduce your profit margins on all components of the order.
+                </p>
+              </div>
+
+              {/* Fill Type Status */}
+              <h2 style={subheadingStyle}>Fill Type Status Settings</h2>
+
+              <div style={stepBoxStyle}>
+                <strong>Is Active</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Toggle this OFF to hide a fill type from the calculator without deleting it. Inactive fill types won't appear in the fill selection dropdown. Useful for seasonal materials or fills that are temporarily out of stock.
+                </p>
+              </div>
+
+              <div style={stepBoxStyle}>
+                <strong>Is Default</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  The default fill type is pre-selected when the calculator loads. Only one fill type can be the default. This is usually your most popular or recommended fill material.
+                </p>
+              </div>
+
+              <div style={stepBoxStyle}>
+                <strong>Sort Order</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Controls the display order of fill types in the dropdown. Lower numbers appear first. Put your most popular or recommended fills at the top.
+                </p>
+              </div>
+
+              {/* Step by Step */}
+              <h2 style={subheadingStyle}>Creating a Fill Type - Step by Step</h2>
+              <ol style={listStyle}>
+                <li style={listItemStyle}>Go to <strong>Fill Types</strong> in the sidebar menu</li>
+                <li style={listItemStyle}>Click the <strong>"Add Fill Type"</strong> button</li>
+                <li style={listItemStyle}>Enter a <strong>Fill Name</strong> (e.g., "High Density Foam")</li>
+                <li style={listItemStyle}>Optionally add an <strong>Image URL</strong> for visual reference</li>
+                <li style={listItemStyle}>Set the <strong>Price per Cubic Inch</strong> (e.g., 0.05 for $0.05)</li>
+                <li style={listItemStyle}>Add a <strong>Description</strong> explaining the material's benefits</li>
+                <li style={listItemStyle}>Set the <strong>Sort Order</strong> for display positioning</li>
+                <li style={listItemStyle}><strong>Optional:</strong> Enable "Discount from Total" and set a percentage if running a promotion</li>
+                <li style={listItemStyle}>Check <strong>"Active"</strong> to make it visible in the calculator</li>
+                <li style={listItemStyle}>Check <strong>"Set as Default"</strong> if this should be pre-selected</li>
+                <li style={listItemStyle}>Click <strong>Create</strong> to save the fill type</li>
+              </ol>
+
+              {/* Common Fill Types */}
+              <h2 style={subheadingStyle}>Common Fill Type Examples</h2>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+                <div style={stepBoxStyle}>
+                  <strong style={{ color: "#008060" }}>High Density Foam</strong>
+                  <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Price: ~$0.06-0.10/cu in<br />
+                    Firm support, long-lasting, ideal for seat cushions
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong style={{ color: "#008060" }}>Memory Foam</strong>
+                  <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Price: ~$0.08-0.15/cu in<br />
+                    Conforms to body, pressure relief, premium option
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong style={{ color: "#008060" }}>Polyfill / Polyester</strong>
+                  <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Price: ~$0.02-0.04/cu in<br />
+                    Soft, fluffy, budget-friendly, good for back cushions
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong style={{ color: "#008060" }}>Economy Foam</strong>
+                  <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Price: ~$0.03-0.05/cu in<br />
+                    Basic support, lower cost, good for occasional use
+                  </p>
+                </div>
               </div>
             </div>
           )}
