@@ -1223,55 +1223,495 @@ export default function Documentation() {
           {activeSection === "fabrics" && (
             <div>
               <h1 style={headingStyle}>Fabrics</h1>
+
+              <h2 style={subheadingStyle}>What are Fabrics?</h2>
               <p style={paragraphStyle}>
-                Fabrics are organized into categories and can have various attributes like brand, pattern, color, and material. The fabric cost is calculated by multiplying the surface area by the price per square inch.
+                <strong>Fabrics</strong> are the covering materials used on cushions. The Fabrics section is the most comprehensive part of the calculator, allowing you to manage fabrics along with their categories, brands, patterns, colors, and materials.
               </p>
 
-              <h2 style={subheadingStyle}>Setting Up Fabrics</h2>
+              <div style={{ ...stepBoxStyle, backgroundColor: "#e8f4fd", border: "1px solid #b3d4fc" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ fontWeight: 600, color: "#0066cc" }}>Fabric Cost Formula:</div>
+                  <div style={{ backgroundColor: "#f6f6f7", padding: 12, borderRadius: 4, fontFamily: "monospace", fontSize: "0.95rem" }}>
+                    <span style={{ color: "#5c6ac4" }}>Fabric Cost = Surface Area (sq inches) × Price per Square Inch</span>
+                  </div>
+                </div>
+              </div>
 
-              <h3 style={{ ...subheadingStyle, fontSize: "1rem" }}>Step 1: Create Categories (Optional)</h3>
+              {/* Tabs Overview */}
+              <h2 style={subheadingStyle}>Fabric Management Tabs</h2>
               <p style={paragraphStyle}>
-                Categories help organize fabrics (e.g., "Outdoor", "Indoor", "Premium"). Go to Fabrics &gt; Categories tab to create them.
+                The Fabrics page has <strong>6 tabs</strong> for organizing fabric data. You should set up the supporting tabs first (Categories, Brands, etc.) before adding fabrics.
               </p>
 
-              <h3 style={{ ...subheadingStyle, fontSize: "1rem" }}>Step 2: Create Brands, Patterns, Colors, Materials (Optional)</h3>
+              <div style={{ ...stepBoxStyle, backgroundColor: "#fff8e1", border: "1px solid #ffe082" }}>
+                <strong style={{ color: "#5d4037" }}>6 Tabs in Fabrics Page:</strong>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8, marginTop: 12 }}>
+                  <div style={{ padding: 8, backgroundColor: "#fff", borderRadius: 4, border: "1px solid #e1e3e5", textAlign: "center" }}>
+                    <strong>1. Fabrics</strong>
+                    <div style={{ fontSize: "0.8rem", color: "#6d7175" }}>Main fabric list</div>
+                  </div>
+                  <div style={{ padding: 8, backgroundColor: "#fff", borderRadius: 4, border: "1px solid #e1e3e5", textAlign: "center" }}>
+                    <strong>2. Categories</strong>
+                    <div style={{ fontSize: "0.8rem", color: "#6d7175" }}>Group fabrics</div>
+                  </div>
+                  <div style={{ padding: 8, backgroundColor: "#fff", borderRadius: 4, border: "1px solid #e1e3e5", textAlign: "center" }}>
+                    <strong>3. Brands</strong>
+                    <div style={{ fontSize: "0.8rem", color: "#6d7175" }}>Manufacturer info</div>
+                  </div>
+                  <div style={{ padding: 8, backgroundColor: "#fff", borderRadius: 4, border: "1px solid #e1e3e5", textAlign: "center" }}>
+                    <strong>4. Patterns</strong>
+                    <div style={{ fontSize: "0.8rem", color: "#6d7175" }}>Design styles</div>
+                  </div>
+                  <div style={{ padding: 8, backgroundColor: "#fff", borderRadius: 4, border: "1px solid #e1e3e5", textAlign: "center" }}>
+                    <strong>5. Colors</strong>
+                    <div style={{ fontSize: "0.8rem", color: "#6d7175" }}>Color swatches</div>
+                  </div>
+                  <div style={{ padding: 8, backgroundColor: "#fff", borderRadius: 4, border: "1px solid #e1e3e5", textAlign: "center" }}>
+                    <strong>6. Materials</strong>
+                    <div style={{ fontSize: "0.8rem", color: "#6d7175" }}>Fabric types</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Categories Tab */}
+              <h2 style={subheadingStyle}>Categories Tab</h2>
               <p style={paragraphStyle}>
-                These are optional attributes that can be assigned to fabrics for filtering and display purposes.
+                Categories help organize your fabrics into logical groups. Customers can filter fabrics by category in the calculator.
               </p>
 
-              <h3 style={{ ...subheadingStyle, fontSize: "1rem" }}>Step 3: Add Fabrics</h3>
-              <ol style={listStyle}>
-                <li style={listItemStyle}>Go to <strong>Fabrics</strong> &gt; <strong>Fabrics</strong> tab</li>
-                <li style={listItemStyle}>Click <strong>Add Fabric</strong></li>
-                <li style={listItemStyle}>Enter fabric name and price per square inch</li>
-                <li style={listItemStyle}>Optionally assign category, brand, patterns, colors, materials</li>
-                <li style={listItemStyle}>Add an image URL for the fabric swatch</li>
-                <li style={listItemStyle}>Save the fabric</li>
-              </ol>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 12 }}>
+                <div style={stepBoxStyle}>
+                  <strong>Category Name</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Display name for the category. Examples: "Outdoor Fabrics", "Indoor Fabrics", "Premium Collection", "Budget-Friendly"
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Description</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Optional details about what fabrics belong in this category
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Image URL</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Representative image for the category (shown in category selection)
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Is Active</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Toggle to show/hide this category and its fabrics
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Sort Order</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Display order in the category list (lower = first)
+                  </p>
+                </div>
+              </div>
 
-              <h2 style={subheadingStyle}>Fabric Pricing</h2>
               <div style={tipBoxStyle}>
-                <strong style={{ color: "#108043" }}>Fabric Cost Calculation:</strong>
-                <p style={{ margin: "8px 0 0", color: "#108043" }}>
-                  Fabric cost = Surface Area (square inches) x Price per square inch<br />
-                  Example: A rectangle with 800 sq in surface area at $0.08/sq in = $64 fabric cost.
+                <strong style={{ color: "#108043" }}>Common Category Examples:</strong>
+                <div style={{ marginTop: 8, fontSize: "0.9rem", color: "#108043" }}>
+                  Outdoor, Indoor, Sunbrella Collection, Velvet & Plush, Performance Fabrics, Clearance
+                </div>
+              </div>
+
+              {/* Brands Tab */}
+              <h2 style={subheadingStyle}>Brands Tab</h2>
+              <p style={paragraphStyle}>
+                Brands allow you to track fabric manufacturers. Each fabric can be assigned to one brand.
+              </p>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 12 }}>
+                <div style={stepBoxStyle}>
+                  <strong>Brand Name</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Manufacturer name. Examples: "Sunbrella", "Outdura", "Tempotest", "Bella-Dura"
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Logo URL</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    URL to the brand's logo image
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Description</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Optional brand information (warranty, features, etc.)
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Sort Order</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Display order in the brand dropdown
+                  </p>
+                </div>
+              </div>
+
+              {/* Patterns Tab */}
+              <h2 style={subheadingStyle}>Patterns Tab</h2>
+              <p style={paragraphStyle}>
+                Patterns describe the visual design of fabrics. A fabric can have <strong>multiple patterns</strong> (e.g., a fabric that is both "Striped" and "Geometric").
+              </p>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 12 }}>
+                <div style={stepBoxStyle}>
+                  <strong>Pattern Name</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Design style. Examples: "Solid", "Striped", "Floral", "Geometric", "Plaid", "Textured", "Abstract"
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Sort Order</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Display order when selecting patterns
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ ...stepBoxStyle, backgroundColor: "#e6f9f0", border: "1px solid #9fdfbf" }}>
+                <strong style={{ color: "#008060" }}>Multi-Select:</strong>
+                <p style={{ margin: "8px 0 0", color: "#008060" }}>
+                  When adding/editing a fabric, you can select multiple patterns. This allows filtering by any of the assigned patterns.
                 </p>
               </div>
 
-              <h2 style={subheadingStyle}>Fabric Discounts</h2>
+              {/* Colors Tab */}
+              <h2 style={subheadingStyle}>Colors Tab</h2>
               <p style={paragraphStyle}>
-                Each fabric can have a discount percentage that's applied to the final total when that fabric is selected. Enable "Discount from Total" and set the percentage in the fabric settings.
+                Colors define the color options available. Each color has a hex code for displaying a visual swatch. A fabric can have <strong>multiple colors</strong>.
               </p>
 
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 12 }}>
+                <div style={stepBoxStyle}>
+                  <strong>Color Name</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Display name. Examples: "Navy Blue", "Crimson Red", "Beige", "Forest Green", "Charcoal"
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Hex Code</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Color code for the visual swatch (e.g., #FF0000 for red, #000080 for navy). Use the color picker or enter manually.
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Sort Order</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Display order when selecting colors
+                  </p>
+                </div>
+              </div>
+
+              {/* Materials Tab */}
+              <h2 style={subheadingStyle}>Materials Tab</h2>
+              <p style={paragraphStyle}>
+                Materials describe what the fabric is made of. A fabric can have <strong>multiple materials</strong> (e.g., "Cotton/Polyester Blend").
+              </p>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 12 }}>
+                <div style={stepBoxStyle}>
+                  <strong>Material Name</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Fabric type. Examples: "Cotton", "Polyester", "Velvet", "Acrylic", "Olefin", "Linen", "Microfiber"
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Sort Order</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Display order when selecting materials
+                  </p>
+                </div>
+              </div>
+
+              {/* Fabrics Tab - Main */}
+              <h2 style={subheadingStyle}>Fabrics Tab - Basic Information</h2>
+              <p style={paragraphStyle}>
+                The main Fabrics tab is where you create and manage individual fabric entries.
+              </p>
+
+              <div style={stepBoxStyle}>
+                <strong>Fabric Name</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  The display name customers see. Be descriptive: "Blue Velvet Premium" is better than "Fabric 1".
+                </p>
+              </div>
+
+              <div style={stepBoxStyle}>
+                <strong>Image URL</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  URL to a fabric swatch image. This helps customers visualize the fabric before selecting it.
+                </p>
+              </div>
+
+              <div style={stepBoxStyle}>
+                <strong>Price per Square Inch</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  The cost rate for this fabric. This is multiplied by the cushion's surface area (from the shape formula) to calculate fabric cost.
+                </p>
+              </div>
+
+              <div style={stepBoxStyle}>
+                <strong>Description</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Optional details about the fabric (care instructions, durability, recommended use cases).
+                </p>
+              </div>
+
+              {/* Assignments */}
+              <h2 style={subheadingStyle}>Fabrics Tab - Assignments</h2>
+              <p style={paragraphStyle}>
+                Assign fabrics to categories, brands, and multiple attributes for organization and filtering.
+              </p>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+                <div style={stepBoxStyle}>
+                  <strong>Category</strong> <span style={{ fontSize: "0.8rem", color: "#6d7175" }}>(Single select)</span>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Assign to ONE category. Choose "No Category" if uncategorized.
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Brand</strong> <span style={{ fontSize: "0.8rem", color: "#6d7175" }}>(Single select)</span>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Assign to ONE brand. Choose "No Brand" if unknown.
+                  </p>
+                </div>
+                <div style={{ ...stepBoxStyle, backgroundColor: "#e6f9f0", border: "1px solid #9fdfbf" }}>
+                  <strong>Patterns</strong> <span style={{ fontSize: "0.8rem", color: "#008060" }}>(Multi-select)</span>
+                  <p style={{ margin: "4px 0 0", color: "#008060", fontSize: "0.85rem" }}>
+                    Select ALL patterns that apply. Click to toggle each one.
+                  </p>
+                </div>
+                <div style={{ ...stepBoxStyle, backgroundColor: "#e6f9f0", border: "1px solid #9fdfbf" }}>
+                  <strong>Colors</strong> <span style={{ fontSize: "0.8rem", color: "#008060" }}>(Multi-select)</span>
+                  <p style={{ margin: "4px 0 0", color: "#008060", fontSize: "0.85rem" }}>
+                    Select ALL colors present in the fabric.
+                  </p>
+                </div>
+                <div style={{ ...stepBoxStyle, backgroundColor: "#e6f9f0", border: "1px solid #9fdfbf" }}>
+                  <strong>Materials</strong> <span style={{ fontSize: "0.8rem", color: "#008060" }}>(Multi-select)</span>
+                  <p style={{ margin: "4px 0 0", color: "#008060", fontSize: "0.85rem" }}>
+                    Select ALL materials the fabric is made of.
+                  </p>
+                </div>
+              </div>
+
+              {/* Price Tiers */}
               <h2 style={subheadingStyle}>Price Tiers</h2>
               <p style={paragraphStyle}>
-                Assign price tiers ($, $$, $$$) to fabrics to help customers quickly identify budget-friendly vs premium options. These are visual indicators only.
+                Price tiers are <strong>visual indicators</strong> to help customers quickly identify budget-friendly vs premium fabrics. They do NOT affect pricing calculations.
               </p>
 
-              <h2 style={subheadingStyle}>Bulk Import/Export</h2>
+              <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
+                <div style={{ padding: "8px 16px", backgroundColor: "#f0f0f0", borderRadius: 4, textAlign: "center" }}>
+                  <strong>None</strong>
+                  <div style={{ fontSize: "0.8rem", color: "#666" }}>No tier displayed</div>
+                </div>
+                <div style={{ padding: "8px 16px", backgroundColor: "#d4edda", borderRadius: 4, textAlign: "center" }}>
+                  <strong style={{ color: "#155724" }}>$ Low</strong>
+                  <div style={{ fontSize: "0.8rem", color: "#155724" }}>Budget-friendly</div>
+                </div>
+                <div style={{ padding: "8px 16px", backgroundColor: "#fff3cd", borderRadius: 4, textAlign: "center" }}>
+                  <strong style={{ color: "#856404" }}>$$ Medium</strong>
+                  <div style={{ fontSize: "0.8rem", color: "#856404" }}>Mid-range</div>
+                </div>
+                <div style={{ padding: "8px 16px", backgroundColor: "#ffd6a5", borderRadius: 4, textAlign: "center" }}>
+                  <strong style={{ color: "#8a4500" }}>$$$ High</strong>
+                  <div style={{ fontSize: "0.8rem", color: "#8a4500" }}>Premium</div>
+                </div>
+              </div>
+
+              {/* Discount from Total */}
+              <h2 style={subheadingStyle}>Enable Discount from Total</h2>
               <p style={paragraphStyle}>
-                Use the CSV export/import feature to manage large numbers of fabrics. Export first to see the required format, then modify and import back.
+                Just like Fill Types, fabrics can have a discount that applies to the <strong>entire order total</strong> when selected.
               </p>
+
+              <div style={stepBoxStyle}>
+                <strong>Enable Discount from Total</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Toggle ON to enable, then enter a discount percentage (0-100%). This discount is applied to the final total price.
+                </p>
+              </div>
+
+              <div style={{ ...stepBoxStyle, backgroundColor: "#e6f9f0", border: "1px solid #9fdfbf" }}>
+                <strong style={{ color: "#008060" }}>Fabric Discount Example:</strong>
+                <div style={{ marginTop: 12, fontSize: "0.9rem" }}>
+                  <div>Subtotal (fabric + fill + options): <strong>$200.00</strong></div>
+                  <div style={{ color: "#d32f2f" }}>Fabric Discount (10%): <strong>-$20.00</strong></div>
+                  <div style={{ backgroundColor: "#c8f7dc", padding: "4px 8px", marginTop: 4, borderRadius: 4 }}>
+                    Final Total: <strong style={{ color: "#008060" }}>$180.00</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Settings */}
+              <h2 style={subheadingStyle}>Fabric Status Settings</h2>
+
+              <div style={stepBoxStyle}>
+                <strong>Is Active</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Toggle OFF to hide a fabric from the calculator without deleting it. Inactive fabrics appear grayed out in the admin list.
+                </p>
+              </div>
+
+              <div style={stepBoxStyle}>
+                <strong>Is Default</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  The default fabric is pre-selected when the calculator loads. Default is set <strong>per category</strong> - each category can have its own default fabric.
+                </p>
+              </div>
+
+              <div style={stepBoxStyle}>
+                <strong>Sort Order</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Controls display order in the fabric list. Lower numbers appear first.
+                </p>
+              </div>
+
+              {/* Fabric Cost Calculation */}
+              <h2 style={subheadingStyle}>Fabric Cost Calculation Example</h2>
+
+              <div style={{ ...stepBoxStyle, backgroundColor: "#f6f6f7" }}>
+                <strong>Example Calculation:</strong>
+                <div style={{ marginTop: 12, fontSize: "0.9rem" }}>
+                  <div style={{ marginBottom: 8 }}>
+                    <strong>Cushion dimensions:</strong> 20" × 18" × 4" (rectangle)
+                  </div>
+                  <div style={{ marginBottom: 8 }}>
+                    <strong>Surface Area Formula:</strong> 2(L×W) + 2(L×T) + 2(W×T)
+                  </div>
+                  <div style={{ marginBottom: 8 }}>
+                    <strong>Surface Area:</strong> 2(20×18) + 2(20×4) + 2(18×4) = 720 + 160 + 144 = <span style={{ color: "#008060", fontWeight: 600 }}>1,024 sq inches</span>
+                  </div>
+                  <div style={{ marginBottom: 8 }}>
+                    <strong>Price per sq inch:</strong> $0.08
+                  </div>
+                  <div style={{ backgroundColor: "#e8f4fd", padding: 8, borderRadius: 4 }}>
+                    <strong>Fabric Cost:</strong> 1,024 × $0.08 = <span style={{ color: "#008060", fontWeight: 600 }}>$81.92</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* CSV Import/Export */}
+              <h2 style={subheadingStyle}>CSV Import/Export</h2>
+              <p style={paragraphStyle}>
+                For managing large numbers of fabrics, use the CSV export/import feature.
+              </p>
+
+              <div style={stepBoxStyle}>
+                <strong>Export CSV</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Click "Export CSV" to download all fabrics in CSV format. Use this as a template for importing.
+                </p>
+              </div>
+
+              <div style={stepBoxStyle}>
+                <strong>Import CSV</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Click "Import CSV" and select a CSV file. Tips:
+                </p>
+                <ul style={{ ...listStyle, marginTop: 8, marginBottom: 0 }}>
+                  <li style={listItemStyle}>Leave <code style={codeStyle}>id</code> empty to create new fabrics</li>
+                  <li style={listItemStyle}>Include <code style={codeStyle}>id</code> to update existing fabrics</li>
+                  <li style={listItemStyle}>Use pipe (|) to separate multiple patterns, colors, or materials</li>
+                  <li style={listItemStyle}>Category/brand/pattern/color names must match existing entries</li>
+                </ul>
+              </div>
+
+              {/* Bulk Actions */}
+              <h2 style={subheadingStyle}>Bulk Actions</h2>
+              <p style={paragraphStyle}>
+                Select multiple fabrics using checkboxes, then use bulk actions to modify them all at once.
+              </p>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 12 }}>
+                <div style={stepBoxStyle}>
+                  <strong>Bulk Delete</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Delete all selected fabrics at once. Use with caution.
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Set Price Tier</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Set the same price tier ($, $$, $$$) for all selected fabrics.
+                  </p>
+                </div>
+              </div>
+
+              {/* Filtering & Search */}
+              <h2 style={subheadingStyle}>Filtering &amp; Search</h2>
+              <p style={paragraphStyle}>
+                The Fabrics tab includes powerful filtering to find fabrics quickly:
+              </p>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+                <div style={stepBoxStyle}>
+                  <strong>Search</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Type to search by fabric name
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Category</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Filter by category (or "Uncategorized")
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Brand</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Filter by brand
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Pattern</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Filter by pattern
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Color</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Filter by color
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Status</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Show Active, Inactive, or All
+                  </p>
+                </div>
+              </div>
+
+              {/* Step by Step Setup */}
+              <h2 style={subheadingStyle}>Recommended Setup Order</h2>
+              <p style={paragraphStyle}>
+                For best results, set up fabrics in this order:
+              </p>
+
+              <ol style={listStyle}>
+                <li style={listItemStyle}><strong>Categories</strong> - Create categories like "Outdoor", "Indoor", "Premium"</li>
+                <li style={listItemStyle}><strong>Brands</strong> - Add fabric manufacturers (Sunbrella, etc.)</li>
+                <li style={listItemStyle}><strong>Patterns</strong> - Create pattern types (Solid, Striped, Floral, etc.)</li>
+                <li style={listItemStyle}><strong>Colors</strong> - Add colors with hex codes for swatches</li>
+                <li style={listItemStyle}><strong>Materials</strong> - Add material types (Cotton, Polyester, etc.)</li>
+                <li style={listItemStyle}><strong>Fabrics</strong> - Finally, add fabrics and assign them to categories, brands, patterns, colors, and materials</li>
+              </ol>
+
+              <div style={warningBoxStyle}>
+                <strong style={{ color: "#e65100" }}>Important:</strong>
+                <p style={{ margin: "8px 0 0", color: "#e65100" }}>
+                  If you delete a category, brand, pattern, color, or material that has fabrics assigned, those fabrics will be unlinked (not deleted). For categories, fabrics become "Uncategorized".
+                </p>
+              </div>
             </div>
           )}
 
