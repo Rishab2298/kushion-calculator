@@ -2328,74 +2328,829 @@ export default function Documentation() {
             <div>
               <h1 style={headingStyle}>Pricing Calculation</h1>
               <p style={paragraphStyle}>
-                Understanding how the final price is calculated helps you set competitive and profitable prices.
+                This comprehensive guide explains how the Cushion Calculator computes the final price for each order. Understanding the complete pricing flow helps you set competitive prices while maintaining healthy margins.
               </p>
 
-              <h2 style={subheadingStyle}>Price Formula</h2>
-              <div style={{ ...stepBoxStyle, backgroundColor: "#e8f4fd" }}>
-                <code style={{ fontSize: "0.95rem", color: "#0066cc" }}>
-                  Total = (Fabric Cost + Fill Cost + Add-ons) x (1 + Additional %) - Fabric Discount
-                </code>
+              {/* Pricing Architecture Overview */}
+              <h2 style={subheadingStyle}>Pricing Architecture Overview</h2>
+              <p style={paragraphStyle}>
+                The pricing system operates in three layers, each adding costs and adjustments to produce the final price:
+              </p>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "24px" }}>
+                <div style={{ ...stepBoxStyle, backgroundColor: "#e3f2fd", borderLeft: "4px solid #1976d2" }}>
+                  <strong style={{ color: "#1565c0" }}>Layer 1: Component Costs</strong>
+                  <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                    Core material costs (Fabric + Fill) plus all selected add-ons (Design, Piping, Ties, etc.)
+                  </p>
+                </div>
+                <div style={{ ...stepBoxStyle, backgroundColor: "#e8f5e9", borderLeft: "4px solid #388e3c" }}>
+                  <strong style={{ color: "#2e7d32" }}>Layer 2: Profile Adjustments</strong>
+                  <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                    Profile-specific markup (Additional %), multi-piece pricing, and weatherproof mode calculations
+                  </p>
+                </div>
+                <div style={{ ...stepBoxStyle, backgroundColor: "#fff3e0", borderLeft: "4px solid #f57c00" }}>
+                  <strong style={{ color: "#e65100" }}>Layer 3: Settings Adjustments</strong>
+                  <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                    Global markups: Conversion %, Shipping %, Labour %, and Margin (tier or formula-based)
+                  </p>
+                </div>
               </div>
 
-              <h2 style={subheadingStyle}>Component Breakdown</h2>
+              {/* Complete Pricing Formula */}
+              <h2 style={subheadingStyle}>The Complete Pricing Formula</h2>
+              <div style={{ ...stepBoxStyle, backgroundColor: "#f5f5f5", padding: "20px" }}>
+                <p style={{ margin: "0 0 16px", fontSize: "0.9rem", color: "#6d7175" }}>
+                  The full calculation follows this order of operations:
+                </p>
+                <div style={{ fontFamily: "monospace", fontSize: "0.85rem", lineHeight: "1.8", backgroundColor: "#fff", padding: "16px", borderRadius: "6px", border: "1px solid #ddd" }}>
+                  <div><code style={codeStyle}>1. Raw Materials</code> = Fabric Cost + Fill Cost + Fixed Add-ons (Ties)</div>
+                  <div><code style={codeStyle}>2. After Conversion</code> = Raw Materials × (1 + Conversion %)</div>
+                  <div><code style={codeStyle}>3. Design Cost</code> = Fabric Cost × Design %</div>
+                  <div><code style={codeStyle}>4. Base Subtotal</code> = After Conversion + Design Cost</div>
+                  <div><code style={codeStyle}>5. After % Add-ons</code> = Subtotal × (1 + Piping % + Button % + Anti-Skid % + Rod Pocket % + Drawstring %)</div>
+                  <div><code style={codeStyle}>6. After Profile Markup</code> = After % Add-ons × (1 + Additional %)</div>
+                  <div><code style={codeStyle}>7. After Discounts</code> = After Profile Markup × (1 - Fabric Discount %) × (1 - Fill Discount %)</div>
+                  <div><code style={codeStyle}>8. After Shipping</code> = After Discounts × (1 + Shipping %)</div>
+                  <div><code style={codeStyle}>9. After Labour</code> = After Shipping × (1 + Labour %)</div>
+                  <div><code style={codeStyle}>10. Final Price</code> = After Labour × (1 + Margin %)</div>
+                </div>
+              </div>
 
-              <div style={stepBoxStyle}>
-                <strong>1. Fabric Cost</strong>
-                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
-                  Surface Area (sq in) x Fabric Price ($/sq in)<br />
-                  <em>Example: 800 sq in x $0.08 = $64.00</em>
+              <div style={tipBoxStyle}>
+                <strong style={{ color: "#108043" }}>Note on Ties Calculation:</strong>
+                <p style={{ margin: "8px 0 0", color: "#108043" }}>
+                  The <code style={codeStyle}>tiesIncludeInShippingLabour</code> setting controls whether Ties cost is included in the Shipping and Labour calculation base. When disabled, Ties are added after those calculations.
                 </p>
               </div>
 
+              {/* ============================================ */}
+              {/* SECTION: Core Cost Calculations */}
+              {/* ============================================ */}
+              <h2 style={subheadingStyle}>Core Cost Calculations</h2>
+              <p style={paragraphStyle}>
+                The foundation of every price calculation starts with the two core material costs: fabric and fill.
+              </p>
+
+              {/* Fabric Cost */}
+              <h3 style={{ fontSize: "1rem", fontWeight: "600", marginTop: "20px", marginBottom: "12px" }}>Fabric Cost</h3>
               <div style={stepBoxStyle}>
-                <strong>2. Fill Cost</strong>
+                <strong>Standard Formula:</strong>
                 <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
-                  Volume (cu in) x Fill Price ($/cu in)<br />
-                  <em>Example: 1,440 cu in x $0.05 = $72.00</em>
+                  <code style={codeStyle}>Fabric Cost = Surface Area × Price per Square Inch</code>
+                </p>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Surface area is calculated based on the selected shape (rectangle, circle, etc.) and includes all sides that need fabric coverage.
                 </p>
               </div>
 
-              <div style={stepBoxStyle}>
-                <strong>3. Add-on Costs</strong>
+              <div style={{ ...stepBoxStyle, backgroundColor: "#e8f5e9", borderLeft: "4px solid #4caf50" }}>
+                <strong style={{ color: "#2e7d32" }}>Weatherproof Formula (When Enabled):</strong>
                 <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
-                  Sum of all selected add-on prices (piping, buttons, ties, etc.)<br />
-                  <em>Example: Piping ($15) + Ties ($8) = $23.00</em>
+                  <code style={codeStyle}>Fabric Cost = Surface Area Without Base × Price per Square Inch</code>
+                </p>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Weatherproof mode excludes the bottom surface from fabric calculations since outdoor cushions often don't need fabric on the bottom. This results in <strong>lower fabric costs</strong>.
                 </p>
               </div>
 
-              <div style={stepBoxStyle}>
-                <strong>4. Additional Percentage</strong>
-                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
-                  Profile markup applied to subtotal<br />
-                  <em>Example: $159.00 x 15% = $23.85 markup</em>
-                </p>
-              </div>
-
-              <div style={stepBoxStyle}>
-                <strong>5. Fabric Discount (if enabled)</strong>
-                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
-                  Percentage discount applied to final total<br />
-                  <em>Example: $182.85 - 10% = $164.57 final</em>
-                </p>
-              </div>
-
-              <h2 style={subheadingStyle}>Example Calculation</h2>
-              <div style={{ ...stepBoxStyle, backgroundColor: "#f0f9ff" }}>
-                <table style={{ width: "100%", fontSize: "0.9rem" }}>
+              {/* Fabric Example */}
+              <div style={{ backgroundColor: "#f8f9fa", padding: "16px", borderRadius: "8px", marginTop: "12px", marginBottom: "20px" }}>
+                <strong style={{ fontSize: "0.9rem" }}>Example: Rectangle 20" × 18" × 4" with fabric at $0.08/sq in</strong>
+                <table style={{ width: "100%", fontSize: "0.85rem", marginTop: "12px" }}>
                   <tbody>
-                    <tr><td style={{ padding: "4px 0", color: "#6d7175" }}>Rectangle: 20" x 18" x 4"</td><td></td></tr>
-                    <tr><td style={{ padding: "4px 0" }}>Surface Area:</td><td style={{ textAlign: "right" }}>800 sq in</td></tr>
-                    <tr><td style={{ padding: "4px 0" }}>Volume:</td><td style={{ textAlign: "right" }}>1,440 cu in</td></tr>
-                    <tr style={{ borderTop: "1px solid #ddd" }}><td style={{ padding: "8px 0 4px" }}>Fabric ($0.08/sq in):</td><td style={{ textAlign: "right" }}>$64.00</td></tr>
-                    <tr><td style={{ padding: "4px 0" }}>Fill ($0.05/cu in):</td><td style={{ textAlign: "right" }}>$72.00</td></tr>
-                    <tr><td style={{ padding: "4px 0" }}>Piping:</td><td style={{ textAlign: "right" }}>$15.00</td></tr>
-                    <tr><td style={{ padding: "4px 0" }}>Ties:</td><td style={{ textAlign: "right" }}>$8.00</td></tr>
-                    <tr style={{ borderTop: "1px solid #ddd" }}><td style={{ padding: "8px 0 4px" }}><strong>Subtotal:</strong></td><td style={{ textAlign: "right" }}><strong>$159.00</strong></td></tr>
-                    <tr><td style={{ padding: "4px 0" }}>Additional 15%:</td><td style={{ textAlign: "right" }}>$23.85</td></tr>
-                    <tr style={{ borderTop: "2px solid #008060" }}><td style={{ padding: "8px 0 4px" }}><strong style={{ color: "#008060" }}>Total:</strong></td><td style={{ textAlign: "right" }}><strong style={{ color: "#008060" }}>$182.85</strong></td></tr>
+                    <tr>
+                      <td style={{ padding: "4px 0", color: "#6d7175" }}>Top surface:</td>
+                      <td style={{ textAlign: "right" }}>20 × 18 = 360 sq in</td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "4px 0", color: "#6d7175" }}>Bottom surface:</td>
+                      <td style={{ textAlign: "right" }}>20 × 18 = 360 sq in</td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "4px 0", color: "#6d7175" }}>Side surfaces:</td>
+                      <td style={{ textAlign: "right" }}>2 × (20+18) × 4 = 304 sq in</td>
+                    </tr>
+                    <tr style={{ borderTop: "1px solid #ddd" }}>
+                      <td style={{ padding: "8px 0 4px" }}><strong>Standard Total:</strong></td>
+                      <td style={{ textAlign: "right" }}>1,024 sq in × $0.08 = <strong>$81.92</strong></td>
+                    </tr>
+                    <tr style={{ backgroundColor: "#e8f5e9" }}>
+                      <td style={{ padding: "8px 0 4px" }}><strong style={{ color: "#2e7d32" }}>Weatherproof Total:</strong></td>
+                      <td style={{ textAlign: "right" }}>664 sq in × $0.08 = <strong style={{ color: "#2e7d32" }}>$53.12</strong></td>
+                    </tr>
                   </tbody>
                 </table>
+              </div>
+
+              {/* Fill Cost */}
+              <h3 style={{ fontSize: "1rem", fontWeight: "600", marginTop: "20px", marginBottom: "12px" }}>Fill Cost</h3>
+              <div style={stepBoxStyle}>
+                <strong>Formula:</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  <code style={codeStyle}>Fill Cost = Volume × Price per Cubic Inch</code>
+                </p>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Volume is calculated based on the selected shape dimensions. Different fill types have different prices per cubic inch.
+                </p>
+              </div>
+
+              {/* Fill Example */}
+              <div style={{ backgroundColor: "#f8f9fa", padding: "16px", borderRadius: "8px", marginTop: "12px", marginBottom: "20px" }}>
+                <strong style={{ fontSize: "0.9rem" }}>Example: Rectangle 20" × 18" × 4" with fill at $0.05/cu in</strong>
+                <table style={{ width: "100%", fontSize: "0.85rem", marginTop: "12px" }}>
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: "4px 0", color: "#6d7175" }}>Volume:</td>
+                      <td style={{ textAlign: "right" }}>20 × 18 × 4 = 1,440 cu in</td>
+                    </tr>
+                    <tr style={{ borderTop: "1px solid #ddd" }}>
+                      <td style={{ padding: "8px 0 4px" }}><strong>Fill Cost:</strong></td>
+                      <td style={{ textAlign: "right" }}>1,440 cu in × $0.05 = <strong>$72.00</strong></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* ============================================ */}
+              {/* SECTION: Percentage-Based Add-ons */}
+              {/* ============================================ */}
+              <h2 style={subheadingStyle}>Percentage-Based Add-ons</h2>
+              <p style={paragraphStyle}>
+                Six add-on types use percentage-based pricing. However, they differ in <strong>what they calculate the percentage from</strong>:
+              </p>
+
+              {/* Design - Special Case */}
+              <div style={{ ...stepBoxStyle, backgroundColor: "#fff3e0", borderLeft: "4px solid #ff9800" }}>
+                <strong style={{ color: "#e65100" }}>Design (% of Fabric Cost) - Unique Calculation</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  <code style={codeStyle}>Design Cost = Fabric Cost × Design Percentage</code>
+                </p>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Design is the <strong>only</strong> add-on that calculates from fabric cost rather than subtotal. This makes sense because design complexity scales with fabric usage.
+                </p>
+                <div style={{ marginTop: "12px", padding: "10px", backgroundColor: "#fff", borderRadius: "4px" }}>
+                  <strong style={{ fontSize: "0.85rem" }}>Example:</strong> Fabric Cost $81.92 × Design 15% = <strong>$12.29</strong> design cost
+                </div>
+              </div>
+
+              {/* Other Percentage Add-ons */}
+              <div style={{ ...stepBoxStyle, marginTop: "16px" }}>
+                <strong>All Other Percentage Add-ons (% of Subtotal)</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  These five add-ons calculate their cost as a percentage of the current subtotal:
+                </p>
+                <ul style={{ margin: "12px 0 0", paddingLeft: "20px", color: "#6d7175", fontSize: "0.9rem" }}>
+                  <li><strong>Piping:</strong> <code style={codeStyle}>Subtotal × Piping %</code></li>
+                  <li><strong>Button Style:</strong> <code style={codeStyle}>Subtotal × Button %</code></li>
+                  <li><strong>Anti-Skid Bottom:</strong> <code style={codeStyle}>Subtotal × Anti-Skid %</code></li>
+                  <li><strong>Bottom Rod Pocket:</strong> <code style={codeStyle}>Subtotal × Rod Pocket %</code></li>
+                  <li><strong>Drawstring:</strong> <code style={codeStyle}>Subtotal × Drawstring %</code></li>
+                </ul>
+              </div>
+
+              {/* Percentage Add-ons Example */}
+              <div style={{ backgroundColor: "#f8f9fa", padding: "16px", borderRadius: "8px", marginTop: "12px", marginBottom: "20px" }}>
+                <strong style={{ fontSize: "0.9rem" }}>Example: Subtotal of $160.00 with multiple add-ons</strong>
+                <table style={{ width: "100%", fontSize: "0.85rem", marginTop: "12px" }}>
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: "4px 0", color: "#6d7175" }}>Piping (8%):</td>
+                      <td style={{ textAlign: "right" }}>$160.00 × 8% = $12.80</td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "4px 0", color: "#6d7175" }}>Button Style (5%):</td>
+                      <td style={{ textAlign: "right" }}>$160.00 × 5% = $8.00</td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "4px 0", color: "#6d7175" }}>Anti-Skid (3%):</td>
+                      <td style={{ textAlign: "right" }}>$160.00 × 3% = $4.80</td>
+                    </tr>
+                    <tr style={{ borderTop: "1px solid #ddd" }}>
+                      <td style={{ padding: "8px 0 4px" }}><strong>Total Add-on Cost:</strong></td>
+                      <td style={{ textAlign: "right" }}><strong>$25.60</strong></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* ============================================ */}
+              {/* SECTION: Fixed Dollar Add-ons */}
+              {/* ============================================ */}
+              <h2 style={subheadingStyle}>Fixed Dollar Add-ons</h2>
+              <p style={paragraphStyle}>
+                Two add-on types use fixed dollar amounts instead of percentages:
+              </p>
+
+              <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "20px" }}>
+                <div style={{ ...stepBoxStyle, flex: "1", minWidth: "250px" }}>
+                  <strong>Ties</strong>
+                  <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                    Fixed dollar amount per tie option selected.
+                  </p>
+                  <p style={{ margin: "8px 0 0", fontSize: "0.85rem" }}>
+                    <em>Example: Corner ties = $12.00</em>
+                  </p>
+                </div>
+                <div style={{ ...stepBoxStyle, flex: "1", minWidth: "250px" }}>
+                  <strong>Fabric Ties</strong>
+                  <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                    Fixed dollar amount for matching fabric ties.
+                  </p>
+                  <p style={{ margin: "8px 0 0", fontSize: "0.85rem" }}>
+                    <em>Example: Fabric ties = $18.00</em>
+                  </p>
+                </div>
+              </div>
+
+              <div style={warningBoxStyle}>
+                <strong style={{ color: "#e65100" }}>Important: Ties Setting</strong>
+                <p style={{ margin: "8px 0 0", color: "#e65100" }}>
+                  The <code style={codeStyle}>tiesIncludeInShippingLabour</code> setting in your Settings page controls whether Ties costs are included in the base for Shipping and Labour percentage calculations. When <strong>enabled</strong>, Ties are included in the calculation base. When <strong>disabled</strong>, Ties are added after Shipping and Labour calculations.
+                </p>
+              </div>
+
+              {/* ============================================ */}
+              {/* SECTION: Profile-Level Markup */}
+              {/* ============================================ */}
+              <h2 style={subheadingStyle}>Profile-Level Markup (Additional Percentage)</h2>
+              <p style={paragraphStyle}>
+                Each profile can have an <strong>Additional Percentage</strong> that acts as a profile-specific markup. This is applied after all component costs are calculated.
+              </p>
+
+              <div style={stepBoxStyle}>
+                <strong>Formula:</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  <code style={codeStyle}>After Profile Markup = Subtotal × (1 + Additional %)</code>
+                </p>
+              </div>
+
+              <h3 style={{ fontSize: "1rem", fontWeight: "600", marginTop: "20px", marginBottom: "12px" }}>Use Cases for Additional Percentage</h3>
+              <p style={paragraphStyle}>
+                As defined in the Profiles section, here are the key use cases for Additional Percentage:
+              </p>
+
+              <div style={{ ...stepBoxStyle, backgroundColor: "#e8f5e9", borderLeft: "4px solid #4caf50" }}>
+                <strong style={{ color: "#2e7d32" }}>1. Premium Product Lines</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Higher markup for luxury or premium products that command better margins.
+                </p>
+                <div style={{ marginTop: "12px", padding: "10px", backgroundColor: "#fff", borderRadius: "4px" }}>
+                  <strong style={{ fontSize: "0.85rem" }}>Example:</strong> "Premium Collection" profile with 25% Additional Percentage<br />
+                  Subtotal $200.00 × 1.25 = <strong>$250.00</strong>
+                </div>
+              </div>
+
+              <div style={{ ...stepBoxStyle, backgroundColor: "#e3f2fd", borderLeft: "4px solid #1976d2", marginTop: "12px" }}>
+                <strong style={{ color: "#1565c0" }}>2. Seasonal Pricing</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Temporary pricing adjustments for peak seasons or promotional periods.
+                </p>
+                <div style={{ marginTop: "12px", padding: "10px", backgroundColor: "#fff", borderRadius: "4px" }}>
+                  <strong style={{ fontSize: "0.85rem" }}>Example:</strong> "Summer Sale" profile with 0% Additional Percentage (no markup)<br />
+                  "Holiday Premium" profile with 15% Additional Percentage
+                </div>
+              </div>
+
+              <div style={{ ...stepBoxStyle, backgroundColor: "#fff3e0", borderLeft: "4px solid #ff9800", marginTop: "12px" }}>
+                <strong style={{ color: "#e65100" }}>3. Category-Specific Margins</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Different markup levels for different product categories based on market conditions.
+                </p>
+                <div style={{ marginTop: "12px", padding: "10px", backgroundColor: "#fff", borderRadius: "4px" }}>
+                  <strong style={{ fontSize: "0.85rem" }}>Example:</strong><br />
+                  "Indoor Cushions" profile: 10% Additional Percentage<br />
+                  "Outdoor Cushions" profile: 20% Additional Percentage (higher due to specialty materials)
+                </div>
+              </div>
+
+              <div style={{ ...stepBoxStyle, backgroundColor: "#fce4ec", borderLeft: "4px solid #e91e63", marginTop: "12px" }}>
+                <strong style={{ color: "#c2185b" }}>4. Complexity Premium</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Higher margins for complex shapes or special construction requirements.
+                </p>
+                <div style={{ marginTop: "12px", padding: "10px", backgroundColor: "#fff", borderRadius: "4px" }}>
+                  <strong style={{ fontSize: "0.85rem" }}>Example:</strong> "Custom Shapes" profile with 30% Additional Percentage<br />
+                  Compensates for extra labour in non-standard cushion manufacturing
+                </div>
+              </div>
+
+              {/* ============================================ */}
+              {/* SECTION: Discounts */}
+              {/* ============================================ */}
+              <h2 style={subheadingStyle}>Discounts</h2>
+              <p style={paragraphStyle}>
+                Two types of discounts can be applied to reduce the final price:
+              </p>
+
+              <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "20px" }}>
+                <div style={{ ...stepBoxStyle, flex: "1", minWidth: "280px", backgroundColor: "#e8f5e9", borderLeft: "4px solid #4caf50" }}>
+                  <strong style={{ color: "#2e7d32" }}>Fabric Discount</strong>
+                  <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                    Set on individual Fabric options. When a fabric has a discount enabled, the percentage is applied to the total.
+                  </p>
+                  <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                    <code style={codeStyle}>After Discount = Total × (1 - Fabric Discount %)</code>
+                  </p>
+                  <div style={{ marginTop: "12px", padding: "10px", backgroundColor: "#fff", borderRadius: "4px" }}>
+                    <strong style={{ fontSize: "0.85rem" }}>Example:</strong> Fabric with 15% discount enabled<br />
+                    $200.00 × (1 - 0.15) = <strong>$170.00</strong>
+                  </div>
+                </div>
+
+                <div style={{ ...stepBoxStyle, flex: "1", minWidth: "280px", backgroundColor: "#e3f2fd", borderLeft: "4px solid #1976d2" }}>
+                  <strong style={{ color: "#1565c0" }}>Fill Type Discount</strong>
+                  <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                    Set on individual Fill Type options. Works identically to fabric discount.
+                  </p>
+                  <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                    <code style={codeStyle}>After Discount = Total × (1 - Fill Discount %)</code>
+                  </p>
+                  <div style={{ marginTop: "12px", padding: "10px", backgroundColor: "#fff", borderRadius: "4px" }}>
+                    <strong style={{ fontSize: "0.85rem" }}>Example:</strong> Fill type with 10% discount enabled<br />
+                    $200.00 × (1 - 0.10) = <strong>$180.00</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div style={tipBoxStyle}>
+                <strong style={{ color: "#108043" }}>Stacking Discounts:</strong>
+                <p style={{ margin: "8px 0 0", color: "#108043" }}>
+                  Both discounts can be active simultaneously. They are applied multiplicatively:<br />
+                  <code style={codeStyle}>$200 × (1 - 0.15) × (1 - 0.10) = $200 × 0.85 × 0.90 = $153.00</code>
+                </p>
+              </div>
+
+              {/* ============================================ */}
+              {/* SECTION: Multi-Piece Pricing */}
+              {/* ============================================ */}
+              <h2 style={subheadingStyle}>Multi-Piece Pricing</h2>
+              <p style={paragraphStyle}>
+                When a profile has <strong>Multi-Piece Mode</strong> enabled, customers can configure multiple cushion pieces in a single order. This is ideal for sofa sets, sectionals, or coordinated collections.
+              </p>
+
+              <div style={stepBoxStyle}>
+                <strong>How Multi-Piece Pricing Works:</strong>
+                <ol style={{ margin: "12px 0 0", paddingLeft: "20px", color: "#6d7175", fontSize: "0.9rem" }}>
+                  <li style={{ marginBottom: "8px" }}>Each piece is calculated independently using its own dimensions and options</li>
+                  <li style={{ marginBottom: "8px" }}>Individual piece prices are summed to create the combined subtotal</li>
+                  <li style={{ marginBottom: "8px" }}>Profile markup (Additional %) is applied <strong>once</strong> to the combined total</li>
+                  <li>Discounts and Settings-level markups apply to the final combined total</li>
+                </ol>
+              </div>
+
+              {/* Multi-Piece Example */}
+              <h3 style={{ fontSize: "1rem", fontWeight: "600", marginTop: "20px", marginBottom: "12px" }}>Multi-Piece Example: 2-Piece Sofa Set</h3>
+              <div style={{ backgroundColor: "#f0f9ff", padding: "20px", borderRadius: "8px", marginBottom: "20px" }}>
+                <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", marginBottom: "16px" }}>
+                  <div style={{ flex: "1", minWidth: "200px", padding: "12px", backgroundColor: "#fff", borderRadius: "6px", border: "1px solid #e0e0e0" }}>
+                    <strong style={{ color: "#1565c0" }}>Piece 1: Seat Cushion</strong>
+                    <table style={{ width: "100%", fontSize: "0.8rem", marginTop: "8px" }}>
+                      <tbody>
+                        <tr><td style={{ color: "#6d7175" }}>Dimensions:</td><td style={{ textAlign: "right" }}>22" × 20" × 4"</td></tr>
+                        <tr><td style={{ color: "#6d7175" }}>Fabric:</td><td style={{ textAlign: "right" }}>$70.40</td></tr>
+                        <tr><td style={{ color: "#6d7175" }}>Fill:</td><td style={{ textAlign: "right" }}>$88.00</td></tr>
+                        <tr><td style={{ color: "#6d7175" }}>Piping (8%):</td><td style={{ textAlign: "right" }}>$12.67</td></tr>
+                        <tr style={{ borderTop: "1px solid #ddd" }}><td><strong>Piece 1 Total:</strong></td><td style={{ textAlign: "right" }}><strong>$171.07</strong></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={{ flex: "1", minWidth: "200px", padding: "12px", backgroundColor: "#fff", borderRadius: "6px", border: "1px solid #e0e0e0" }}>
+                    <strong style={{ color: "#1565c0" }}>Piece 2: Back Cushion</strong>
+                    <table style={{ width: "100%", fontSize: "0.8rem", marginTop: "8px" }}>
+                      <tbody>
+                        <tr><td style={{ color: "#6d7175" }}>Dimensions:</td><td style={{ textAlign: "right" }}>22" × 18" × 5"</td></tr>
+                        <tr><td style={{ color: "#6d7175" }}>Fabric:</td><td style={{ textAlign: "right" }}>$79.20</td></tr>
+                        <tr><td style={{ color: "#6d7175" }}>Fill:</td><td style={{ textAlign: "right" }}>$99.00</td></tr>
+                        <tr><td style={{ color: "#6d7175" }}>Piping (8%):</td><td style={{ textAlign: "right" }}>$14.26</td></tr>
+                        <tr style={{ borderTop: "1px solid #ddd" }}><td><strong>Piece 2 Total:</strong></td><td style={{ textAlign: "right" }}><strong>$192.46</strong></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <table style={{ width: "100%", fontSize: "0.9rem" }}>
+                  <tbody>
+                    <tr style={{ borderTop: "2px solid #1976d2" }}>
+                      <td style={{ padding: "8px 0" }}><strong>Combined Subtotal:</strong></td>
+                      <td style={{ textAlign: "right" }}>$171.07 + $192.46 = <strong>$363.53</strong></td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "4px 0", color: "#6d7175" }}>Profile Markup (15%):</td>
+                      <td style={{ textAlign: "right" }}>$363.53 × 1.15 = $418.06</td>
+                    </tr>
+                    <tr style={{ borderTop: "2px solid #008060" }}>
+                      <td style={{ padding: "8px 0" }}><strong style={{ color: "#008060" }}>Final Set Price:</strong></td>
+                      <td style={{ textAlign: "right" }}><strong style={{ color: "#008060" }}>$418.06</strong></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* ============================================ */}
+              {/* SECTION: Weatherproof Mode */}
+              {/* ============================================ */}
+              <h2 style={subheadingStyle}>Weatherproof Mode Impact</h2>
+              <p style={paragraphStyle}>
+                When a profile has <strong>Weatherproof Mode</strong> enabled, the surface area calculation excludes the bottom surface. This reflects the reality that outdoor cushions often don't need fabric on the bottom (which sits on furniture).
+              </p>
+
+              <div style={stepBoxStyle}>
+                <strong>Impact on Pricing:</strong>
+                <ul style={{ margin: "12px 0 0", paddingLeft: "20px", color: "#6d7175", fontSize: "0.9rem" }}>
+                  <li style={{ marginBottom: "8px" }}><strong>Reduced Fabric Cost:</strong> Less surface area = less fabric needed</li>
+                  <li style={{ marginBottom: "8px" }}><strong>Lower Design Cost:</strong> Since design is % of fabric cost, this also decreases</li>
+                  <li><strong>Fill Cost Unchanged:</strong> Volume calculation remains the same</li>
+                </ul>
+              </div>
+
+              {/* Weatherproof Comparison */}
+              <h3 style={{ fontSize: "1rem", fontWeight: "600", marginTop: "20px", marginBottom: "12px" }}>Comparison: Standard vs Weatherproof</h3>
+              <div style={{ overflowX: "auto", marginBottom: "24px" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
+                  <thead>
+                    <tr style={{ backgroundColor: "#f5f5f5" }}>
+                      <th style={{ padding: "10px", textAlign: "left", borderBottom: "2px solid #ddd" }}>Component</th>
+                      <th style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ddd" }}>Standard Mode</th>
+                      <th style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ddd", backgroundColor: "#e8f5e9" }}>Weatherproof Mode</th>
+                      <th style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ddd" }}>Savings</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", color: "#6d7175" }}>Surface Area (20" × 18" × 4")</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", textAlign: "right" }}>1,024 sq in</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", textAlign: "right", backgroundColor: "#e8f5e9" }}>664 sq in</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", textAlign: "right", color: "#2e7d32" }}>35% less</td>
+                    </tr>
+                    <tr style={{ backgroundColor: "#fafafa" }}>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee" }}>Fabric Cost ($0.08/sq in)</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", textAlign: "right" }}>$81.92</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", textAlign: "right", backgroundColor: "#e8f5e9" }}>$53.12</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", textAlign: "right", color: "#2e7d32" }}>$28.80</td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee" }}>Design Cost (15%)</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", textAlign: "right" }}>$12.29</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", textAlign: "right", backgroundColor: "#e8f5e9" }}>$7.97</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", textAlign: "right", color: "#2e7d32" }}>$4.32</td>
+                    </tr>
+                    <tr style={{ backgroundColor: "#fafafa" }}>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee" }}>Fill Cost ($0.05/cu in)</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", textAlign: "right" }}>$72.00</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", textAlign: "right", backgroundColor: "#e8f5e9" }}>$72.00</td>
+                      <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", textAlign: "right", color: "#6d7175" }}>-</td>
+                    </tr>
+                    <tr style={{ fontWeight: "bold" }}>
+                      <td style={{ padding: "10px", borderTop: "2px solid #ddd" }}>Subtotal</td>
+                      <td style={{ padding: "10px", borderTop: "2px solid #ddd", textAlign: "right" }}>$166.21</td>
+                      <td style={{ padding: "10px", borderTop: "2px solid #ddd", textAlign: "right", backgroundColor: "#e8f5e9" }}>$133.09</td>
+                      <td style={{ padding: "10px", borderTop: "2px solid #ddd", textAlign: "right", color: "#2e7d32" }}>$33.12 (20%)</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* ============================================ */}
+              {/* SECTION: Settings-Level Calculations */}
+              {/* ============================================ */}
+              <h2 style={subheadingStyle}>Settings-Level Calculations</h2>
+              <p style={paragraphStyle}>
+                After component costs and profile adjustments, the global Settings markups are applied. These are configured in the <strong>Settings</strong> page and apply to all calculations across your store.
+              </p>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
+                <div style={stepBoxStyle}>
+                  <strong>1. Conversion Markup</strong>
+                  <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                    Applied to raw materials (Fabric + Fill + Ties) to account for manufacturing overhead.
+                  </p>
+                  <p style={{ margin: "8px 0 0", fontSize: "0.85rem" }}>
+                    <code style={codeStyle}>After Conversion = Raw Materials × (1 + Conversion %)</code>
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>2. Shipping Percentage</strong>
+                  <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                    Adds estimated shipping cost as a percentage of the subtotal.
+                  </p>
+                  <p style={{ margin: "8px 0 0", fontSize: "0.85rem" }}>
+                    <code style={codeStyle}>After Shipping = Subtotal × (1 + Shipping %)</code>
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>3. Labour Percentage</strong>
+                  <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                    Adds labour costs as a percentage of the subtotal.
+                  </p>
+                  <p style={{ margin: "8px 0 0", fontSize: "0.85rem" }}>
+                    <code style={codeStyle}>After Labour = Subtotal × (1 + Labour %)</code>
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>4. Margin</strong>
+                  <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                    Final markup using either tier-based or formula-based calculation. See the Settings section for detailed margin calculation methods.
+                  </p>
+                  <p style={{ margin: "8px 0 0", fontSize: "0.85rem" }}>
+                    <code style={codeStyle}>Final Price = Subtotal × (1 + Margin %)</code>
+                  </p>
+                </div>
+              </div>
+
+              <div style={tipBoxStyle}>
+                <strong style={{ color: "#108043" }}>For Complete Settings Details:</strong>
+                <p style={{ margin: "8px 0 0", color: "#108043" }}>
+                  Refer to the <strong>Settings</strong> section of this documentation for comprehensive coverage of Conversion, Shipping, Labour, and Margin calculation methods.
+                </p>
+              </div>
+
+              {/* ============================================ */}
+              {/* SECTION: Complete Calculation Examples */}
+              {/* ============================================ */}
+              <h2 style={subheadingStyle}>Complete Calculation Examples</h2>
+              <p style={paragraphStyle}>
+                These step-by-step examples show how all pricing components work together:
+              </p>
+
+              {/* Example 1: Simple Single Cushion */}
+              <h3 style={{ fontSize: "1rem", fontWeight: "600", marginTop: "24px", marginBottom: "12px", color: "#1565c0" }}>Example 1: Simple Single Cushion</h3>
+              <div style={{ backgroundColor: "#e3f2fd", padding: "20px", borderRadius: "8px", marginBottom: "24px" }}>
+                <div style={{ marginBottom: "16px", padding: "12px", backgroundColor: "#fff", borderRadius: "6px" }}>
+                  <strong>Configuration:</strong>
+                  <ul style={{ margin: "8px 0 0", paddingLeft: "20px", color: "#6d7175", fontSize: "0.9rem" }}>
+                    <li>Rectangle: 20" × 18" × 4"</li>
+                    <li>Fabric: $0.08/sq in (no discount)</li>
+                    <li>Fill: $0.05/cu in (no discount)</li>
+                    <li>Piping: 8% of subtotal</li>
+                    <li>Ties: $12.00 fixed</li>
+                    <li>Profile Additional %: 10%</li>
+                    <li>Settings: Conversion 15%, Shipping 5%, Labour 8%, Margin 20%</li>
+                  </ul>
+                </div>
+                <table style={{ width: "100%", fontSize: "0.9rem", backgroundColor: "#fff", borderRadius: "6px" }}>
+                  <tbody>
+                    <tr><td colSpan="2" style={{ padding: "10px", fontWeight: "bold", backgroundColor: "#f5f5f5", borderRadius: "6px 6px 0 0" }}>Step 1: Core Costs</td></tr>
+                    <tr><td style={{ padding: "6px 10px", color: "#6d7175" }}>Surface Area:</td><td style={{ textAlign: "right" }}>1,024 sq in</td></tr>
+                    <tr><td style={{ padding: "6px 10px", color: "#6d7175" }}>Fabric Cost:</td><td style={{ textAlign: "right" }}>1,024 × $0.08 = $81.92</td></tr>
+                    <tr><td style={{ padding: "6px 10px", color: "#6d7175" }}>Volume:</td><td style={{ textAlign: "right" }}>1,440 cu in</td></tr>
+                    <tr><td style={{ padding: "6px 10px", color: "#6d7175" }}>Fill Cost:</td><td style={{ textAlign: "right" }}>1,440 × $0.05 = $72.00</td></tr>
+                    <tr><td style={{ padding: "6px 10px", color: "#6d7175" }}>Ties:</td><td style={{ textAlign: "right" }}>$12.00</td></tr>
+                    <tr style={{ borderTop: "1px solid #ddd" }}><td style={{ padding: "8px 10px" }}><strong>Raw Materials:</strong></td><td style={{ textAlign: "right" }}><strong>$165.92</strong></td></tr>
+
+                    <tr><td colSpan="2" style={{ padding: "10px", fontWeight: "bold", backgroundColor: "#f5f5f5" }}>Step 2: Conversion Markup</td></tr>
+                    <tr><td style={{ padding: "6px 10px", color: "#6d7175" }}>After Conversion (15%):</td><td style={{ textAlign: "right" }}>$165.92 × 1.15 = $190.81</td></tr>
+
+                    <tr><td colSpan="2" style={{ padding: "10px", fontWeight: "bold", backgroundColor: "#f5f5f5" }}>Step 3: Percentage Add-ons</td></tr>
+                    <tr><td style={{ padding: "6px 10px", color: "#6d7175" }}>Piping (8%):</td><td style={{ textAlign: "right" }}>$190.81 × 0.08 = $15.26</td></tr>
+                    <tr style={{ borderTop: "1px solid #ddd" }}><td style={{ padding: "8px 10px" }}><strong>Subtotal:</strong></td><td style={{ textAlign: "right" }}><strong>$206.07</strong></td></tr>
+
+                    <tr><td colSpan="2" style={{ padding: "10px", fontWeight: "bold", backgroundColor: "#f5f5f5" }}>Step 4: Profile Markup</td></tr>
+                    <tr><td style={{ padding: "6px 10px", color: "#6d7175" }}>Additional (10%):</td><td style={{ textAlign: "right" }}>$206.07 × 1.10 = $226.68</td></tr>
+
+                    <tr><td colSpan="2" style={{ padding: "10px", fontWeight: "bold", backgroundColor: "#f5f5f5" }}>Step 5: Settings Markups</td></tr>
+                    <tr><td style={{ padding: "6px 10px", color: "#6d7175" }}>Shipping (5%):</td><td style={{ textAlign: "right" }}>$226.68 × 1.05 = $238.01</td></tr>
+                    <tr><td style={{ padding: "6px 10px", color: "#6d7175" }}>Labour (8%):</td><td style={{ textAlign: "right" }}>$238.01 × 1.08 = $257.05</td></tr>
+                    <tr><td style={{ padding: "6px 10px", color: "#6d7175" }}>Margin (20%):</td><td style={{ textAlign: "right" }}>$257.05 × 1.20 = $308.46</td></tr>
+
+                    <tr style={{ borderTop: "3px solid #008060", backgroundColor: "#e8f5e9" }}><td style={{ padding: "12px 10px" }}><strong style={{ color: "#008060", fontSize: "1.1rem" }}>Final Price:</strong></td><td style={{ textAlign: "right" }}><strong style={{ color: "#008060", fontSize: "1.1rem" }}>$308.46</strong></td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Example 2: Premium Outdoor Cushion */}
+              <h3 style={{ fontSize: "1rem", fontWeight: "600", marginTop: "24px", marginBottom: "12px", color: "#2e7d32" }}>Example 2: Premium Outdoor Cushion with Discounts</h3>
+              <div style={{ backgroundColor: "#e8f5e9", padding: "20px", borderRadius: "8px", marginBottom: "24px" }}>
+                <div style={{ marginBottom: "16px", padding: "12px", backgroundColor: "#fff", borderRadius: "6px" }}>
+                  <strong>Configuration:</strong>
+                  <ul style={{ margin: "8px 0 0", paddingLeft: "20px", color: "#6d7175", fontSize: "0.9rem" }}>
+                    <li>Rectangle: 24" × 22" × 5" (<strong>Weatherproof Mode</strong>)</li>
+                    <li>Premium Sunbrella Fabric: $0.12/sq in with <strong>10% discount</strong></li>
+                    <li>High-Density Fill: $0.07/cu in with <strong>5% discount</strong></li>
+                    <li>Design: 20% of fabric cost</li>
+                    <li>Piping: 10% of subtotal</li>
+                    <li>Anti-Skid: 5% of subtotal</li>
+                    <li>Profile Additional %: 25% (Premium Collection)</li>
+                    <li>Settings: Conversion 15%, Shipping 5%, Labour 8%, Margin 15%</li>
+                  </ul>
+                </div>
+                <table style={{ width: "100%", fontSize: "0.9rem", backgroundColor: "#fff", borderRadius: "6px" }}>
+                  <tbody>
+                    <tr><td colSpan="2" style={{ padding: "10px", fontWeight: "bold", backgroundColor: "#f5f5f5", borderRadius: "6px 6px 0 0" }}>Step 1: Core Costs (Weatherproof)</td></tr>
+                    <tr><td style={{ padding: "6px 10px", color: "#6d7175" }}>Standard Surface Area:</td><td style={{ textAlign: "right" }}>1,976 sq in</td></tr>
+                    <tr><td style={{ padding: "6px 10px", color: "#2e7d32" }}>Weatherproof Surface Area:</td><td style={{ textAlign: "right" }}>1,976 - 528 = 1,448 sq in</td></tr>
+                    <tr><td style={{ padding: "6px 10px", color: "#6d7175" }}>Fabric Cost:</td><td style={{ textAlign: "right" }}>1,448 × $0.12 = $173.76</td></tr>
+                    <tr><td style={{ padding: "6px 10px", color: "#6d7175" }}>Volume:</td><td style={{ textAlign: "right" }}>2,640 cu in</td></tr>
+                    <tr><td style={{ padding: "6px 10px", color: "#6d7175" }}>Fill Cost:</td><td style={{ textAlign: "right" }}>2,640 × $0.07 = $184.80</td></tr>
+                    <tr style={{ borderTop: "1px solid #ddd" }}><td style={{ padding: "8px 10px" }}><strong>Raw Materials:</strong></td><td style={{ textAlign: "right" }}><strong>$358.56</strong></td></tr>
+
+                    <tr><td colSpan="2" style={{ padding: "10px", fontWeight: "bold", backgroundColor: "#f5f5f5" }}>Step 2: Conversion + Design</td></tr>
+                    <tr><td style={{ padding: "6px 10px", color: "#6d7175" }}>After Conversion (15%):</td><td style={{ textAlign: "right" }}>$358.56 × 1.15 = $412.34</td></tr>
+                    <tr><td style={{ padding: "6px 10px", color: "#6d7175" }}>Design (20% of fabric):</td><td style={{ textAlign: "right" }}>$173.76 × 0.20 = $34.75</td></tr>
+                    <tr style={{ borderTop: "1px solid #ddd" }}><td style={{ padding: "8px 10px" }}><strong>After Design:</strong></td><td style={{ textAlign: "right" }}><strong>$447.09</strong></td></tr>
+
+                    <tr><td colSpan="2" style={{ padding: "10px", fontWeight: "bold", backgroundColor: "#f5f5f5" }}>Step 3: Percentage Add-ons</td></tr>
+                    <tr><td style={{ padding: "6px 10px", color: "#6d7175" }}>Piping (10%):</td><td style={{ textAlign: "right" }}>$447.09 × 0.10 = $44.71</td></tr>
+                    <tr><td style={{ padding: "6px 10px", color: "#6d7175" }}>Anti-Skid (5%):</td><td style={{ textAlign: "right" }}>$447.09 × 0.05 = $22.35</td></tr>
+                    <tr style={{ borderTop: "1px solid #ddd" }}><td style={{ padding: "8px 10px" }}><strong>Subtotal:</strong></td><td style={{ textAlign: "right" }}><strong>$514.15</strong></td></tr>
+
+                    <tr><td colSpan="2" style={{ padding: "10px", fontWeight: "bold", backgroundColor: "#f5f5f5" }}>Step 4: Profile Markup</td></tr>
+                    <tr><td style={{ padding: "6px 10px", color: "#6d7175" }}>Additional (25%):</td><td style={{ textAlign: "right" }}>$514.15 × 1.25 = $642.69</td></tr>
+
+                    <tr><td colSpan="2" style={{ padding: "10px", fontWeight: "bold", backgroundColor: "#fff3e0" }}>Step 5: Discounts</td></tr>
+                    <tr><td style={{ padding: "6px 10px", color: "#e65100" }}>Fabric Discount (10%):</td><td style={{ textAlign: "right" }}>$642.69 × 0.90 = $578.42</td></tr>
+                    <tr><td style={{ padding: "6px 10px", color: "#e65100" }}>Fill Discount (5%):</td><td style={{ textAlign: "right" }}>$578.42 × 0.95 = $549.50</td></tr>
+
+                    <tr><td colSpan="2" style={{ padding: "10px", fontWeight: "bold", backgroundColor: "#f5f5f5" }}>Step 6: Settings Markups</td></tr>
+                    <tr><td style={{ padding: "6px 10px", color: "#6d7175" }}>Shipping (5%):</td><td style={{ textAlign: "right" }}>$549.50 × 1.05 = $576.98</td></tr>
+                    <tr><td style={{ padding: "6px 10px", color: "#6d7175" }}>Labour (8%):</td><td style={{ textAlign: "right" }}>$576.98 × 1.08 = $623.14</td></tr>
+                    <tr><td style={{ padding: "6px 10px", color: "#6d7175" }}>Margin (15%):</td><td style={{ textAlign: "right" }}>$623.14 × 1.15 = $716.61</td></tr>
+
+                    <tr style={{ borderTop: "3px solid #008060", backgroundColor: "#c8e6c9" }}><td style={{ padding: "12px 10px" }}><strong style={{ color: "#008060", fontSize: "1.1rem" }}>Final Price:</strong></td><td style={{ textAlign: "right" }}><strong style={{ color: "#008060", fontSize: "1.1rem" }}>$716.61</strong></td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Example 3: Multi-Piece Set */}
+              <h3 style={{ fontSize: "1rem", fontWeight: "600", marginTop: "24px", marginBottom: "12px", color: "#7b1fa2" }}>Example 3: Multi-Piece Loveseat Set</h3>
+              <div style={{ backgroundColor: "#f3e5f5", padding: "20px", borderRadius: "8px", marginBottom: "24px" }}>
+                <div style={{ marginBottom: "16px", padding: "12px", backgroundColor: "#fff", borderRadius: "6px" }}>
+                  <strong>Configuration:</strong>
+                  <ul style={{ margin: "8px 0 0", paddingLeft: "20px", color: "#6d7175", fontSize: "0.9rem" }}>
+                    <li><strong>Multi-Piece Mode</strong> enabled</li>
+                    <li>Piece 1 (Seat): 48" × 22" × 4"</li>
+                    <li>Piece 2 (Back): 48" × 20" × 6"</li>
+                    <li>Fabric: $0.09/sq in</li>
+                    <li>Fill: $0.05/cu in</li>
+                    <li>Profile Additional %: 15%</li>
+                    <li>Settings: Conversion 10%, no other markups for simplicity</li>
+                  </ul>
+                </div>
+
+                <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "16px" }}>
+                  <div style={{ flex: "1", minWidth: "280px", padding: "12px", backgroundColor: "#fff", borderRadius: "6px" }}>
+                    <strong style={{ color: "#7b1fa2" }}>Piece 1: Seat Cushion (48" × 22" × 4")</strong>
+                    <table style={{ width: "100%", fontSize: "0.8rem", marginTop: "8px" }}>
+                      <tbody>
+                        <tr><td style={{ color: "#6d7175" }}>Surface Area:</td><td style={{ textAlign: "right" }}>2,672 sq in</td></tr>
+                        <tr><td style={{ color: "#6d7175" }}>Fabric Cost:</td><td style={{ textAlign: "right" }}>$240.48</td></tr>
+                        <tr><td style={{ color: "#6d7175" }}>Volume:</td><td style={{ textAlign: "right" }}>4,224 cu in</td></tr>
+                        <tr><td style={{ color: "#6d7175" }}>Fill Cost:</td><td style={{ textAlign: "right" }}>$211.20</td></tr>
+                        <tr><td style={{ color: "#6d7175" }}>Raw Materials:</td><td style={{ textAlign: "right" }}>$451.68</td></tr>
+                        <tr><td style={{ color: "#6d7175" }}>After Conversion (10%):</td><td style={{ textAlign: "right" }}>$496.85</td></tr>
+                        <tr style={{ borderTop: "1px solid #ddd" }}><td><strong>Piece 1 Total:</strong></td><td style={{ textAlign: "right" }}><strong>$496.85</strong></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={{ flex: "1", minWidth: "280px", padding: "12px", backgroundColor: "#fff", borderRadius: "6px" }}>
+                    <strong style={{ color: "#7b1fa2" }}>Piece 2: Back Cushion (48" × 20" × 6")</strong>
+                    <table style={{ width: "100%", fontSize: "0.8rem", marginTop: "8px" }}>
+                      <tbody>
+                        <tr><td style={{ color: "#6d7175" }}>Surface Area:</td><td style={{ textAlign: "right" }}>2,736 sq in</td></tr>
+                        <tr><td style={{ color: "#6d7175" }}>Fabric Cost:</td><td style={{ textAlign: "right" }}>$246.24</td></tr>
+                        <tr><td style={{ color: "#6d7175" }}>Volume:</td><td style={{ textAlign: "right" }}>5,760 cu in</td></tr>
+                        <tr><td style={{ color: "#6d7175" }}>Fill Cost:</td><td style={{ textAlign: "right" }}>$288.00</td></tr>
+                        <tr><td style={{ color: "#6d7175" }}>Raw Materials:</td><td style={{ textAlign: "right" }}>$534.24</td></tr>
+                        <tr><td style={{ color: "#6d7175" }}>After Conversion (10%):</td><td style={{ textAlign: "right" }}>$587.66</td></tr>
+                        <tr style={{ borderTop: "1px solid #ddd" }}><td><strong>Piece 2 Total:</strong></td><td style={{ textAlign: "right" }}><strong>$587.66</strong></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <table style={{ width: "100%", fontSize: "0.9rem", backgroundColor: "#fff", borderRadius: "6px" }}>
+                  <tbody>
+                    <tr><td colSpan="2" style={{ padding: "10px", fontWeight: "bold", backgroundColor: "#e1bee7" }}>Combined Calculation</td></tr>
+                    <tr><td style={{ padding: "8px 10px" }}>Piece 1 + Piece 2:</td><td style={{ textAlign: "right" }}>$496.85 + $587.66 = $1,084.51</td></tr>
+                    <tr><td style={{ padding: "8px 10px", color: "#6d7175" }}>Profile Additional (15%):</td><td style={{ textAlign: "right" }}>$1,084.51 × 1.15 = $1,247.19</td></tr>
+                    <tr style={{ borderTop: "3px solid #7b1fa2", backgroundColor: "#e1bee7" }}><td style={{ padding: "12px 10px" }}><strong style={{ color: "#7b1fa2", fontSize: "1.1rem" }}>Set Price:</strong></td><td style={{ textAlign: "right" }}><strong style={{ color: "#7b1fa2", fontSize: "1.1rem" }}>$1,247.19</strong></td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* ============================================ */}
+              {/* SECTION: Pricing Order Summary */}
+              {/* ============================================ */}
+              <h2 style={subheadingStyle}>Pricing Order Summary</h2>
+              <p style={paragraphStyle}>
+                Here's a visual flowchart showing the complete order of pricing operations:
+              </p>
+
+              <div style={{ backgroundColor: "#f5f5f5", padding: "24px", borderRadius: "12px", marginBottom: "24px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {/* Row 1: Core Costs */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div style={{ backgroundColor: "#e3f2fd", padding: "12px 16px", borderRadius: "8px", border: "2px solid #1976d2", minWidth: "200px" }}>
+                      <strong style={{ color: "#1565c0" }}>1. Core Costs</strong>
+                      <p style={{ margin: "4px 0 0", fontSize: "0.8rem", color: "#6d7175" }}>Fabric + Fill + Fixed Add-ons</p>
+                    </div>
+                    <span style={{ fontSize: "1.5rem", color: "#999" }}>→</span>
+                    <div style={{ backgroundColor: "#fff3e0", padding: "12px 16px", borderRadius: "8px", border: "2px solid #ff9800", minWidth: "200px" }}>
+                      <strong style={{ color: "#e65100" }}>2. Conversion %</strong>
+                      <p style={{ margin: "4px 0 0", fontSize: "0.8rem", color: "#6d7175" }}>Manufacturing overhead</p>
+                    </div>
+                  </div>
+
+                  {/* Arrow Down */}
+                  <div style={{ textAlign: "center", fontSize: "1.5rem", color: "#999" }}>↓</div>
+
+                  {/* Row 2: Design + % Add-ons */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div style={{ backgroundColor: "#fce4ec", padding: "12px 16px", borderRadius: "8px", border: "2px solid #e91e63", minWidth: "200px" }}>
+                      <strong style={{ color: "#c2185b" }}>3. Design %</strong>
+                      <p style={{ margin: "4px 0 0", fontSize: "0.8rem", color: "#6d7175" }}>% of fabric cost</p>
+                    </div>
+                    <span style={{ fontSize: "1.5rem", color: "#999" }}>→</span>
+                    <div style={{ backgroundColor: "#f3e5f5", padding: "12px 16px", borderRadius: "8px", border: "2px solid #9c27b0", minWidth: "200px" }}>
+                      <strong style={{ color: "#7b1fa2" }}>4. % Add-ons</strong>
+                      <p style={{ margin: "4px 0 0", fontSize: "0.8rem", color: "#6d7175" }}>Piping, Button, Anti-Skid, etc.</p>
+                    </div>
+                  </div>
+
+                  {/* Arrow Down */}
+                  <div style={{ textAlign: "center", fontSize: "1.5rem", color: "#999" }}>↓</div>
+
+                  {/* Row 3: Profile + Discounts */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div style={{ backgroundColor: "#e8f5e9", padding: "12px 16px", borderRadius: "8px", border: "2px solid #4caf50", minWidth: "200px" }}>
+                      <strong style={{ color: "#2e7d32" }}>5. Profile Markup</strong>
+                      <p style={{ margin: "4px 0 0", fontSize: "0.8rem", color: "#6d7175" }}>Additional %</p>
+                    </div>
+                    <span style={{ fontSize: "1.5rem", color: "#999" }}>→</span>
+                    <div style={{ backgroundColor: "#ffebee", padding: "12px 16px", borderRadius: "8px", border: "2px solid #f44336", minWidth: "200px" }}>
+                      <strong style={{ color: "#c62828" }}>6. Discounts</strong>
+                      <p style={{ margin: "4px 0 0", fontSize: "0.8rem", color: "#6d7175" }}>Fabric + Fill discounts</p>
+                    </div>
+                  </div>
+
+                  {/* Arrow Down */}
+                  <div style={{ textAlign: "center", fontSize: "1.5rem", color: "#999" }}>↓</div>
+
+                  {/* Row 4: Settings markups */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                    <div style={{ backgroundColor: "#e0f7fa", padding: "12px 16px", borderRadius: "8px", border: "2px solid #00bcd4", minWidth: "140px" }}>
+                      <strong style={{ color: "#00838f" }}>7. Shipping %</strong>
+                    </div>
+                    <span style={{ fontSize: "1.5rem", color: "#999" }}>→</span>
+                    <div style={{ backgroundColor: "#fff8e1", padding: "12px 16px", borderRadius: "8px", border: "2px solid #ffc107", minWidth: "140px" }}>
+                      <strong style={{ color: "#ff8f00" }}>8. Labour %</strong>
+                    </div>
+                    <span style={{ fontSize: "1.5rem", color: "#999" }}>→</span>
+                    <div style={{ backgroundColor: "#e8eaf6", padding: "12px 16px", borderRadius: "8px", border: "2px solid #3f51b5", minWidth: "140px" }}>
+                      <strong style={{ color: "#303f9f" }}>9. Margin</strong>
+                    </div>
+                  </div>
+
+                  {/* Arrow Down */}
+                  <div style={{ textAlign: "center", fontSize: "1.5rem", color: "#999" }}>↓</div>
+
+                  {/* Final Price */}
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ display: "inline-block", backgroundColor: "#008060", padding: "16px 32px", borderRadius: "8px" }}>
+                      <strong style={{ color: "#fff", fontSize: "1.2rem" }}>FINAL PRICE</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ============================================ */}
+              {/* SECTION: Tips */}
+              {/* ============================================ */}
+              <h2 style={subheadingStyle}>Tips for Setting Prices</h2>
+
+              <div style={tipBoxStyle}>
+                <strong style={{ color: "#108043" }}>Start with Material Costs:</strong>
+                <p style={{ margin: "8px 0 0", color: "#108043" }}>
+                  Get accurate pricing from your fabric and fill suppliers. These are the foundation of your pricing—if these are wrong, everything else will be off.
+                </p>
+              </div>
+
+              <div style={tipBoxStyle}>
+                <strong style={{ color: "#108043" }}>Test at Different Sizes:</strong>
+                <p style={{ margin: "8px 0 0", color: "#108043" }}>
+                  Create test orders for small (dining chair), medium (lounge chair), and large (sofa) cushions. Verify that margins are acceptable at each size point.
+                </p>
+              </div>
+
+              <div style={tipBoxStyle}>
+                <strong style={{ color: "#108043" }}>Compare to Competitors:</strong>
+                <p style={{ margin: "8px 0 0", color: "#108043" }}>
+                  Check competitor pricing for similar products. Use the Additional Percentage to adjust margins to stay competitive while maintaining profitability.
+                </p>
+              </div>
+
+              <div style={tipBoxStyle}>
+                <strong style={{ color: "#108043" }}>Monitor Your Margins:</strong>
+                <p style={{ margin: "8px 0 0", color: "#108043" }}>
+                  Enable Debug Pricing during setup to see the full breakdown. Track which products have healthy margins and which might need adjustment.
+                </p>
+              </div>
+
+              <div style={warningBoxStyle}>
+                <strong style={{ color: "#e65100" }}>Watch for Compounding Effects:</strong>
+                <p style={{ margin: "8px 0 0", color: "#e65100" }}>
+                  Multiple percentage markups compound multiplicatively. A 10% conversion + 5% shipping + 8% labour + 20% margin = 49.7% total markup, not 43%. Test complete calculations to avoid surprises.
+                </p>
               </div>
             </div>
           )}
