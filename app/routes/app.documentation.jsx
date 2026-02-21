@@ -292,65 +292,381 @@ export default function Documentation() {
           {activeSection === "profiles" && (
             <div>
               <h1 style={headingStyle}>Profiles</h1>
+
+              <h2 style={subheadingStyle}>What is a Profile?</h2>
               <p style={paragraphStyle}>
-                Profiles are the core configuration that brings together all calculator options. Each profile defines what sections are visible, which options are available, and any pricing adjustments.
+                A <strong>Profile</strong> is the central configuration point for a specific type of product in your store. Think of it as a "template" that defines how the cushion calculator behaves for a particular product category.
               </p>
 
-              <h2 style={subheadingStyle}>Creating a Profile</h2>
-              <ol style={listStyle}>
-                <li style={listItemStyle}>Go to <strong>Profiles</strong> in the sidebar</li>
-                <li style={listItemStyle}>Click <strong>Add Profile</strong></li>
-                <li style={listItemStyle}>Enter a profile name (e.g., "Outdoor Cushions", "Bench Pads")</li>
-                <li style={listItemStyle}>Configure section visibility and allowed options</li>
-                <li style={listItemStyle}>Set the additional percentage if needed</li>
-                <li style={listItemStyle}>Save the profile</li>
-              </ol>
+              <div style={{ ...stepBoxStyle, backgroundColor: "#e8f4fd", border: "1px solid #b3d4fc" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ fontWeight: 600, color: "#0066cc" }}>A Profile Controls:</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ color: "#008060", fontWeight: 600 }}>1.</span> Which calculator sections are visible
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ color: "#008060", fontWeight: 600 }}>2.</span> Which options appear in each section
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ color: "#008060", fontWeight: 600 }}>3.</span> Pre-selected default values
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ color: "#008060", fontWeight: 600 }}>4.</span> Pricing adjustments (markup %)
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ color: "#008060", fontWeight: 600 }}>5.</span> Multi-piece configurations
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ color: "#008060", fontWeight: 600 }}>6.</span> Weatherproof calculations
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-              <h2 style={subheadingStyle}>Profile Settings</h2>
-
-              <h3 style={{ ...subheadingStyle, fontSize: "1rem" }}>Section Visibility</h3>
               <p style={paragraphStyle}>
-                Toggle which sections appear in the calculator:
+                Each Shopify product can be linked to a profile using the <code style={codeStyle}>cushion_calculator.profile_id</code> metafield. One profile can be used for multiple products, making it easy to manage similar product types consistently.
+              </p>
+
+              <div style={tipBoxStyle}>
+                <strong style={{ color: "#108043" }}>Example:</strong>
+                <p style={{ margin: "8px 0 0", color: "#108043" }}>
+                  Create an "Outdoor Cushions" profile that only shows weatherproof fabrics, includes ties option, and adds a 10% outdoor premium. Then assign this profile to all your outdoor cushion products.
+                </p>
+              </div>
+
+              {/* Basic Information */}
+              <h2 style={subheadingStyle}>Basic Information</h2>
+
+              <div style={stepBoxStyle}>
+                <strong>Profile Name</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  A descriptive name to identify this profile (e.g., "Standard Indoor Cushions", "Premium Outdoor Set", "Simple Bench Pad"). This name appears in the admin area and helps you organize different product configurations.
+                </p>
+              </div>
+
+              <div style={stepBoxStyle}>
+                <strong>Description</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Optional internal notes about this profile. Use this to document what products use this profile or any special configuration details. Customers do not see this description.
+                </p>
+              </div>
+
+              {/* Additional Percentage */}
+              <h2 style={subheadingStyle}>Additional Percentage (%)</h2>
+              <p style={paragraphStyle}>
+                This is a <strong>markup percentage</strong> that gets added to the calculated subtotal for all products using this profile. The markup is applied after all base costs (fabric, fill, add-ons) are calculated.
+              </p>
+
+              <div style={{ ...stepBoxStyle, backgroundColor: "#fff8e1", border: "1px solid #ffe082" }}>
+                <strong style={{ color: "#5d4037" }}>How It Works:</strong>
+                <div style={{ marginTop: 12, fontSize: "0.9rem" }}>
+                  <code style={{ ...codeStyle, display: "block", padding: "12px", marginBottom: 12 }}>
+                    Final Price = Subtotal × (1 + Additional % / 100)
+                  </code>
+                  <div style={{ color: "#6d7175" }}>
+                    <strong>Example:</strong> If the subtotal is $100 and Additional Percentage is set to 15%:
+                    <br />$100 × 1.15 = <strong>$115</strong> final price
+                  </div>
+                </div>
+              </div>
+
+              <p style={paragraphStyle}>
+                <strong>Common Use Cases:</strong>
               </p>
               <ul style={listStyle}>
-                <li style={listItemStyle}><strong>Shape Section:</strong> Allow customers to select cushion shapes</li>
-                <li style={listItemStyle}><strong>Dimensions Section:</strong> Show dimension input fields</li>
-                <li style={listItemStyle}><strong>Fill Section:</strong> Display fill type options</li>
-                <li style={listItemStyle}><strong>Fabric Section:</strong> Show fabric selection</li>
-                <li style={listItemStyle}><strong>Piping, Buttons, Ties, etc.:</strong> Show additional customization options</li>
+                <li style={listItemStyle}><strong>Premium Product Lines:</strong> Add 20% markup for luxury/premium product categories</li>
+                <li style={listItemStyle}><strong>Seasonal Pricing:</strong> Temporarily increase margins during high-demand seasons</li>
+                <li style={listItemStyle}><strong>Category-Specific Margins:</strong> Different product types may have different profit margin requirements</li>
+                <li style={listItemStyle}><strong>Complexity Premium:</strong> Add extra for products requiring more labor (e.g., custom shapes)</li>
               </ul>
 
-              <h3 style={{ ...subheadingStyle, fontSize: "1rem" }}>Allowed vs Hidden Options</h3>
+              {/* Multi-Piece Mode */}
+              <h2 style={subheadingStyle}>Multi-Piece Mode</h2>
+              <p style={paragraphStyle}>
+                Multi-piece mode allows customers to configure <strong>multiple cushion pieces in a single order</strong>. This is essential for products that consist of multiple related cushions, like sofa sets or sectional furniture.
+              </p>
+
+              <div style={{ ...stepBoxStyle, backgroundColor: "#e8f4fd", border: "1px solid #b3d4fc" }}>
+                <strong style={{ color: "#0066cc" }}>When to Use Multi-Piece Mode:</strong>
+                <ul style={{ ...listStyle, marginTop: 8, marginBottom: 0 }}>
+                  <li style={listItemStyle}>Sofa cushion sets (seat cushion + back cushion)</li>
+                  <li style={listItemStyle}>Sectional furniture (multiple seats, corner pieces)</li>
+                  <li style={listItemStyle}>Lounge chairs with separate head rest and body cushions</li>
+                  <li style={listItemStyle}>Bench seating with multiple pad sections</li>
+                  <li style={listItemStyle}>Patio furniture sets (chair + ottoman)</li>
+                </ul>
+              </div>
+
+              <h3 style={{ ...subheadingStyle, fontSize: "1rem" }}>Enabling Multi-Piece Mode</h3>
+              <ol style={listStyle}>
+                <li style={listItemStyle}>Check the <strong>"Enable Multi-Piece Mode"</strong> checkbox</li>
+                <li style={listItemStyle}>Set the <strong>Pieces Label</strong> (e.g., "Cushion Components", "Set Pieces")</li>
+                <li style={listItemStyle}>Add individual pieces using the <strong>"+ Add Piece"</strong> button</li>
+                <li style={listItemStyle}>Configure each piece with its own settings</li>
+              </ol>
+
+              <h3 style={{ ...subheadingStyle, fontSize: "1rem" }}>Per-Piece Configuration</h3>
+              <p style={paragraphStyle}>
+                Each piece (up to 5 maximum) can have its own independent configuration:
+              </p>
+              <ul style={listStyle}>
+                <li style={listItemStyle}><strong>Piece Name:</strong> Internal identifier (e.g., "Seat Base", "Backrest", "Armrest")</li>
+                <li style={listItemStyle}><strong>Display Label:</strong> Optional custom label shown to customers (overrides piece name)</li>
+                <li style={listItemStyle}><strong>Section Visibility:</strong> Toggle which sections appear for this specific piece</li>
+                <li style={listItemStyle}><strong>Allowed Options:</strong> Restrict which shapes, fills, or add-ons are available for this piece</li>
+                <li style={listItemStyle}><strong>Default Values:</strong> Pre-select default shape and fill for this piece</li>
+                <li style={listItemStyle}><strong>Hidden Values:</strong> Use specific options without showing them (for hidden sections)</li>
+              </ul>
+
               <div style={tipBoxStyle}>
-                <p style={{ margin: 0, color: "#108043" }}>
-                  <strong>Allowed Options:</strong> Specify which shapes, fabrics, or fills appear in the calculator. Leave empty to show all active options.
-                </p>
+                <strong style={{ color: "#108043" }}>Example - 3-Piece Sofa Set:</strong>
+                <div style={{ marginTop: 8, fontSize: "0.9rem", color: "#108043" }}>
+                  <div><strong>Piece 1 - "Seat Cushion":</strong> Rectangle shape, shows fill, fabric, and ties options</div>
+                  <div><strong>Piece 2 - "Back Cushion":</strong> Rectangle shape, shows fill and fabric, no ties needed</div>
+                  <div><strong>Piece 3 - "Throw Pillows":</strong> Circle shape only, different fill options, fixed size</div>
+                </div>
               </div>
+
+              {/* Weatherproof Configuration */}
+              <h2 style={subheadingStyle}>Weatherproof Configuration</h2>
+              <p style={paragraphStyle}>
+                The weatherproof option changes how <strong>fabric surface area is calculated</strong> for the cushion. When enabled, the calculator uses the "Surface Area Without Base" formula instead of the full surface area formula.
+              </p>
+
+              <div style={{ ...stepBoxStyle, backgroundColor: "#e3f1df", border: "1px solid #95c9a1" }}>
+                <strong style={{ color: "#108043" }}>What This Means:</strong>
+                <div style={{ marginTop: 8, fontSize: "0.9rem", color: "#6d7175" }}>
+                  <div style={{ marginBottom: 8 }}><strong>Standard Mode:</strong> Fabric covers all sides of the cushion (top + bottom + all edges)</div>
+                  <div><strong>Weatherproof Mode:</strong> Fabric covers only top and edges (no bottom coverage)</div>
+                </div>
+              </div>
+
+              <p style={paragraphStyle}>
+                <strong>Why Use Weatherproof Mode?</strong>
+              </p>
+              <ul style={listStyle}>
+                <li style={listItemStyle}>Outdoor cushions often don't need fabric on the bottom</li>
+                <li style={listItemStyle}>The bottom may have anti-slip material instead</li>
+                <li style={listItemStyle}>Reduces fabric cost for outdoor/weatherproof products</li>
+                <li style={listItemStyle}>Allows water drainage through bottom</li>
+              </ul>
+
               <div style={warningBoxStyle}>
-                <p style={{ margin: 0, color: "#e65100" }}>
-                  <strong>Hidden Options:</strong> Select a default option that will be used automatically without showing the selection to customers. Useful when you want to pre-set certain choices.
+                <strong style={{ color: "#e65100" }}>Important:</strong>
+                <p style={{ margin: "8px 0 0", color: "#e65100" }}>
+                  For weatherproof mode to work correctly, your shapes must have the "Surface Area Without Base" formula defined. If a shape doesn't have this formula, the regular surface area formula will be used as fallback.
                 </p>
               </div>
 
-              <h3 style={{ ...subheadingStyle, fontSize: "1rem" }}>Additional Percentage</h3>
+              {/* Section Visibility */}
+              <h2 style={subheadingStyle}>Section Visibility Toggles</h2>
               <p style={paragraphStyle}>
-                Add a markup percentage to the final calculated price. For example, entering <code style={codeStyle}>15</code> will add 15% to the total price.
+                Control which calculator sections are displayed to customers. Hiding a section means customers won't see it or interact with it, but you can still apply values using "Hidden Options" (explained below).
               </p>
 
-              <h3 style={{ ...subheadingStyle, fontSize: "1rem" }}>Multi-Piece Mode</h3>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+                <div style={stepBoxStyle}>
+                  <strong>Shape Section</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Allows customers to select cushion shape (Rectangle, Circle, etc.)
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Dimensions Section</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Shows input fields for measurements (length, width, thickness)
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Fill Section</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Displays fill type options (Foam, Polyester, etc.)
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Fabric Section</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Shows fabric selection with swatches and categories
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Design Section</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Design pattern options (adds % of fabric cost)
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Piping Section</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Edge piping/welting style options
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Button Style Section</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Tufting and button pattern options
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Ties Section</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Attachment ties options (fixed price)
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Fabric Ties Section</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Matching fabric ties options (fixed price)
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Anti-Skid Bottom Section</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Non-slip backing options
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Bottom Rod Pocket Section</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Rod pocket for curtains/drapes
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Drawstring Section</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Drawstring closure options
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ ...stepBoxStyle, marginTop: 16 }}>
+                <strong>Instructions Toggle</strong>
+                <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                  Show or hide the "How to Measure" instructions section in the calculator
+                </p>
+              </div>
+
+              {/* Allowed Options */}
+              <h2 style={subheadingStyle}>Allowed Options (Restricting Choices)</h2>
               <p style={paragraphStyle}>
-                Enable multi-piece mode for products that have multiple cushion pieces (e.g., a sofa with seat and back cushions). Each piece can have its own shape, dimensions, and options.
+                For each section, you can restrict which options customers see. This is useful when certain products should only work with specific shapes, fabrics, or add-ons.
               </p>
 
-              <h3 style={{ ...subheadingStyle, fontSize: "1rem" }}>Weatherproof Mode</h3>
+              <div style={tipBoxStyle}>
+                <strong style={{ color: "#108043" }}>How It Works:</strong>
+                <ul style={{ ...listStyle, marginTop: 8, marginBottom: 0 }}>
+                  <li style={listItemStyle}><strong>Empty selection</strong> = Show ALL active options from that category</li>
+                  <li style={listItemStyle}><strong>Specific items selected</strong> = Show ONLY those selected items</li>
+                </ul>
+              </div>
+
               <p style={paragraphStyle}>
-                When enabled, the calculator uses the "Surface Area Without Base" formula for fabric calculations, meaning the bottom of the cushion won't be covered with fabric.
+                You can set allowed options for:
+              </p>
+              <ul style={listStyle}>
+                <li style={listItemStyle}><strong>Shapes:</strong> Limit to specific shapes (e.g., only Rectangle and Square)</li>
+                <li style={listItemStyle}><strong>Fill Types:</strong> Restrict fill options (e.g., only Foam and Memory Foam)</li>
+                <li style={listItemStyle}><strong>Fabric Categories:</strong> Show only certain fabric categories (e.g., only Outdoor fabrics)</li>
+                <li style={listItemStyle}><strong>All Add-on Sections:</strong> Piping, Buttons, Ties, Design, Anti-Skid, Fabric Ties, Rod Pocket, Drawstring</li>
+              </ul>
+
+              <div style={{ ...stepBoxStyle, backgroundColor: "#fff8e1", border: "1px solid #ffe082" }}>
+                <strong style={{ color: "#5d4037" }}>Example - Outdoor Cushion Profile:</strong>
+                <div style={{ marginTop: 8, fontSize: "0.9rem", color: "#6d7175" }}>
+                  <div>Allowed Shapes: Rectangle, Square (no complex shapes)</div>
+                  <div>Allowed Fabric Categories: "Outdoor" and "Weatherproof" only</div>
+                  <div>Allowed Fills: "Outdoor Foam" and "Quick-Dry Poly"</div>
+                  <div>Result: Customers only see weather-appropriate options</div>
+                </div>
+              </div>
+
+              {/* Hidden Options */}
+              <h2 style={subheadingStyle}>Hidden Options (Pre-selected Defaults)</h2>
+              <p style={paragraphStyle}>
+                When you hide a section (toggle it OFF), you can still include a value from that section in the price calculation by setting a "Hidden Option". This option will be automatically applied without showing it to the customer.
               </p>
 
-              <h2 style={subheadingStyle}>Setting a Default Profile</h2>
+              <div style={warningBoxStyle}>
+                <strong style={{ color: "#e65100" }}>Important:</strong>
+                <p style={{ margin: "8px 0 0", color: "#e65100" }}>
+                  Hidden Options <strong>only work when the section is hidden</strong>. If a section is visible, the hidden option is ignored and the customer's selection is used instead.
+                </p>
+              </div>
+
               <p style={paragraphStyle}>
-                Mark one profile as "Default" to use it when no specific profile is assigned to a product. Click the "Set Default" button on any profile card.
+                <strong>Common Use Cases:</strong>
               </p>
+              <ul style={listStyle}>
+                <li style={listItemStyle}>
+                  <strong>Standard Fill:</strong> Hide the fill section but always use "Standard Foam" in calculations
+                </li>
+                <li style={listItemStyle}>
+                  <strong>Fixed Shape:</strong> Product is always rectangular, so hide shape section and set hidden shape to "Rectangle"
+                </li>
+                <li style={listItemStyle}>
+                  <strong>Included Feature:</strong> All cushions include standard piping, hide piping section but set hidden value to "Standard Piping"
+                </li>
+                <li style={listItemStyle}>
+                  <strong>Simplified Experience:</strong> Reduce customer choices while still calculating accurate prices
+                </li>
+              </ul>
+
+              <div style={tipBoxStyle}>
+                <strong style={{ color: "#108043" }}>Example - Simple Bench Pad:</strong>
+                <div style={{ marginTop: 8, fontSize: "0.9rem", color: "#108043" }}>
+                  <div>Shape Section: Hidden, Hidden Shape = "Rectangle"</div>
+                  <div>Fill Section: Hidden, Hidden Fill = "Standard Foam"</div>
+                  <div>Piping Section: Hidden, Hidden Piping = "No Piping"</div>
+                  <div>Customer only sees: Dimensions + Fabric selection</div>
+                </div>
+              </div>
+
+              {/* Profile Status */}
+              <h2 style={subheadingStyle}>Profile Status Settings</h2>
+
+              <div style={stepBoxStyle}>
+                <strong>Is Default</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Mark one profile as the "Default" profile. This profile will be used when a product doesn't have a specific profile assigned to it. Only one profile can be the default at a time.
+                </p>
+              </div>
+
+              <div style={stepBoxStyle}>
+                <strong>Is Active</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Toggle this OFF to disable a profile without deleting it. Inactive profiles won't appear in the profile selection and can't be assigned to products. Useful for seasonal profiles or profiles under development.
+                </p>
+              </div>
+
+              <div style={stepBoxStyle}>
+                <strong>Sort Order</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Controls the display order of profiles in the admin list. Lower numbers appear first. Use this to organize your most-used profiles at the top.
+                </p>
+              </div>
+
+              {/* Creating a Profile */}
+              <h2 style={subheadingStyle}>Creating a Profile - Step by Step</h2>
+              <ol style={listStyle}>
+                <li style={listItemStyle}>Go to <strong>Profiles</strong> in the sidebar menu</li>
+                <li style={listItemStyle}>Click the <strong>"Add Profile"</strong> button</li>
+                <li style={listItemStyle}>Enter a descriptive <strong>Profile Name</strong></li>
+                <li style={listItemStyle}>Set the <strong>Additional Percentage</strong> if you need a markup</li>
+                <li style={listItemStyle}>Enable <strong>Multi-Piece Mode</strong> if needed and configure pieces</li>
+                <li style={listItemStyle}>Enable <strong>Weatherproof</strong> if this is for outdoor products</li>
+                <li style={listItemStyle}>Toggle <strong>Section Visibility</strong> for each section</li>
+                <li style={listItemStyle}>Set <strong>Allowed Options</strong> to restrict choices (or leave empty for all)</li>
+                <li style={listItemStyle}>Set <strong>Hidden Options</strong> for any hidden sections that need values</li>
+                <li style={listItemStyle}>Click <strong>Save</strong> to create the profile</li>
+              </ol>
+
+              <div style={{ ...warningBoxStyle, marginTop: 20 }}>
+                <strong style={{ color: "#e65100" }}>After Creating a Profile:</strong>
+                <p style={{ margin: "8px 0 0", color: "#e65100" }}>
+                  Don't forget to assign the profile to your Shopify products! Go to each product in Shopify Admin, find the <code style={codeStyle}>cushion_calculator.profile_id</code> metafield, and enter the profile ID.
+                </p>
+              </div>
             </div>
           )}
 
