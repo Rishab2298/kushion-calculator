@@ -40,6 +40,7 @@ export const action = async ({ request }) => {
       sortOrder: parseInt(formData.get("sortOrder")) || 0,
       is2D: formData.get("is2D") === "true",
       enablePanels: formData.get("enablePanels") === "true",
+      maxPanels: parseInt(formData.get("maxPanels")) || 10,
     };
 
     const inputFieldsJson = formData.get("inputFields");
@@ -125,6 +126,7 @@ export default function Shapes() {
     sortOrder: 0,
     is2D: false,
     enablePanels: false,
+    maxPanels: 10,
   });
   const [inputFields, setInputFields] = useState([
     { label: "Length", key: "length", unit: "inches", min: 1, max: 200, required: true, defaultValue: "" },
@@ -142,6 +144,7 @@ export default function Shapes() {
       sortOrder: shapes.length,
       is2D: false,
       enablePanels: false,
+      maxPanels: 10,
     });
     setInputFields([
       { label: "Length", key: "length", unit: "inches", min: 1, max: 200, required: true, defaultValue: "" },
@@ -161,6 +164,7 @@ export default function Shapes() {
       sortOrder: shape.sortOrder,
       is2D: shape.is2D || false,
       enablePanels: shape.enablePanels || false,
+      maxPanels: shape.maxPanels || 10,
     });
     setInputFields(shape.inputFields.map(f => ({
       label: f.label,
@@ -381,6 +385,18 @@ export default function Shapes() {
                     />
                     <label htmlFor="enablePanels">Enable panel count input (multiplies total by panel count)</label>
                   </s-stack>
+
+                  {formData.enablePanels && (
+                    <s-text-field
+                      label="Maximum Panels"
+                      type="number"
+                      value={formData.maxPanels}
+                      onChange={(e) => setFormData({ ...formData, maxPanels: parseInt(e.target.value) || 10 })}
+                      helpText="Maximum number of panels a customer can order (1-20)"
+                      min="1"
+                      max="20"
+                    />
+                  )}
                 </>
               )}
 

@@ -905,6 +905,13 @@ export default function Documentation() {
                 </p>
               </div>
 
+              <div style={stepBoxStyle}>
+                <strong>Max Panels</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  The maximum number of panels a customer can order (1-20). This prevents unreasonably large orders and helps with inventory planning.
+                </p>
+              </div>
+
               <div style={tipBoxStyle}>
                 <strong style={{ color: "#108043" }}>Use Cases for 2D Mode:</strong>
                 <ul style={{ ...listStyle, marginTop: 8, marginBottom: 0 }}>
