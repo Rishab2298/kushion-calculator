@@ -431,7 +431,7 @@ export default function Documentation() {
               {/* Weatherproof Configuration */}
               <h2 style={subheadingStyle}>Weatherproof Configuration</h2>
               <p style={paragraphStyle}>
-                The weatherproof option changes how <strong>fabric surface area is calculated</strong> for the cushion. When enabled, the calculator uses the "Surface Area Without Base" formula instead of the full surface area formula.
+                The weatherproof option changes how <strong>fabric surface area is calculated</strong> for the cushion. When enabled, the calculator uses the "Surface Area Without Base" formula instead of the full surface area formula inside the shapes section of the respective shape.
               </p>
 
               <div style={{ ...stepBoxStyle, backgroundColor: "#e3f1df", border: "1px solid #95c9a1" }}>
@@ -674,71 +674,307 @@ export default function Documentation() {
           {activeSection === "shapes" && (
             <div>
               <h1 style={headingStyle}>Shapes</h1>
+
+              <h2 style={subheadingStyle}>What is a Shape?</h2>
               <p style={paragraphStyle}>
-                Shapes define the geometry of cushions and the formulas used to calculate surface area and volume for pricing.
+                A <strong>Shape</strong> defines the geometry of a cushion and provides the mathematical formulas needed to calculate pricing. Shapes are the foundation of the calculator - they determine how fabric cost (based on surface area) and fill cost (based on volume) are computed.
               </p>
 
-              <h2 style={subheadingStyle}>Creating a Shape</h2>
+              <div style={{ ...stepBoxStyle, backgroundColor: "#e8f4fd", border: "1px solid #b3d4fc" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ fontWeight: 600, color: "#0066cc" }}>A Shape Provides:</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ color: "#008060", fontWeight: 600 }}>1.</span> Input fields for customer measurements
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ color: "#008060", fontWeight: 600 }}>2.</span> Surface area formula (for fabric cost)
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ color: "#008060", fontWeight: 600 }}>3.</span> Volume formula (for fill cost)
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ color: "#008060", fontWeight: 600 }}>4.</span> Visual representation for customers
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={warningBoxStyle}>
+                <strong style={{ color: "#e65100" }}>Important:</strong>
+                <p style={{ margin: "8px 0 0", color: "#e65100" }}>
+                  You must create at least one shape before the calculator can work. Shapes are required by profiles, and without shapes, customers cannot configure their cushions.
+                </p>
+              </div>
+
+              {/* Basic Information */}
+              <h2 style={subheadingStyle}>Basic Information</h2>
+
+              <div style={stepBoxStyle}>
+                <strong>Shape Name</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  A descriptive name that customers will see when selecting a shape. Choose clear, recognizable names like "Rectangle", "Circle", "L-Shape", "Hexagon", "Wedge", etc.
+                </p>
+              </div>
+
+              <div style={stepBoxStyle}>
+                <strong>Image URL</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  A URL to an image showing the shape. This helps customers visualize what they're selecting. The image appears in the shape selection dropdown in the calculator.
+                </p>
+              </div>
+
+              {/* Input Fields */}
+              <h2 style={subheadingStyle}>Input Fields (Dimensions)</h2>
+              <p style={paragraphStyle}>
+                Input fields define what measurements customers need to enter. Each field becomes a variable you can use in your formulas. You can add as many fields as needed for your shape.
+              </p>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+                <div style={stepBoxStyle}>
+                  <strong>Label</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    What customers see (e.g., "Length", "Width", "Thickness", "Diameter")
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Key</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Variable name used in formulas. Use lowercase with no spaces (e.g., <code style={codeStyle}>length</code>, <code style={codeStyle}>width</code>, <code style={codeStyle}>thickness</code>)
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Min Value</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Minimum allowed value. Prevents customers from entering unrealistic small dimensions.
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Max Value</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Maximum allowed value. Prevents orders that exceed your manufacturing capabilities.
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Default Value</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Pre-filled value when the calculator loads. Optional, but helps guide customers.
+                  </p>
+                </div>
+                <div style={stepBoxStyle}>
+                  <strong>Required</strong>
+                  <p style={{ margin: "4px 0 0", color: "#6d7175", fontSize: "0.85rem" }}>
+                    Whether this field must be filled. Most dimension fields should be required.
+                  </p>
+                </div>
+              </div>
+
+              <div style={tipBoxStyle}>
+                <strong style={{ color: "#108043" }}>Common Input Field Sets:</strong>
+                <div style={{ marginTop: 8, fontSize: "0.9rem", color: "#108043" }}>
+                  <div><strong>Rectangle:</strong> length, width, thickness</div>
+                  <div><strong>Circle:</strong> diameter (or radius), thickness</div>
+                  <div><strong>L-Shape:</strong> length1, length2, width1, width2, thickness</div>
+                  <div><strong>Wedge:</strong> length, width, front_thickness, back_thickness</div>
+                </div>
+              </div>
+
+              {/* Formulas */}
+              <h2 style={subheadingStyle}>Formulas</h2>
+              <p style={paragraphStyle}>
+                Formulas calculate the surface area and volume of the cushion based on customer-entered dimensions. These values are then multiplied by fabric and fill prices to determine costs.
+              </p>
+
+              <div style={{ ...stepBoxStyle, backgroundColor: "#fff8e1", border: "1px solid #ffe082" }}>
+                <strong style={{ color: "#5d4037" }}>Supported Operators:</strong>
+                <div style={{ marginTop: 8, display: "flex", gap: 12, flexWrap: "wrap" }}>
+                  <code style={codeStyle}>+</code> addition
+                  <code style={codeStyle}>-</code> subtraction
+                  <code style={codeStyle}>*</code> multiplication
+                  <code style={codeStyle}>/</code> division
+                  <code style={codeStyle}>( )</code> parentheses for grouping
+                </div>
+              </div>
+
+              <h3 style={{ ...subheadingStyle, fontSize: "1rem" }}>Surface Area Formula</h3>
+              <p style={paragraphStyle}>
+                Calculates the total fabric needed to cover the cushion (in square inches). This is multiplied by the fabric's price per square inch to get fabric cost.
+              </p>
+              <div style={stepBoxStyle}>
+                <strong>How to Calculate:</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Add up the area of all faces of the cushion. For a rectangular cushion, this includes:
+                </p>
+                <ul style={{ ...listStyle, marginTop: 8 }}>
+                  <li style={{ ...listItemStyle, fontSize: "0.9rem" }}>Top face: length × width</li>
+                  <li style={{ ...listItemStyle, fontSize: "0.9rem" }}>Bottom face: length × width</li>
+                  <li style={{ ...listItemStyle, fontSize: "0.9rem" }}>Front &amp; back edges: 2 × (length × thickness)</li>
+                  <li style={{ ...listItemStyle, fontSize: "0.9rem" }}>Left &amp; right edges: 2 × (width × thickness)</li>
+                </ul>
+              </div>
+
+              <h3 style={{ ...subheadingStyle, fontSize: "1rem" }}>Surface Area Without Base Formula</h3>
+              <p style={paragraphStyle}>
+                Used when <strong>Weatherproof mode</strong> is enabled in a profile. This formula calculates surface area <em>excluding the bottom face</em>, since weatherproof cushions often don't have fabric on the bottom.
+              </p>
+              <div style={tipBoxStyle}>
+                <strong style={{ color: "#108043" }}>Tip:</strong>
+                <p style={{ margin: "8px 0 0", color: "#108043" }}>
+                  This is the same as your regular Surface Area formula, minus one "top/bottom" calculation. For rectangles: remove one <code style={codeStyle}>length*width</code> from the formula.
+                </p>
+              </div>
+
+              <h3 style={{ ...subheadingStyle, fontSize: "1rem" }}>Volume Formula</h3>
+              <p style={paragraphStyle}>
+                Calculates the interior space of the cushion (in cubic inches). This is multiplied by the fill's price per cubic inch to get fill cost.
+              </p>
+              <div style={stepBoxStyle}>
+                <strong>How to Calculate:</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  For most shapes, volume = base area × thickness. For rectangles: length × width × thickness
+                </p>
+              </div>
+
+              {/* Formula Examples */}
+              <h2 style={subheadingStyle}>Formula Examples</h2>
+
+              <div style={{ ...stepBoxStyle, marginBottom: 16 }}>
+                <strong style={{ color: "#008060" }}>Rectangle / Square Cushion</strong>
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ marginBottom: 8 }}>
+                    <strong>Input Fields:</strong> <code style={codeStyle}>length</code>, <code style={codeStyle}>width</code>, <code style={codeStyle}>thickness</code>
+                  </div>
+                  <div style={{ backgroundColor: "#f6f6f7", padding: 12, borderRadius: 4, fontFamily: "monospace", fontSize: "0.85rem" }}>
+                    <div><strong>Surface Area:</strong></div>
+                    <div style={{ color: "#5c6ac4", marginLeft: 12 }}>length*width*2 + length*thickness*2 + width*thickness*2</div>
+                    <div style={{ marginTop: 8 }}><strong>Surface Area Without Base:</strong></div>
+                    <div style={{ color: "#5c6ac4", marginLeft: 12 }}>length*width + length*thickness*2 + width*thickness*2</div>
+                    <div style={{ marginTop: 8 }}><strong>Volume:</strong></div>
+                    <div style={{ color: "#5c6ac4", marginLeft: 12 }}>length*width*thickness</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ ...stepBoxStyle, marginBottom: 16 }}>
+                <strong style={{ color: "#008060" }}>Circle / Round Cushion</strong>
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ marginBottom: 8 }}>
+                    <strong>Input Fields:</strong> <code style={codeStyle}>diameter</code>, <code style={codeStyle}>thickness</code>
+                  </div>
+                  <div style={{ backgroundColor: "#f6f6f7", padding: 12, borderRadius: 4, fontFamily: "monospace", fontSize: "0.85rem" }}>
+                    <div><strong>Surface Area:</strong> (using radius = diameter/2)</div>
+                    <div style={{ color: "#5c6ac4", marginLeft: 12 }}>3.14159*(diameter/2)*(diameter/2)*2 + 3.14159*diameter*thickness</div>
+                    <div style={{ marginTop: 8 }}><strong>Surface Area Without Base:</strong></div>
+                    <div style={{ color: "#5c6ac4", marginLeft: 12 }}>3.14159*(diameter/2)*(diameter/2) + 3.14159*diameter*thickness</div>
+                    <div style={{ marginTop: 8 }}><strong>Volume:</strong></div>
+                    <div style={{ color: "#5c6ac4", marginLeft: 12 }}>3.14159*(diameter/2)*(diameter/2)*thickness</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ ...stepBoxStyle, marginBottom: 16 }}>
+                <strong style={{ color: "#008060" }}>Wedge / Tapered Cushion</strong>
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ marginBottom: 8 }}>
+                    <strong>Input Fields:</strong> <code style={codeStyle}>length</code>, <code style={codeStyle}>width</code>, <code style={codeStyle}>front_thickness</code>, <code style={codeStyle}>back_thickness</code>
+                  </div>
+                  <div style={{ backgroundColor: "#f6f6f7", padding: 12, borderRadius: 4, fontFamily: "monospace", fontSize: "0.85rem" }}>
+                    <div><strong>Volume:</strong> (uses average thickness)</div>
+                    <div style={{ color: "#5c6ac4", marginLeft: 12 }}>length*width*((front_thickness+back_thickness)/2)</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2D Shapes */}
+              <h2 style={subheadingStyle}>2D Shapes &amp; Panels Configuration</h2>
+              <p style={paragraphStyle}>
+                For flat items like curtains or fabric panels that don't have thickness/volume, you can enable 2D mode. This changes how the calculator behaves.
+              </p>
+
+              <div style={stepBoxStyle}>
+                <strong>Is 2D Shape</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  When enabled, the shape is treated as flat (no volume calculation). The fill section is typically hidden for 2D shapes since there's no interior to fill. Only surface area (one side) is calculated for fabric cost.
+                </p>
+              </div>
+
+              <div style={stepBoxStyle}>
+                <strong>Enable Panels</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  When enabled, customers can specify how many panels they want. The total price is multiplied by the panel count. Perfect for curtains where customers might order 2, 4, or more matching panels.
+                </p>
+              </div>
+
+              <div style={stepBoxStyle}>
+                <strong>Max Panels</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  The maximum number of panels a customer can order (1-20). This prevents unreasonably large orders and helps with inventory planning.
+                </p>
+              </div>
+
+              <div style={tipBoxStyle}>
+                <strong style={{ color: "#108043" }}>Use Cases for 2D Mode:</strong>
+                <ul style={{ ...listStyle, marginTop: 8, marginBottom: 0 }}>
+                  <li style={listItemStyle}>Curtain panels</li>
+                  <li style={listItemStyle}>Drapes and valances</li>
+                  <li style={listItemStyle}>Flat fabric pieces</li>
+                  <li style={listItemStyle}>Table runners or placemats</li>
+                </ul>
+              </div>
+
+              {/* Shape Status */}
+              <h2 style={subheadingStyle}>Shape Status Settings</h2>
+
+              <div style={stepBoxStyle}>
+                <strong>Is Active</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Toggle this OFF to hide a shape from the calculator without deleting it. Inactive shapes won't appear in the shape dropdown. Useful for seasonal shapes or shapes under development.
+                </p>
+              </div>
+
+              <div style={stepBoxStyle}>
+                <strong>Is Default</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  The default shape is pre-selected when the calculator loads. Only one shape can be the default. This is usually your most common shape (e.g., Rectangle for most cushion businesses).
+                </p>
+              </div>
+
+              <div style={stepBoxStyle}>
+                <strong>Sort Order</strong>
+                <p style={{ margin: "8px 0 0", color: "#6d7175", fontSize: "0.9rem" }}>
+                  Controls the display order of shapes in the dropdown. Lower numbers appear first. Put your most popular shapes at the top for easier customer selection.
+                </p>
+              </div>
+
+              {/* Step by Step */}
+              <h2 style={subheadingStyle}>Creating a Shape - Step by Step</h2>
               <ol style={listStyle}>
-                <li style={listItemStyle}>Go to <strong>Shapes</strong> in the sidebar</li>
-                <li style={listItemStyle}>Click <strong>Add Shape</strong></li>
-                <li style={listItemStyle}>Enter the shape name</li>
-                <li style={listItemStyle}>Define input fields (dimensions customers will enter)</li>
-                <li style={listItemStyle}>Write formulas for surface area and volume</li>
-                <li style={listItemStyle}>Save the shape</li>
+                <li style={listItemStyle}>Go to <strong>Shapes</strong> in the sidebar menu</li>
+                <li style={listItemStyle}>Click the <strong>"Add Shape"</strong> button</li>
+                <li style={listItemStyle}>Enter a <strong>Shape Name</strong> (e.g., "Rectangle")</li>
+                <li style={listItemStyle}>Optionally add an <strong>Image URL</strong> for visual reference</li>
+                <li style={listItemStyle}>Add <strong>Input Fields</strong> for each dimension customers need to enter:
+                  <ul style={{ ...listStyle, marginTop: 8 }}>
+                    <li style={listItemStyle}>Set the Label (what customers see)</li>
+                    <li style={listItemStyle}>Set the Key (variable name for formulas)</li>
+                    <li style={listItemStyle}>Set Min/Max values for validation</li>
+                    <li style={listItemStyle}>Optionally set a default value</li>
+                  </ul>
+                </li>
+                <li style={listItemStyle}>Write the <strong>Surface Area Formula</strong> using your input field keys</li>
+                <li style={listItemStyle}>Write the <strong>Surface Area Without Base Formula</strong> (for weatherproof mode)</li>
+                <li style={listItemStyle}>Write the <strong>Volume Formula</strong> using your input field keys</li>
+                <li style={listItemStyle}>Enable <strong>2D mode</strong> if this is a flat shape (optional)</li>
+                <li style={listItemStyle}>Set the <strong>Sort Order</strong> for display positioning</li>
+                <li style={listItemStyle}>Click <strong>Save</strong> to create the shape</li>
               </ol>
 
-              <h2 style={subheadingStyle}>Input Fields</h2>
-              <p style={paragraphStyle}>
-                Input fields are the measurements customers will enter. Each field has:
-              </p>
-              <ul style={listStyle}>
-                <li style={listItemStyle}><strong>Label:</strong> What customers see (e.g., "Length", "Width")</li>
-                <li style={listItemStyle}><strong>Key:</strong> Variable name used in formulas (e.g., <code style={codeStyle}>length</code>, <code style={codeStyle}>width</code>)</li>
-                <li style={listItemStyle}><strong>Min/Max:</strong> Allowed range of values</li>
-                <li style={listItemStyle}><strong>Default:</strong> Pre-filled value (optional)</li>
-              </ul>
-
-              <h2 style={subheadingStyle}>Writing Formulas</h2>
-              <p style={paragraphStyle}>
-                Use input field keys in your formulas. Supported operators: <code style={codeStyle}>+</code> <code style={codeStyle}>-</code> <code style={codeStyle}>*</code> <code style={codeStyle}>/</code> and parentheses.
-              </p>
-
-              <div style={stepBoxStyle}>
-                <strong>Rectangle Example:</strong>
-                <p style={{ margin: "8px 0 4px", color: "#6d7175", fontSize: "0.9rem" }}>
-                  Input fields: <code style={codeStyle}>length</code>, <code style={codeStyle}>width</code>, <code style={codeStyle}>thickness</code>
-                </p>
-                <p style={{ margin: "4px 0", color: "#6d7175", fontSize: "0.9rem" }}>
-                  Surface Area: <code style={codeStyle}>length*width*2 + length*thickness*2 + width*thickness*2</code>
-                </p>
-                <p style={{ margin: "4px 0", color: "#6d7175", fontSize: "0.9rem" }}>
-                  Volume: <code style={codeStyle}>length*width*thickness</code>
+              <div style={{ ...warningBoxStyle, marginTop: 20 }}>
+                <strong style={{ color: "#e65100" }}>Testing Your Formulas:</strong>
+                <p style={{ margin: "8px 0 0", color: "#e65100" }}>
+                  After creating a shape, test it by going to a product page with the calculator. Enter dimensions and verify that the calculated prices make sense. If prices seem wrong, double-check your formula syntax and variable names.
                 </p>
               </div>
-
-              <div style={stepBoxStyle}>
-                <strong>Circle Example:</strong>
-                <p style={{ margin: "8px 0 4px", color: "#6d7175", fontSize: "0.9rem" }}>
-                  Input fields: <code style={codeStyle}>radius</code>, <code style={codeStyle}>thickness</code>
-                </p>
-                <p style={{ margin: "4px 0", color: "#6d7175", fontSize: "0.9rem" }}>
-                  Surface Area: <code style={codeStyle}>3.14159*radius*radius*2 + 3.14159*2*radius*thickness</code>
-                </p>
-                <p style={{ margin: "4px 0", color: "#6d7175", fontSize: "0.9rem" }}>
-                  Volume: <code style={codeStyle}>3.14159*radius*radius*thickness</code>
-                </p>
-              </div>
-
-              <h2 style={subheadingStyle}>Surface Area Without Base</h2>
-              <p style={paragraphStyle}>
-                This optional formula is used when Weatherproof mode is enabled in a profile. It calculates surface area excluding the bottom face.
-              </p>
-
-              <h2 style={subheadingStyle}>2D Shapes &amp; Panels</h2>
-              <p style={paragraphStyle}>
-                For flat items like curtains, enable "2D Shape" mode. You can also enable panel count, which multiplies the total by the number of panels ordered.
-              </p>
             </div>
           )}
 
