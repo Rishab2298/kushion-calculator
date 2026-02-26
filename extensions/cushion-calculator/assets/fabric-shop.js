@@ -1,7 +1,7 @@
 /**
  * Fabric & Fill Sample Shop
- * Storefront block for browsing and purchasing fabric/fill samples.
- * Pricing: any N items = bundlePrice, then +perItemPrice each.
+ * Two-panel layout: left = image grid, right = sticky detail preview.
+ * Click a card to preview on the right; add/remove from selection via the detail pane.
  */
 (function () {
   'use strict';
@@ -12,6 +12,7 @@
     this.root = root;
     this.shop = root.getAttribute('data-shop');
     this.selectedItems = []; // [{id, name, type, imageUrl}]
+    this.activeItem = null;  // {id, type, name, imageUrl, subtitle, priceTier} — currently previewed
     this.settings = { sampleBundlePrice: 25, sampleMinItems: 4, samplePerItemPrice: 5 };
     this.currentTab = 'fabrics';
     this.fabricPagination = { page: 1, limit: 40, totalPages: 1, hasNext: false, hasPrev: false };
@@ -30,7 +31,8 @@
   FabricShop.prototype.renderShell = function () {
     this.root.innerHTML = [
       '<div class="kraft2026zion-sample-shop">',
-        // Header
+
+        // ── Header ──
         '<div class="kraft2026zion-sample-header">',
           '<div class="kraft2026zion-sample-header-text">',
             '<div class="kraft2026zion-sample-heading">Sample Collection</div>',
@@ -38,7 +40,8 @@
           '</div>',
           '<span class="kraft2026zion-sample-deal-pill">Any 4 for $25 &middot; $5 each after</span>',
         '</div>',
-        // Sticky selection bar
+
+        // ── Sticky selection bar ──
         '<div class="kraft2026zion-sample-bar">',
           '<div class="kraft2026zion-sample-bar-left">',
             '<div class="kraft2026zion-sample-tray" data-tray></div>',
@@ -49,35 +52,56 @@
             '<button class="kraft2026zion-sample-add-btn" disabled>Any 4 for $25</button>',
           '</div>',
         '</div>',
-        // Tab toggle
-        '<div class="kraft2026zion-sample-tab-wrap">',
-          '<div class="kraft2026zion-sample-tabs">',
-            '<button class="kraft2026zion-sample-tab kraft2026zion-sample-tab-active" data-tab="fabrics">Fabrics</button>',
-            '<button class="kraft2026zion-sample-tab" data-tab="fills">Fills</button>',
-          '</div>',
-        '</div>',
-        // Fabrics panel
-        '<div class="kraft2026zion-sample-panel" data-panel="fabrics">',
-          '<div class="kraft2026zion-sample-filter-row">',
-            '<input class="kraft2026zion-sample-search" type="text" placeholder="Search fabrics...">',
-            '<select class="kraft2026zion-sample-select" data-filter="categoryId"><option value="">All Categories</option></select>',
-            '<select class="kraft2026zion-sample-select" data-filter="colorId"><option value="">All Colors</option></select>',
-            '<select class="kraft2026zion-sample-select" data-filter="patternId"><option value="">All Patterns</option></select>',
-          '</div>',
-          '<div class="kraft2026zion-sample-panel-inner">',
-            '<div class="kraft2026zion-sample-grid" data-grid="fabrics">',
-              '<div class="kraft2026zion-sample-spinner"><div class="kraft2026zion-loading-spinner-small"></div></div>',
+
+        // ── Two-panel body ──
+        '<div class="kraft2026zion-sample-body">',
+
+          // Left: grid pane
+          '<div class="kraft2026zion-sample-grid-pane">',
+
+            // Tabs
+            '<div class="kraft2026zion-sample-tab-wrap">',
+              '<div class="kraft2026zion-sample-tabs">',
+                '<button class="kraft2026zion-sample-tab kraft2026zion-sample-tab-active" data-tab="fabrics">Fabrics</button>',
+                '<button class="kraft2026zion-sample-tab" data-tab="fills">Fills</button>',
+              '</div>',
             '</div>',
-            '<div class="kraft2026zion-sample-pag" data-pagination="fabrics"></div>',
+
+            // Fabrics panel
+            '<div class="kraft2026zion-sample-panel" data-panel="fabrics">',
+              '<div class="kraft2026zion-sample-filter-row">',
+                '<input class="kraft2026zion-sample-search" type="text" placeholder="Search fabrics...">',
+                '<select class="kraft2026zion-sample-select" data-filter="categoryId"><option value="">All Categories</option></select>',
+                '<select class="kraft2026zion-sample-select" data-filter="colorId"><option value="">All Colors</option></select>',
+                '<select class="kraft2026zion-sample-select" data-filter="patternId"><option value="">All Patterns</option></select>',
+              '</div>',
+              '<div class="kraft2026zion-sample-panel-inner">',
+                '<div class="kraft2026zion-sample-grid" data-grid="fabrics">',
+                  '<div class="kraft2026zion-sample-spinner"><div class="kraft2026zion-loading-spinner-small"></div></div>',
+                '</div>',
+                '<div class="kraft2026zion-sample-pag" data-pagination="fabrics"></div>',
+              '</div>',
+            '</div>',
+
+            // Fills panel
+            '<div class="kraft2026zion-sample-panel" data-panel="fills" style="display:none">',
+              '<div class="kraft2026zion-sample-panel-inner">',
+                '<div class="kraft2026zion-sample-grid" data-grid="fills">',
+                  '<div class="kraft2026zion-sample-spinner"><div class="kraft2026zion-loading-spinner-small"></div></div>',
+                '</div>',
+              '</div>',
+            '</div>',
+
           '</div>',
-        '</div>',
-        // Fills panel
-        '<div class="kraft2026zion-sample-panel" data-panel="fills" style="display:none">',
-          '<div class="kraft2026zion-sample-panel-inner">',
-            '<div class="kraft2026zion-sample-grid" data-grid="fills">',
-              '<div class="kraft2026zion-sample-spinner"><div class="kraft2026zion-loading-spinner-small"></div></div>',
+
+          // Right: sticky detail pane
+          '<div class="kraft2026zion-sample-detail-pane" data-detail-pane>',
+            '<div class="kraft2026zion-sample-detail-empty">',
+              '<span class="kraft2026zion-sample-detail-empty-icon">&#9670;</span>',
+              '<div class="kraft2026zion-sample-detail-empty-text">Click a swatch<br>to preview details</div>',
             '</div>',
           '</div>',
+
         '</div>',
       '</div>',
     ].join('');
@@ -87,7 +111,6 @@
     var self = this;
     var root = this.root;
 
-    // Delegate all click events
     root.addEventListener('click', function (e) {
       // Tab switch
       var tab = e.target.closest('.kraft2026zion-sample-tab');
@@ -95,10 +118,21 @@
         self.switchTab(tab.getAttribute('data-tab'));
         return;
       }
-      // Card toggle
+      // Detail pane: select/deselect button
+      var selectBtn = e.target.closest('[data-select-btn]');
+      if (selectBtn) {
+        self.toggleItemById(
+          selectBtn.getAttribute('data-id'),
+          selectBtn.getAttribute('data-type'),
+          selectBtn.getAttribute('data-name'),
+          selectBtn.getAttribute('data-image')
+        );
+        return;
+      }
+      // Grid card click → preview
       var card = e.target.closest('.kraft2026zion-sample-card');
       if (card) {
-        self.toggleItem(card);
+        self.previewItem(card);
         return;
       }
       // Add to cart
@@ -118,7 +152,7 @@
       }
     });
 
-    // Search input with debounce
+    // Search with debounce
     var searchInput = root.querySelector('.kraft2026zion-sample-search');
     if (searchInput) {
       searchInput.addEventListener('input', function () {
@@ -153,6 +187,112 @@
     root.querySelectorAll('.kraft2026zion-sample-panel').forEach(function (p) {
       p.style.display = p.getAttribute('data-panel') === tabName ? '' : 'none';
     });
+  };
+
+  // ── Preview: click card → show in detail pane ──
+  FabricShop.prototype.previewItem = function (card) {
+    // Update active highlight on all cards
+    this.root.querySelectorAll('.kraft2026zion-sample-card').forEach(function (c) {
+      c.classList.remove('kraft2026zion-active');
+    });
+    card.classList.add('kraft2026zion-active');
+
+    this.activeItem = {
+      id: card.getAttribute('data-id'),
+      type: card.getAttribute('data-type'),
+      name: card.getAttribute('data-name'),
+      imageUrl: card.getAttribute('data-image'),
+      subtitle: card.getAttribute('data-subtitle'),
+      priceTier: card.getAttribute('data-tier'),
+    };
+    this.renderDetailPane();
+  };
+
+  // ── Render the right-pane detail ──
+  FabricShop.prototype.renderDetailPane = function () {
+    var detail = this.root.querySelector('[data-detail-pane]');
+    if (!detail) return;
+
+    var item = this.activeItem;
+    if (!item) {
+      detail.innerHTML = [
+        '<div class="kraft2026zion-sample-detail-empty">',
+          '<span class="kraft2026zion-sample-detail-empty-icon">&#9670;</span>',
+          '<div class="kraft2026zion-sample-detail-empty-text">Click a swatch<br>to preview details</div>',
+        '</div>',
+      ].join('');
+      return;
+    }
+
+    var isSelected = this.selectedItems.some(function (s) {
+      return s.id === item.id && s.type === item.type;
+    });
+
+    var imgHtml = item.imageUrl
+      ? '<img class="kraft2026zion-sample-detail-img" src="' + item.imageUrl + '" alt="' + escapeHtml(item.name) + '">'
+      : '<div class="kraft2026zion-sample-detail-placeholder">' + (item.type === 'fill' ? '&#9729;' : '&#129525;') + '</div>';
+
+    var tierHtml = '';
+    if (item.priceTier && item.priceTier !== 'none') {
+      var tierMap = { low: '$', medium: '$$', high: '$$$' };
+      tierHtml = '<div class="kraft2026zion-sample-detail-tier kraft2026zion-sample-tier-' + item.priceTier + '">' + (tierMap[item.priceTier] || '') + '</div>';
+    }
+
+    var subHtml = item.subtitle
+      ? '<div class="kraft2026zion-sample-detail-sub">' + escapeHtml(item.subtitle) + '</div>'
+      : '';
+
+    var btnLabel = isSelected ? '&#10003; Remove from selection' : '+ Add to selection';
+    var btnClass = 'kraft2026zion-sample-detail-select-btn' + (isSelected ? ' kraft2026zion-selected-state' : '');
+
+    detail.innerHTML = [
+      '<div class="kraft2026zion-sample-detail-content">',
+        '<div class="kraft2026zion-sample-detail-img-wrap">',
+          imgHtml,
+        '</div>',
+        '<div class="kraft2026zion-sample-detail-info">',
+          '<div class="kraft2026zion-sample-detail-name">' + escapeHtml(item.name) + '</div>',
+          subHtml,
+          tierHtml,
+          '<button class="' + btnClass + '"',
+            ' data-select-btn',
+            ' data-id="' + escapeAttr(item.id) + '"',
+            ' data-type="' + escapeAttr(item.type) + '"',
+            ' data-name="' + escapeAttr(item.name) + '"',
+            ' data-image="' + escapeAttr(item.imageUrl || '') + '"',
+          '>' + btnLabel + '</button>',
+        '</div>',
+      '</div>',
+    ].join('');
+  };
+
+  // ── Toggle selection by item ID (called from detail pane button) ──
+  FabricShop.prototype.toggleItemById = function (id, type, name, imageUrl) {
+    var idx = -1;
+    for (var i = 0; i < this.selectedItems.length; i++) {
+      if (this.selectedItems[i].id === id && this.selectedItems[i].type === type) {
+        idx = i;
+        break;
+      }
+    }
+    if (idx >= 0) {
+      this.selectedItems.splice(idx, 1);
+    } else {
+      this.selectedItems.push({ id: id, type: type, name: name, imageUrl: imageUrl });
+    }
+
+    // Sync card UI in grid
+    var card = this.root.querySelector('[data-id="' + id + '"][data-type="' + type + '"]');
+    if (card) {
+      if (idx >= 0) {
+        card.classList.remove('kraft2026zion-sample-card-selected');
+      } else {
+        card.classList.add('kraft2026zion-sample-card-selected');
+      }
+    }
+
+    this.updateBar();
+    this.renderDetailPane();
   };
 
   FabricShop.prototype.loadInitData = function () {
@@ -266,21 +406,28 @@
     });
   };
 
+  // ── Create an image-only card (no text below, details live in right pane) ──
   FabricShop.prototype.createCard = function (id, name, imageUrl, type, subtitle, priceTier) {
     var isSelected = this.selectedItems.some(function (item) {
       return item.id === id && item.type === type;
     });
+    var isActive = this.activeItem && this.activeItem.id === id && this.activeItem.type === type;
 
     var div = document.createElement('div');
-    div.className = 'kraft2026zion-sample-card' + (isSelected ? ' kraft2026zion-sample-card-selected' : '');
+    var cls = 'kraft2026zion-sample-card';
+    if (isSelected) cls += ' kraft2026zion-sample-card-selected';
+    if (isActive) cls += ' kraft2026zion-active';
+    div.className = cls;
     div.setAttribute('data-id', id);
     div.setAttribute('data-type', type);
     div.setAttribute('data-name', name);
     div.setAttribute('data-image', imageUrl || '');
+    div.setAttribute('data-subtitle', subtitle || '');
+    div.setAttribute('data-tier', priceTier || '');
 
     var imgHtml = imageUrl
       ? '<img class="kraft2026zion-sample-card-img" src="' + imageUrl + '" alt="' + escapeHtml(name) + '" loading="lazy">'
-      : '<div class="kraft2026zion-sample-card-placeholder">' + (type === 'fill' ? '☁' : '🧵') + '</div>';
+      : '<div class="kraft2026zion-sample-card-placeholder">' + (type === 'fill' ? '&#9729;' : '&#129525;') + '</div>';
 
     var tierHtml = '';
     if (priceTier && priceTier !== 'none') {
@@ -288,8 +435,7 @@
       tierHtml = '<span class="kraft2026zion-sample-tier kraft2026zion-sample-tier-' + priceTier + '">' + (tierMap[priceTier] || '') + '</span>';
     }
 
-    var subtitleText = subtitle ? '<div class="kraft2026zion-sample-card-sub">' + escapeHtml(subtitle) + '</div>' : '';
-
+    // Image only — no card-info text block
     div.innerHTML = [
       '<div class="kraft2026zion-sample-card-thumb">',
         imgHtml,
@@ -297,37 +443,9 @@
         tierHtml,
         '<div class="kraft2026zion-sample-check">&#10003;</div>',
       '</div>',
-      '<div class="kraft2026zion-sample-card-info">',
-        '<div class="kraft2026zion-sample-card-name">' + escapeHtml(name) + '</div>',
-        subtitleText,
-      '</div>',
     ].join('');
 
     return div;
-  };
-
-  FabricShop.prototype.toggleItem = function (card) {
-    var id = card.getAttribute('data-id');
-    var type = card.getAttribute('data-type');
-    var name = card.getAttribute('data-name');
-    var imageUrl = card.getAttribute('data-image');
-
-    var idx = -1;
-    for (var i = 0; i < this.selectedItems.length; i++) {
-      if (this.selectedItems[i].id === id && this.selectedItems[i].type === type) {
-        idx = i;
-        break;
-      }
-    }
-
-    if (idx >= 0) {
-      this.selectedItems.splice(idx, 1);
-      card.classList.remove('kraft2026zion-sample-card-selected');
-    } else {
-      this.selectedItems.push({ id: id, type: type, name: name, imageUrl: imageUrl });
-      card.classList.add('kraft2026zion-sample-card-selected');
-    }
-    this.updateBar();
   };
 
   FabricShop.prototype.calculatePrice = function (count) {
@@ -340,12 +458,10 @@
   };
 
   FabricShop.prototype.updateBar = function () {
-    var self = this;
     var count = this.selectedItems.length;
     var s = this.settings;
     var minItems = s.sampleMinItems || 4;
     var bundlePrice = s.sampleBundlePrice || 25;
-    var perItemPrice = s.samplePerItemPrice || 5;
     var price = this.calculatePrice(count);
 
     var countBadge = this.root.querySelector('.kraft2026zion-sample-count-badge');
@@ -358,18 +474,18 @@
       var html = '';
       var shown = this.selectedItems.slice(0, 5);
       shown.forEach(function (item, i) {
-        var style = 'z-index:' + (10 - i) + ';left:' + (i * 20) + 'px;';
+        var style = 'z-index:' + (10 - i) + ';left:' + (i * 18) + 'px;';
         if (item.imageUrl) {
           style += 'background-image:url(' + item.imageUrl + ');background-size:cover;background-position:center;';
         }
         html += '<div class="kraft2026zion-sample-tray-thumb" style="' + style + '"></div>';
       });
       if (this.selectedItems.length > 5) {
-        html += '<div class="kraft2026zion-sample-tray-more" style="z-index:4;left:' + (5 * 20) + 'px">+' + (this.selectedItems.length - 5) + '</div>';
+        html += '<div class="kraft2026zion-sample-tray-more" style="z-index:4;left:' + (5 * 18) + 'px">+' + (this.selectedItems.length - 5) + '</div>';
       }
       tray.innerHTML = html;
       var slotCount = Math.min(count, 5) + (count > 5 ? 1 : 0);
-      tray.style.width = count === 0 ? '0px' : (34 + (slotCount - 1) * 20) + 'px';
+      tray.style.width = count === 0 ? '0px' : (30 + (slotCount - 1) * 18) + 'px';
       tray.style.marginRight = count === 0 ? '0px' : '10px';
     }
 
@@ -395,11 +511,9 @@
       if (barPrice) barPrice.textContent = '';
       if (addBtn) {
         addBtn.disabled = true;
-        if (count === 0) {
-          addBtn.textContent = 'Any ' + minItems + ' for $' + bundlePrice.toFixed(0);
-        } else {
-          addBtn.textContent = 'Select ' + remaining + ' more to continue';
-        }
+        addBtn.textContent = count === 0
+          ? 'Any ' + minItems + ' for $' + bundlePrice.toFixed(0)
+          : 'Select ' + remaining + ' more to continue';
       }
     }
   };
@@ -497,6 +611,11 @@
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
+  }
+
+  // For HTML attribute values (same escaping, explicit alias for clarity)
+  function escapeAttr(str) {
+    return escapeHtml(str);
   }
 
   // Auto-initialize all shop roots on the page
