@@ -1,0 +1,271 @@
+{% comment %}
+  Fabric & Fill Sample Shop Block
+  All class names prefixed with kraft2026zion-sample- to prevent CSS conflicts
+{% endcomment %}
+
+<div class="kraft2026zion-sample-root" data-shop="{{ shop.permanent_domain }}"></div>
+
+<style>
+  /* ── Root & Shop Shell ── */
+  .kraft2026zion-sample-root { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #333; }
+  .kraft2026zion-sample-shop { position: relative; }
+
+  /* ── Sticky Cart Bar ── */
+  .kraft2026zion-sample-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .kraft2026zion-sample-bar-info { display: flex; align-items: center; gap: 12px; }
+  .kraft2026zion-sample-count-badge {
+    background: #fa6439;
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .kraft2026zion-sample-bar-price {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fa6439;
+  }
+  .kraft2026zion-sample-add-btn {
+    padding: 10px 20px;
+    background: #fa6439;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .kraft2026zion-sample-add-btn:hover:not(:disabled) { background: #e85530; }
+  .kraft2026zion-sample-add-btn:disabled { background: #cbd5e1; cursor: not-allowed; color: #94a3b8; }
+
+  /* ── Tabs ── */
+  .kraft2026zion-sample-tabs { display: flex; gap: 0; border-bottom: 2px solid #e2e8f0; margin-bottom: 16px; }
+  .kraft2026zion-sample-tab {
+    padding: 10px 20px;
+    border: none;
+    background: transparent;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #64748b;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.15s;
+  }
+  .kraft2026zion-sample-tab:hover { color: #fa6439; }
+  .kraft2026zion-sample-tab-active { color: #fa6439; border-bottom-color: #fa6439; font-weight: 600; }
+
+  /* ── Filter Row ── */
+  .kraft2026zion-sample-filter-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .kraft2026zion-sample-search {
+    flex: 1;
+    min-width: 160px;
+    padding: 8px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .kraft2026zion-sample-search:focus { border-color: #fa6439; }
+  .kraft2026zion-sample-select {
+    padding: 8px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    background: #fff;
+    cursor: pointer;
+    color: #555;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .kraft2026zion-sample-select:focus { border-color: #fa6439; }
+
+  /* ── Item Grid ── */
+  .kraft2026zion-sample-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+    min-height: 100px;
+  }
+
+  /* ── Item Card ── */
+  .kraft2026zion-sample-card {
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: #fff;
+    user-select: none;
+  }
+  .kraft2026zion-sample-card:hover { border-color: #fda488; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(250,100,57,0.15); }
+  .kraft2026zion-sample-card-selected { border-color: #fa6439 !important; box-shadow: 0 0 0 3px rgba(250,100,57,0.2); }
+
+  .kraft2026zion-sample-card-thumb {
+    position: relative;
+    width: 100%;
+    padding-top: 100%; /* 1:1 square */
+    background: #f5f5f5;
+    overflow: hidden;
+  }
+  .kraft2026zion-sample-card-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .kraft2026zion-sample-card-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: #ccc;
+  }
+
+  /* Checkmark overlay */
+  .kraft2026zion-sample-check {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 22px;
+    height: 22px;
+    background: #fa6439;
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: all 0.15s;
+    box-shadow: 0 2px 6px rgba(250,100,57,0.5);
+  }
+  .kraft2026zion-sample-card-selected .kraft2026zion-sample-check { opacity: 1; transform: scale(1); }
+
+  /* Price tier badge */
+  .kraft2026zion-sample-tier {
+    position: absolute;
+    bottom: 4px;
+    left: 4px;
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .kraft2026zion-sample-tier-low { background: #d4edda; color: #155724; }
+  .kraft2026zion-sample-tier-medium { background: #fff3cd; color: #856404; }
+  .kraft2026zion-sample-tier-high { background: #ffd6a5; color: #8a4500; }
+
+  /* Card text */
+  .kraft2026zion-sample-card-info { padding: 6px 8px 8px; }
+  .kraft2026zion-sample-card-name { font-size: 0.75rem; font-weight: 600; color: #333; line-height: 1.3; }
+  .kraft2026zion-sample-card-sub { font-size: 0.68rem; color: #888; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* ── Loading Spinner ── */
+  .kraft2026zion-sample-spinner { display: flex; align-items: center; justify-content: center; padding: 40px; grid-column: 1 / -1; }
+  .kraft2026zion-loading-spinner-small { width: 28px; height: 28px; border: 3px solid #f0f0f0; border-top-color: #fa6439; border-radius: 50%; animation: kraft2026zion-spin 0.8s linear infinite; }
+  @keyframes kraft2026zion-spin { to { transform: rotate(360deg); } }
+
+  /* ── Empty & Error States ── */
+  .kraft2026zion-sample-empty { grid-column: 1 / -1; text-align: center; padding: 40px 16px; color: #94a3b8; font-size: 0.85rem; }
+
+  /* ── Pagination ── */
+  .kraft2026zion-sample-pag { margin-top: 16px; }
+  .kraft2026zion-sample-pag-row { display: flex; align-items: center; justify-content: center; gap: 12px; }
+  .kraft2026zion-sample-page-btn {
+    padding: 7px 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+    font-size: 0.85rem;
+    cursor: pointer;
+    color: #555;
+    transition: all 0.15s;
+  }
+  .kraft2026zion-sample-page-btn:hover { border-color: #fa6439; color: #fa6439; }
+  .kraft2026zion-sample-pag-info { font-size: 0.8rem; color: #888; }
+
+  /* ── Success Overlay ── */
+  .kraft2026zion-sample-success {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 60px 24px;
+    text-align: center;
+  }
+  .kraft2026zion-sample-success-icon {
+    width: 64px;
+    height: 64px;
+    background: #fa6439;
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 700;
+  }
+  .kraft2026zion-sample-success-msg { font-size: 1.2rem; font-weight: 600; color: #333; }
+  .kraft2026zion-sample-cart-link {
+    padding: 12px 28px;
+    background: #fa6439;
+    color: #fff;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: background 0.2s;
+  }
+  .kraft2026zion-sample-cart-link:hover { background: #e85530; }
+
+  /* ── Responsive ── */
+  @media (max-width: 600px) {
+    .kraft2026zion-sample-bar { flex-direction: column; align-items: stretch; }
+    .kraft2026zion-sample-bar-info { justify-content: space-between; }
+    .kraft2026zion-sample-add-btn { width: 100%; text-align: center; }
+    .kraft2026zion-sample-filter-row { gap: 6px; }
+    .kraft2026zion-sample-select { flex: 1 1 45%; }
+    .kraft2026zion-sample-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+  }
+</style>
+
+<script src="{{ 'fabric-shop.js' | asset_url }}" defer></script>
+
+{% schema %}
+{
+  "name": "Fabric & Fill Shop",
+  "target": "section",
+  "settings": []
+}
+{% endschema %}

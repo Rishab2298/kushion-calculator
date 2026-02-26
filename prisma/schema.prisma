@@ -69,6 +69,12 @@ model CalculatorSettings {
   formulaHighConstant    Float @default(120)
   formulaHighCoefficient Float @default(20)
 
+  // Fabric Sample Shop settings
+  fabricSampleProductId String?
+  sampleBundlePrice     Float   @default(25.0)
+  sampleMinItems        Int     @default(4)
+  samplePerItemPrice    Float   @default(5.0)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

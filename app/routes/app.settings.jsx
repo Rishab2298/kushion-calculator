@@ -47,6 +47,12 @@ export const action = async ({ request }) => {
   const formulaHighConstant = parseFloat(formData.get("formulaHighConstant")) || 120;
   const formulaHighCoefficient = parseFloat(formData.get("formulaHighCoefficient")) || 20;
 
+  // Fabric Sample Shop settings
+  const fabricSampleProductId = formData.get("fabricSampleProductId")?.trim() || null;
+  const sampleBundlePrice = parseFloat(formData.get("sampleBundlePrice")) || 25;
+  const sampleMinItems = parseInt(formData.get("sampleMinItems")) || 4;
+  const samplePerItemPrice = parseFloat(formData.get("samplePerItemPrice")) || 5;
+
   await prisma.calculatorSettings.upsert({
     where: { shop },
     update: {
@@ -62,6 +68,10 @@ export const action = async ({ request }) => {
       formulaLowCoefficient,
       formulaHighConstant,
       formulaHighCoefficient,
+      fabricSampleProductId,
+      sampleBundlePrice,
+      sampleMinItems,
+      samplePerItemPrice,
     },
     create: {
       shop,
@@ -77,6 +87,10 @@ export const action = async ({ request }) => {
       formulaLowCoefficient,
       formulaHighConstant,
       formulaHighCoefficient,
+      fabricSampleProductId,
+      sampleBundlePrice,
+      sampleMinItems,
+      samplePerItemPrice,
     },
   });
 
@@ -104,6 +118,10 @@ export default function Settings() {
     formulaLowCoefficient: settings.formulaLowCoefficient?.toString() || "52",
     formulaHighConstant: settings.formulaHighConstant?.toString() || "120",
     formulaHighCoefficient: settings.formulaHighCoefficient?.toString() || "20",
+    fabricSampleProductId: settings.fabricSampleProductId || "",
+    sampleBundlePrice: settings.sampleBundlePrice?.toString() || "25",
+    sampleMinItems: settings.sampleMinItems?.toString() || "4",
+    samplePerItemPrice: settings.samplePerItemPrice?.toString() || "5",
   });
 
   const handleSave = () => {
@@ -120,6 +138,10 @@ export default function Settings() {
     data.append("formulaLowCoefficient", formData.formulaLowCoefficient);
     data.append("formulaHighConstant", formData.formulaHighConstant);
     data.append("formulaHighCoefficient", formData.formulaHighCoefficient);
+    data.append("fabricSampleProductId", formData.fabricSampleProductId);
+    data.append("sampleBundlePrice", formData.sampleBundlePrice);
+    data.append("sampleMinItems", formData.sampleMinItems);
+    data.append("samplePerItemPrice", formData.samplePerItemPrice);
     fetcher.submit(data, { method: "POST" });
     shopify.toast.show("Settings saved");
   };
@@ -420,6 +442,66 @@ export default function Settings() {
           </s-box>
         </s-section>
       )}
+
+      <s-section heading="Fabric & Fill Sample Shop">
+        <s-box padding="base" borderWidth="base" borderRadius="base">
+          <s-stack direction="block" gap="loose">
+            <s-paragraph>
+              Configure the Fabric &amp; Fill Sample Shop storefront block. Customers can browse
+              and purchase fabric/fill samples with bundle pricing.
+            </s-paragraph>
+
+            <s-text-field
+              label="Fabric Sample Product ID"
+              value={formData.fabricSampleProductId}
+              onChange={(e) => setFormData({ ...formData, fabricSampleProductId: e.target.value })}
+              helpText="Shopify product ID or GID (e.g. gid://shopify/Product/123) for the base sample product. Create a product named 'Fabric Samples' in your store and paste its GID here."
+              placeholder="gid://shopify/Product/..."
+            />
+
+            <s-stack direction="inline" gap="base">
+              <s-text-field
+                label="Bundle Price ($)"
+                type="number"
+                value={formData.sampleBundlePrice}
+                onChange={(e) => setFormData({ ...formData, sampleBundlePrice: e.target.value })}
+                helpText="Price for the minimum bundle (e.g. any 4 for $25)"
+                min="0"
+                step="0.01"
+                prefix="$"
+              />
+              <s-text-field
+                label="Minimum Items"
+                type="number"
+                value={formData.sampleMinItems}
+                onChange={(e) => setFormData({ ...formData, sampleMinItems: e.target.value })}
+                helpText="Minimum number of items required to purchase"
+                min="1"
+                step="1"
+              />
+              <s-text-field
+                label="Price per Extra Item ($)"
+                type="number"
+                value={formData.samplePerItemPrice}
+                onChange={(e) => setFormData({ ...formData, samplePerItemPrice: e.target.value })}
+                helpText="Cost for each item beyond the minimum bundle"
+                min="0"
+                step="0.01"
+                prefix="$"
+              />
+            </s-stack>
+
+            <s-box padding="base" background="subdued" borderRadius="base">
+              <s-text fontSize="small">
+                Pricing example: any {formData.sampleMinItems} samples = ${formData.sampleBundlePrice},
+                then +${formData.samplePerItemPrice} per additional item.
+                (e.g. 5 items = ${(parseFloat(formData.sampleBundlePrice) + parseFloat(formData.samplePerItemPrice)).toFixed(2)},
+                6 items = ${(parseFloat(formData.sampleBundlePrice) + 2 * parseFloat(formData.samplePerItemPrice)).toFixed(2)})
+              </s-text>
+            </s-box>
+          </s-stack>
+        </s-box>
+      </s-section>
 
       <s-section slot="aside" heading="How It Works">
         <s-box padding="base">
