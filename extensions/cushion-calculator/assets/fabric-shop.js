@@ -30,18 +30,31 @@
   FabricShop.prototype.renderShell = function () {
     this.root.innerHTML = [
       '<div class="kraft2026zion-sample-shop">',
-        // Sticky cart bar
-        '<div class="kraft2026zion-sample-bar">',
-          '<div class="kraft2026zion-sample-bar-info">',
-            '<span class="kraft2026zion-sample-count-badge">0 selected</span>',
-            '<span class="kraft2026zion-sample-bar-price"></span>',
+        // Header
+        '<div class="kraft2026zion-sample-header">',
+          '<div class="kraft2026zion-sample-header-text">',
+            '<div class="kraft2026zion-sample-heading">Sample Collection</div>',
+            '<div class="kraft2026zion-sample-subheading">Touch before you choose</div>',
           '</div>',
-          '<button class="kraft2026zion-sample-add-btn" disabled>Select 4 items to start — $25</button>',
+          '<span class="kraft2026zion-sample-deal-pill">Any 4 for $25 &middot; $5 each after</span>',
         '</div>',
-        // Tabs
-        '<div class="kraft2026zion-sample-tabs">',
-          '<button class="kraft2026zion-sample-tab kraft2026zion-sample-tab-active" data-tab="fabrics">Fabrics</button>',
-          '<button class="kraft2026zion-sample-tab" data-tab="fills">Fills</button>',
+        // Sticky selection bar
+        '<div class="kraft2026zion-sample-bar">',
+          '<div class="kraft2026zion-sample-bar-left">',
+            '<div class="kraft2026zion-sample-tray" data-tray></div>',
+            '<span class="kraft2026zion-sample-count-badge">Nothing selected yet</span>',
+          '</div>',
+          '<div class="kraft2026zion-sample-bar-right">',
+            '<span class="kraft2026zion-sample-bar-price"></span>',
+            '<button class="kraft2026zion-sample-add-btn" disabled>Any 4 for $25</button>',
+          '</div>',
+        '</div>',
+        // Tab toggle
+        '<div class="kraft2026zion-sample-tab-wrap">',
+          '<div class="kraft2026zion-sample-tabs">',
+            '<button class="kraft2026zion-sample-tab kraft2026zion-sample-tab-active" data-tab="fabrics">Fabrics</button>',
+            '<button class="kraft2026zion-sample-tab" data-tab="fills">Fills</button>',
+          '</div>',
         '</div>',
         // Fabrics panel
         '<div class="kraft2026zion-sample-panel" data-panel="fabrics">',
@@ -51,15 +64,19 @@
             '<select class="kraft2026zion-sample-select" data-filter="colorId"><option value="">All Colors</option></select>',
             '<select class="kraft2026zion-sample-select" data-filter="patternId"><option value="">All Patterns</option></select>',
           '</div>',
-          '<div class="kraft2026zion-sample-grid" data-grid="fabrics">',
-            '<div class="kraft2026zion-sample-spinner"><div class="kraft2026zion-loading-spinner-small"></div></div>',
+          '<div class="kraft2026zion-sample-panel-inner">',
+            '<div class="kraft2026zion-sample-grid" data-grid="fabrics">',
+              '<div class="kraft2026zion-sample-spinner"><div class="kraft2026zion-loading-spinner-small"></div></div>',
+            '</div>',
+            '<div class="kraft2026zion-sample-pag" data-pagination="fabrics"></div>',
           '</div>',
-          '<div class="kraft2026zion-sample-pag" data-pagination="fabrics"></div>',
         '</div>',
         // Fills panel
         '<div class="kraft2026zion-sample-panel" data-panel="fills" style="display:none">',
-          '<div class="kraft2026zion-sample-grid" data-grid="fills">',
-            '<div class="kraft2026zion-sample-spinner"><div class="kraft2026zion-loading-spinner-small"></div></div>',
+          '<div class="kraft2026zion-sample-panel-inner">',
+            '<div class="kraft2026zion-sample-grid" data-grid="fills">',
+              '<div class="kraft2026zion-sample-spinner"><div class="kraft2026zion-loading-spinner-small"></div></div>',
+            '</div>',
           '</div>',
         '</div>',
       '</div>',
@@ -276,6 +293,7 @@
     div.innerHTML = [
       '<div class="kraft2026zion-sample-card-thumb">',
         imgHtml,
+        '<div class="kraft2026zion-sample-card-overlay"></div>',
         tierHtml,
         '<div class="kraft2026zion-sample-check">&#10003;</div>',
       '</div>',
@@ -322,6 +340,7 @@
   };
 
   FabricShop.prototype.updateBar = function () {
+    var self = this;
     var count = this.selectedItems.length;
     var s = this.settings;
     var minItems = s.sampleMinItems || 4;
@@ -332,14 +351,44 @@
     var countBadge = this.root.querySelector('.kraft2026zion-sample-count-badge');
     var barPrice = this.root.querySelector('.kraft2026zion-sample-bar-price');
     var addBtn = this.root.querySelector('.kraft2026zion-sample-add-btn');
+    var tray = this.root.querySelector('[data-tray]');
 
-    if (countBadge) countBadge.textContent = count + (count === 1 ? ' selected' : ' selected');
+    // Animate thumbnail tray
+    if (tray) {
+      var html = '';
+      var shown = this.selectedItems.slice(0, 5);
+      shown.forEach(function (item, i) {
+        var style = 'z-index:' + (10 - i) + ';left:' + (i * 20) + 'px;';
+        if (item.imageUrl) {
+          style += 'background-image:url(' + item.imageUrl + ');background-size:cover;background-position:center;';
+        }
+        html += '<div class="kraft2026zion-sample-tray-thumb" style="' + style + '"></div>';
+      });
+      if (this.selectedItems.length > 5) {
+        html += '<div class="kraft2026zion-sample-tray-more" style="z-index:4;left:' + (5 * 20) + 'px">+' + (this.selectedItems.length - 5) + '</div>';
+      }
+      tray.innerHTML = html;
+      var slotCount = Math.min(count, 5) + (count > 5 ? 1 : 0);
+      tray.style.width = count === 0 ? '0px' : (34 + (slotCount - 1) * 20) + 'px';
+      tray.style.marginRight = count === 0 ? '0px' : '10px';
+    }
+
+    // Count badge
+    if (countBadge) {
+      if (count === 0) {
+        countBadge.textContent = 'Nothing selected yet';
+        countBadge.classList.remove('kraft2026zion-has-items');
+      } else {
+        countBadge.textContent = count + (count === 1 ? ' item selected' : ' items selected');
+        countBadge.classList.add('kraft2026zion-has-items');
+      }
+    }
 
     if (price !== null) {
       if (barPrice) barPrice.textContent = '$' + price.toFixed(2);
       if (addBtn) {
         addBtn.disabled = false;
-        addBtn.textContent = 'Add ' + count + ' samples to cart — $' + price.toFixed(2);
+        addBtn.textContent = 'Add ' + count + ' samples — $' + price.toFixed(2);
       }
     } else {
       var remaining = minItems - count;
@@ -347,7 +396,7 @@
       if (addBtn) {
         addBtn.disabled = true;
         if (count === 0) {
-          addBtn.textContent = 'Any ' + minItems + ' samples for $' + bundlePrice.toFixed(0);
+          addBtn.textContent = 'Any ' + minItems + ' for $' + bundlePrice.toFixed(0);
         } else {
           addBtn.textContent = 'Select ' + remaining + ' more to continue';
         }
