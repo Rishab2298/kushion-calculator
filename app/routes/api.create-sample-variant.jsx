@@ -106,6 +106,7 @@ export const action = async ({ request }) => {
               price: parsedPrice.toFixed(2),
               optionValues: [{ name: optionValue, optionName: "Title" }],
               inventoryPolicy: "CONTINUE",
+              inventoryItem: { tracked: false },
               inventoryQuantities: [],
             },
           ],
