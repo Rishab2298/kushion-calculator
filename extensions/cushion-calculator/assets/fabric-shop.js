@@ -62,12 +62,6 @@
             '<div class="kraft2026zion-sample-spinner"><div class="kraft2026zion-loading-spinner-small"></div></div>',
           '</div>',
         '</div>',
-        // Success overlay (hidden by default)
-        '<div class="kraft2026zion-sample-success" style="display:none">',
-          '<div class="kraft2026zion-sample-success-icon">✓</div>',
-          '<div class="kraft2026zion-sample-success-msg">Added to cart!</div>',
-          '<a class="kraft2026zion-sample-cart-link" href="/cart">View Cart</a>',
-        '</div>',
       '</div>',
     ].join('');
   };
@@ -429,15 +423,7 @@
         if (cartData.status && cartData.status !== 200) {
           throw new Error(cartData.description || 'Failed to add to cart');
         }
-        // Show success state then redirect
-        var success = self.root.querySelector('.kraft2026zion-sample-success');
-        var shop = self.root.querySelector('.kraft2026zion-sample-shop');
-        if (success) {
-          if (shop) shop.style.display = 'none';
-          success.style.display = 'flex';
-        } else {
-          window.location.href = '/cart';
-        }
+        window.location.href = '/cart';
       })
       .catch(function (err) {
         console.error('[FabricShop] Add to cart error:', err);
