@@ -381,6 +381,14 @@
     var price = this.calculatePrice(count);
     if (!price || this.isAddingToCart) return;
 
+    var productId = this.settings.fabricSampleProductId;
+    if (!productId) {
+      var addBtn = this.root.querySelector('.kraft2026zion-sample-add-btn');
+      if (addBtn) addBtn.textContent = 'Error: Fabric Sample product not configured — Try again';
+      setTimeout(function () { self.updateBar(); }, 3000);
+      return;
+    }
+
     this.isAddingToCart = true;
     var addBtn = this.root.querySelector('.kraft2026zion-sample-add-btn');
     if (addBtn) {
@@ -390,14 +398,13 @@
 
     var itemNames = this.selectedItems.map(function (item) { return item.name; });
 
-    fetch(API_BASE + '/create-sample-variant', {
+    fetch(API_BASE + '/create-variant', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         shop: this.shop,
+        productId: productId,
         price: price,
-        selectedItems: itemNames,
-        itemCount: count,
       }),
     })
       .then(function (r) { return r.json(); })

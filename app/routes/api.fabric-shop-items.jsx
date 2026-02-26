@@ -45,6 +45,7 @@ export const loader = async ({ request }) => {
       sampleBundlePrice: settings?.sampleBundlePrice ?? 25.0,
       sampleMinItems: settings?.sampleMinItems ?? 4,
       samplePerItemPrice: settings?.samplePerItemPrice ?? 5.0,
+      fabricSampleProductId: settings?.fabricSampleProductId ?? null,
     };
 
     return new Response(
