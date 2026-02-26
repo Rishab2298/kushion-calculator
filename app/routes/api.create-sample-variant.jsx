@@ -81,7 +81,19 @@ export const action = async ({ request }) => {
       ? settings.fabricSampleProductId
       : `gid://shopify/Product/${settings.fabricSampleProductId}`;
 
-    console.log(`[SampleVariant] Creating variant at $${parsedPrice} for ${itemCount} items...`);
+    // Get the shop's first location so we can set inventory quantity
+    const locationRes = await admin.graphql(
+      `#graphql
+      query { locations(first: 1) { edges { node { id } } } }`
+    );
+    const locationData = await locationRes.json();
+    const locationId = locationData.data?.locations?.edges?.[0]?.node?.id;
+
+    console.log(`[SampleVariant] Creating variant at $${parsedPrice} for ${itemCount} items (location: ${locationId})...`);
+
+    const inventoryQuantities = locationId
+      ? [{ availableQuantity: 999, locationId }]
+      : [];
 
     const response = await admin.graphql(
       `#graphql
@@ -107,7 +119,7 @@ export const action = async ({ request }) => {
               optionValues: [{ name: optionValue, optionName: "Title" }],
               inventoryPolicy: "CONTINUE",
               inventoryItem: { tracked: false },
-              inventoryQuantities: [],
+              inventoryQuantities,
             },
           ],
         },
