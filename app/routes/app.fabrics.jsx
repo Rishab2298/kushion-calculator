@@ -290,6 +290,14 @@ export const action = async ({ request }) => {
       });
     }
 
+    // Auto-assign next sort order to avoid duplicates
+    const lastFabric = await prisma.fabric.findFirst({
+      where: { shop },
+      orderBy: { sortOrder: "desc" },
+      select: { sortOrder: true },
+    });
+    const nextSortOrder = (lastFabric?.sortOrder ?? -1) + 1;
+
     const fabric = await prisma.fabric.create({
       data: {
         shop,
@@ -302,7 +310,7 @@ export const action = async ({ request }) => {
         brandId: formData.get("brandId") || null,
         isActive: formData.get("isActive") !== "false",
         isDefault,
-        sortOrder: parseInt(formData.get("sortOrder")) || 0,
+        sortOrder: nextSortOrder,
         discountEnabled: formData.get("discountEnabled") === "true",
         discountPercent: parseFloat(formData.get("discountPercent")) || 0,
       },
