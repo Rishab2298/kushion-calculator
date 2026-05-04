@@ -417,7 +417,20 @@ CushionCalculator.prototype.openFabricBrowserPopup = function(categoryId, catego
   this.browserCurrentCategoryName = categoryName;
   this.browserCurrentPage = 1;
 
-  this.browserSelectedFabric = this.selectedFabric || null;
+  // Use selected fabric if it belongs to this category; otherwise fall back to category default
+  var previewData = this.categoryFabricPreviews && this.categoryFabricPreviews[categoryId];
+  var categoryDefault = null;
+  if (previewData) {
+    var previewFabrics = previewData.fabrics || [];
+    categoryDefault = previewFabrics.find(function(f) { return f.isDefault; }) || null;
+  }
+  if (!categoryDefault) {
+    var catConfig = (this.config.fabricCategories || []).find(function(c) { return c.id === categoryId; });
+    if (catConfig && catConfig.defaultFabric) categoryDefault = catConfig.defaultFabric;
+  }
+  this.browserSelectedFabric = (this.selectedFabric && this.selectedFabric.categoryId === categoryId)
+    ? this.selectedFabric
+    : (categoryDefault || null);
 
   document.getElementById('fabric-browser-title-' + blockId).textContent = 'Browse ' + categoryName + ' Fabrics';
 
