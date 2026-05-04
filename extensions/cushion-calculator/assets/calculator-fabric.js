@@ -569,19 +569,19 @@ CushionCalculator.prototype.populateFilterOptions = function() {
   var currentColor = document.getElementById('filter-color-' + blockId).value;
   var currentMaterial = document.getElementById('filter-material-' + blockId).value;
 
-  document.getElementById('filter-brand-' + blockId).innerHTML = '<option value="">Brand</option>' + (this.lookupData.brands || []).map(function(b) {
+  document.getElementById('filter-brand-' + blockId).innerHTML = '<option value="">All Brands</option>' + (this.lookupData.brands || []).map(function(b) {
     return '<option value="' + b.id + '"' + (b.id === currentBrand ? ' selected' : '') + '>' + b.name + '</option>';
   }).join('');
 
-  document.getElementById('filter-pattern-' + blockId).innerHTML = '<option value="">Pattern</option>' + (this.lookupData.patterns || []).map(function(p) {
+  document.getElementById('filter-pattern-' + blockId).innerHTML = '<option value="">All Patterns</option>' + (this.lookupData.patterns || []).map(function(p) {
     return '<option value="' + p.id + '"' + (p.id === currentPattern ? ' selected' : '') + '>' + p.name + '</option>';
   }).join('');
 
-  document.getElementById('filter-color-' + blockId).innerHTML = '<option value="">Color</option>' + (this.lookupData.colors || []).map(function(c) {
+  document.getElementById('filter-color-' + blockId).innerHTML = '<option value="">All Colors</option>' + (this.lookupData.colors || []).map(function(c) {
     return '<option value="' + c.id + '"' + (c.id === currentColor ? ' selected' : '') + '>' + c.name + '</option>';
   }).join('');
 
-  document.getElementById('filter-material-' + blockId).innerHTML = '<option value="">Material</option>' + (this.lookupData.materials || []).map(function(m) {
+  document.getElementById('filter-material-' + blockId).innerHTML = '<option value="">All Materials</option>' + (this.lookupData.materials || []).map(function(m) {
     return '<option value="' + m.id + '"' + (m.id === currentMaterial ? ' selected' : '') + '>' + m.name + '</option>';
   }).join('');
 };
