@@ -404,6 +404,20 @@ export const action = async ({ request }) => {
     return { success: true };
   }
 
+  // ---- One-time: reassign sort orders by creation date ----
+  if (intent === "fixSortOrders") {
+    const allFabrics = await prisma.fabric.findMany({
+      where: { shop },
+      orderBy: { createdAt: "asc" },
+      select: { id: true },
+    });
+    for (let i = 0; i < allFabrics.length; i++) {
+      await prisma.fabric.update({ where: { id: allFabrics[i].id }, data: { sortOrder: i } });
+    }
+    invalidateConfigCache(shop);
+    return { success: true, fixed: allFabrics.length };
+  }
+
   // ---- Bulk Actions ----
   if (intent === "bulkDelete") {
     const ids = JSON.parse(formData.get("ids") || "[]");
@@ -910,6 +924,19 @@ export default function Fabrics() {
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
               </select>
+            </div>
+          </s-section>
+
+          {/* One-time sort order fix */}
+          <s-section>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <s-button variant="secondary" onClick={() => {
+                if (!confirm("Reassign all fabric sort orders by creation date? This cannot be undone.")) return;
+                const d = new FormData();
+                d.append("intent", "fixSortOrders");
+                fetcher.submit(d, { method: "POST" });
+              }}>Fix Sort Orders (by creation date)</s-button>
+              <s-text tone="subdued" fontSize="small">Assigns 0, 1, 2… to all fabrics in creation order</s-text>
             </div>
           </s-section>
 
