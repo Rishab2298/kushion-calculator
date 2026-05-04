@@ -1,6 +1,7 @@
 import prisma from "../db.server";
 
-// Returns brands, patterns, colors for a shop (used by frontend filters)
+// Returns brands, patterns, colors, materials for a shop.
+// Pass categoryId to scope results to fabrics in that category only.
 export const loader = async ({ request }) => {
   const url = new URL(request.url);
   const shop = url.searchParams.get("shop");
@@ -12,25 +13,53 @@ export const loader = async ({ request }) => {
     });
   }
 
+  const categoryId = url.searchParams.get("categoryId") || null;
+
+  // When a categoryId is provided, filter each lookup to only include
+  // options that appear in active fabrics of that category.
+  const fabricScope = categoryId
+    ? { isActive: true, categoryId }
+    : { isActive: true };
+
   try {
     const [brands, patterns, colors, materials] = await Promise.all([
       prisma.fabricBrand.findMany({
-        where: { shop },
+        where: {
+          shop,
+          ...(categoryId && {
+            fabrics: { some: fabricScope },
+          }),
+        },
         orderBy: { sortOrder: "asc" },
         select: { id: true, name: true, logoUrl: true },
       }),
       prisma.fabricPattern.findMany({
-        where: { shop },
+        where: {
+          shop,
+          ...(categoryId && {
+            fabricAssignments: { some: { fabric: fabricScope } },
+          }),
+        },
         orderBy: { sortOrder: "asc" },
         select: { id: true, name: true },
       }),
       prisma.fabricColor.findMany({
-        where: { shop },
+        where: {
+          shop,
+          ...(categoryId && {
+            fabricAssignments: { some: { fabric: fabricScope } },
+          }),
+        },
         orderBy: { sortOrder: "asc" },
         select: { id: true, name: true, hexCode: true },
       }),
       prisma.fabricMaterial.findMany({
-        where: { shop },
+        where: {
+          shop,
+          ...(categoryId && {
+            fabricAssignments: { some: { fabric: fabricScope } },
+          }),
+        },
         orderBy: { sortOrder: "asc" },
         select: { id: true, name: true },
       }),

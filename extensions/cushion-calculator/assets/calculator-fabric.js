@@ -444,17 +444,25 @@ CushionCalculator.prototype.openFabricBrowserPopup = function(categoryId, catego
   }
 
   this.resetBrowserFilters();
-  this.loadLookupData();
+  this.loadLookupData(categoryId);
   document.getElementById('fabric-browser-overlay-' + blockId).style.display = 'flex';
   this.loadPaginatedFabrics();
 };
 
-CushionCalculator.prototype.loadLookupData = async function() {
-  if (this.lookupData) return;
+CushionCalculator.prototype.loadLookupData = async function(categoryId) {
+  if (!this.lookupDataByCategory) this.lookupDataByCategory = {};
+  if (this.lookupDataByCategory[categoryId]) {
+    this.lookupData = this.lookupDataByCategory[categoryId];
+    this.populateFilterOptions();
+    return;
+  }
   try {
-    var response = await fetch('/apps/cushion-api/fabric-lookups?shop=' + this.shopDomain);
+    var url = '/apps/cushion-api/fabric-lookups?shop=' + this.shopDomain;
+    if (categoryId) url += '&categoryId=' + encodeURIComponent(categoryId);
+    var response = await fetch(url);
     if (response.ok) {
       this.lookupData = await response.json();
+      this.lookupDataByCategory[categoryId] = this.lookupData;
       this.populateFilterOptions();
     }
   } catch (e) {
