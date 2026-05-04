@@ -24,6 +24,21 @@ export const loader = async ({ request }) => {
   const priceTier = url.searchParams.get("priceTier") || "";
   const status = url.searchParams.get("status") || "";
 
+  // Sorting
+  const sortBy = url.searchParams.get("sortBy") || "sortOrder";
+  const sortDir = url.searchParams.get("sortDir") === "desc" ? "desc" : "asc";
+  const sortableColumns = { name: true, category: true, brand: true, status: true, pricePerSqInch: true, sortOrder: true };
+  const activeSortBy = sortableColumns[sortBy] ? sortBy : "sortOrder";
+  const orderByMap = {
+    name: { name: sortDir },
+    category: { category: { name: sortDir } },
+    brand: { brand: { name: sortDir } },
+    status: { isActive: sortDir },
+    pricePerSqInch: { pricePerSqInch: sortDir },
+    sortOrder: { sortOrder: sortDir },
+  };
+  const orderBy = orderByMap[activeSortBy];
+
   // Build where clause
   const where = { shop };
   if (search) where.name = { contains: search, mode: "insensitive" };
@@ -56,7 +71,7 @@ export const loader = async ({ request }) => {
           colorAssignments: { include: { color: { select: { id: true, name: true, hexCode: true } } } },
           materialAssignments: { include: { material: { select: { id: true, name: true } } } },
         },
-        orderBy: { sortOrder: "asc" },
+        orderBy,
         skip,
         take: perPage,
       }),
@@ -99,7 +114,7 @@ export const loader = async ({ request }) => {
       patterns,
       colors,
       materials,
-      filters: { search, categoryId, brandId, patternId, colorId, priceTier, status },
+      filters: { search, categoryId, brandId, patternId, colorId, priceTier, status, sortBy: activeSortBy, sortDir },
       shop,
     };
   } catch (error) {
@@ -107,7 +122,7 @@ export const loader = async ({ request }) => {
     return {
       fabrics: [], pagination: { page: 1, perPage: 50, totalCount: 0, totalPages: 0 },
       categories: [], brands: [], patterns: [], colors: [], materials: [],
-      filters: { search: "", categoryId: "", brandId: "", patternId: "", colorId: "", priceTier: "", status: "" },
+      filters: { search: "", categoryId: "", brandId: "", patternId: "", colorId: "", priceTier: "", status: "", sortBy: "sortOrder", sortDir: "asc" },
       shop,
     };
   }
@@ -501,6 +516,21 @@ export default function Fabrics() {
 
   // Material form state
   const [materialData, setMaterialData] = useState({ name: "", sortOrder: 0 });
+
+  // --- Sort handler ---
+  const handleSort = useCallback((col) => {
+    const params = new URLSearchParams(searchParams);
+    const currentCol = params.get("sortBy") || "sortOrder";
+    const currentDir = params.get("sortDir") || "asc";
+    if (col === currentCol) {
+      params.set("sortDir", currentDir === "asc" ? "desc" : "asc");
+    } else {
+      params.set("sortBy", col);
+      params.set("sortDir", "asc");
+    }
+    params.set("page", "1");
+    setSearchParams(params);
+  }, [searchParams, setSearchParams]);
 
   // --- Filter handlers ---
   const updateFilter = useCallback((key, value) => {
@@ -976,13 +1006,28 @@ export default function Fabrics() {
                         onChange={toggleSelectAll} />
                     </th>
                     <th style={{ padding: "8px 6px", width: 50 }}>Image</th>
-                    <th style={{ padding: "8px 6px" }}>Name</th>
-                    <th style={{ padding: "8px 6px" }}>Category</th>
-                    <th style={{ padding: "8px 6px" }}>Brand</th>
+                    {[
+                      { col: "name", label: "Name" },
+                      { col: "category", label: "Category" },
+                      { col: "brand", label: "Brand" },
+                    ].map(({ col, label }) => {
+                      const active = filters.sortBy === col;
+                      return (
+                        <th key={col} onClick={() => handleSort(col)} style={{ padding: "8px 6px", cursor: "pointer", userSelect: "none", whiteSpace: "nowrap" }}>
+                          {label} <span style={{ color: active ? "#008060" : "#aaa", fontSize: "0.7rem" }}>{active ? (filters.sortDir === "asc" ? "▲" : "▼") : "▲▼"}</span>
+                        </th>
+                      );
+                    })}
                     <th style={{ padding: "8px 6px" }}>Tier</th>
-                    <th style={{ padding: "8px 6px" }}>$/sq in</th>
-                    <th style={{ padding: "8px 6px" }}>Status</th>
-                    <th style={{ padding: "8px 6px", textAlign: "center" }}>Sort Order</th>
+                    <th onClick={() => handleSort("pricePerSqInch")} style={{ padding: "8px 6px", cursor: "pointer", userSelect: "none", whiteSpace: "nowrap" }}>
+                      $/sq in <span style={{ color: filters.sortBy === "pricePerSqInch" ? "#008060" : "#aaa", fontSize: "0.7rem" }}>{filters.sortBy === "pricePerSqInch" ? (filters.sortDir === "asc" ? "▲" : "▼") : "▲▼"}</span>
+                    </th>
+                    <th onClick={() => handleSort("status")} style={{ padding: "8px 6px", cursor: "pointer", userSelect: "none", whiteSpace: "nowrap" }}>
+                      Status <span style={{ color: filters.sortBy === "status" ? "#008060" : "#aaa", fontSize: "0.7rem" }}>{filters.sortBy === "status" ? (filters.sortDir === "asc" ? "▲" : "▼") : "▲▼"}</span>
+                    </th>
+                    <th onClick={() => handleSort("sortOrder")} style={{ padding: "8px 6px", cursor: "pointer", userSelect: "none", whiteSpace: "nowrap", textAlign: "center" }}>
+                      Sort Order <span style={{ color: filters.sortBy === "sortOrder" ? "#008060" : "#aaa", fontSize: "0.7rem" }}>{filters.sortBy === "sortOrder" ? (filters.sortDir === "asc" ? "▲" : "▼") : "▲▼"}</span>
+                    </th>
                     <th style={{ padding: "8px 6px" }}>Actions</th>
                   </tr>
                 </thead>
