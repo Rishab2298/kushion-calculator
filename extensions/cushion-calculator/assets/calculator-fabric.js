@@ -644,6 +644,15 @@ CushionCalculator.prototype.setupFabricBrowserEventListeners = function() {
     self.loadPaginatedFabrics();
   });
 
+  // Auto-apply filters on change — no need to click Apply
+  ['filter-brand-', 'filter-pattern-', 'filter-color-', 'filter-material-', 'filter-sort-'].forEach(function(prefix) {
+    var el = document.getElementById(prefix + blockId);
+    if (el) el.addEventListener('change', function() {
+      self.browserCurrentPage = 1;
+      self.loadPaginatedFabrics();
+    });
+  });
+
   if (resetBtn) resetBtn.addEventListener('click', function() {
     self.resetBrowserFilters();
     self.loadPaginatedFabrics();
