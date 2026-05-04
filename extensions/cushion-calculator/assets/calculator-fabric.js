@@ -417,17 +417,17 @@ CushionCalculator.prototype.openFabricBrowserPopup = function(categoryId, catego
   this.browserCurrentCategoryName = categoryName;
   this.browserCurrentPage = 1;
 
-  // Use selected fabric if it belongs to this category; otherwise fall back to category default
+  // Use selected fabric if it belongs to this category; otherwise fall back to:
+  // 1. fabric marked isDefault in preview data
+  // 2. defaultFabric from config
+  // 3. first fabric in preview data (so modal never opens empty)
   var previewData = this.categoryFabricPreviews && this.categoryFabricPreviews[categoryId];
-  var categoryDefault = null;
-  if (previewData) {
-    var previewFabrics = previewData.fabrics || [];
-    categoryDefault = previewFabrics.find(function(f) { return f.isDefault; }) || null;
-  }
-  if (!categoryDefault) {
-    var catConfig = (this.config.fabricCategories || []).find(function(c) { return c.id === categoryId; });
-    if (catConfig && catConfig.defaultFabric) categoryDefault = catConfig.defaultFabric;
-  }
+  var previewFabrics = previewData ? (previewData.fabrics || []) : [];
+  var categoryDefault =
+    previewFabrics.find(function(f) { return f.isDefault; }) ||
+    ((this.config.fabricCategories || []).find(function(c) { return c.id === categoryId; }) || {}).defaultFabric ||
+    previewFabrics[0] ||
+    null;
   this.browserSelectedFabric = (this.selectedFabric && this.selectedFabric.categoryId === categoryId)
     ? this.selectedFabric
     : (categoryDefault || null);
