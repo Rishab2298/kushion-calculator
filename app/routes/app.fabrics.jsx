@@ -947,13 +947,14 @@ export default function Fabrics() {
                     <th style={{ padding: "8px 6px" }}>Tier</th>
                     <th style={{ padding: "8px 6px" }}>$/sq in</th>
                     <th style={{ padding: "8px 6px" }}>Status</th>
+                    <th style={{ padding: "8px 6px", textAlign: "center" }}>Sort Order</th>
                     <th style={{ padding: "8px 6px" }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {fabrics.length === 0 ? (
                     <tr>
-                      <td colSpan="10" style={{ padding: 24, textAlign: "center", color: "#6d7175" }}>
+                      <td colSpan="11" style={{ padding: 24, textAlign: "center", color: "#6d7175" }}>
                         No fabrics found. Adjust filters or add a new fabric.
                       </td>
                     </tr>
@@ -999,6 +1000,7 @@ export default function Fabrics() {
                           {fab.isActive ? "Active" : "Inactive"}
                         </span>
                       </td>
+                      <td style={{ padding: "6px", textAlign: "center", fontFamily: "monospace", color: "#6d7175" }}>{fab.sortOrder}</td>
                       <td style={{ padding: "6px" }}>
                         <s-stack direction="inline" gap="tight">
                           <s-button variant="tertiary" onClick={() => openEditFabric(fab)}>Edit</s-button>
