@@ -13,6 +13,7 @@
     this.shop = root.getAttribute('data-shop');
     this.selectedItems = []; // [{id, name, type, imageUrl}]
     this.activeItem = null;  // {id, type, name, imageUrl, subtitle, priceTier} — currently previewed
+    this.fabricMeta = {};    // id → {colors, patterns, brandName, materialName}
     this.settings = { sampleBundlePrice: 25, sampleMinItems: 4, samplePerItemPrice: 5 };
     this.currentTab = 'fabrics';
     this.fabricPagination = { page: 1, limit: 40, totalPages: 1, hasNext: false, hasPrev: false };
@@ -205,6 +206,11 @@
       subtitle: card.getAttribute('data-subtitle'),
       priceTier: card.getAttribute('data-tier'),
     };
+    var meta = (this.activeItem.type === 'fabric' && this.fabricMeta[this.activeItem.id]) || {};
+    this.activeItem.colors = meta.colors || [];
+    this.activeItem.patterns = meta.patterns || [];
+    this.activeItem.brandName = meta.brandName || '';
+    this.activeItem.materialName = meta.materialName || '';
     this.renderDetailPane();
   };
 
@@ -242,6 +248,47 @@
       ? '<div class="kraft2026zion-sample-detail-sub">' + escapeHtml(item.subtitle) + '</div>'
       : '';
 
+    var colorsHtml = '';
+    if (item.colors && item.colors.length) {
+      var chips = item.colors.map(function (c) {
+        // Validate hex to prevent CSS injection — only allow #RGB or #RRGGBB format
+        var hex = /^#[0-9a-fA-F]{3,6}$/.test(c.hexCode) ? c.hexCode : '#cccccc';
+        return '<div class="kraft2026zion-sample-detail-color-chip">'
+          + '<span class="kraft2026zion-sample-detail-color-swatch" style="background:' + hex + '"></span>'
+          + escapeHtml(c.name)
+          + '</div>';
+      }).join('');
+      colorsHtml = '<div class="kraft2026zion-sample-detail-props">'
+        + '<div class="kraft2026zion-sample-detail-prop-label">Colors</div>'
+        + '<div class="kraft2026zion-sample-detail-color-row">' + chips + '</div>'
+        + '</div>';
+    }
+
+    var patternsHtml = '';
+    if (item.patterns && item.patterns.length) {
+      patternsHtml = '<div class="kraft2026zion-sample-detail-props">'
+        + '<div class="kraft2026zion-sample-detail-prop-label">Pattern</div>'
+        + '<div class="kraft2026zion-sample-detail-prop-value">'
+        + escapeHtml(item.patterns.map(function (p) { return p.name; }).join(', '))
+        + '</div></div>';
+    }
+
+    var materialHtml = '';
+    if (item.materialName) {
+      materialHtml = '<div class="kraft2026zion-sample-detail-props">'
+        + '<div class="kraft2026zion-sample-detail-prop-label">Material</div>'
+        + '<div class="kraft2026zion-sample-detail-prop-value">' + escapeHtml(item.materialName) + '</div>'
+        + '</div>';
+    }
+
+    var brandHtml = '';
+    if (item.brandName) {
+      brandHtml = '<div class="kraft2026zion-sample-detail-props">'
+        + '<div class="kraft2026zion-sample-detail-prop-label">Brand</div>'
+        + '<div class="kraft2026zion-sample-detail-prop-value">' + escapeHtml(item.brandName) + '</div>'
+        + '</div>';
+    }
+
     var btnLabel = isSelected ? '&#10003; Remove from selection' : '+ Add to selection';
     var btnClass = 'kraft2026zion-sample-detail-select-btn' + (isSelected ? ' kraft2026zion-selected-state' : '');
 
@@ -253,6 +300,10 @@
         '<div class="kraft2026zion-sample-detail-info">',
           '<div class="kraft2026zion-sample-detail-name">' + escapeHtml(item.name) + '</div>',
           subHtml,
+          colorsHtml,
+          patternsHtml,
+          materialHtml,
+          brandHtml,
           tierHtml,
           '<button class="' + btnClass + '"',
             ' data-select-btn',
@@ -385,6 +436,12 @@
     }
     grid.innerHTML = '';
     fabrics.forEach(function (fab) {
+      self.fabricMeta[fab.id] = {
+        colors: fab.colors || [],
+        patterns: fab.patterns || [],
+        brandName: fab.brandName || '',
+        materialName: fab.materialName || '',
+      };
       grid.appendChild(
         self.createCard(fab.id, fab.name, fab.imageUrl, 'fabric', fab.categoryName, fab.priceTier)
       );
