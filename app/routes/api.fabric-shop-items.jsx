@@ -20,7 +20,7 @@ export const loader = async ({ request }) => {
     const [settings, fills, categories, patterns, colors] = await Promise.all([
       prisma.calculatorSettings.findUnique({ where: { shop } }),
       prisma.fillType.findMany({
-        where: { shop, isActive: true },
+        where: { shop, isActive: true, name: { not: "Cover Only" } },
         orderBy: { sortOrder: "asc" },
         select: { id: true, name: true, imageUrl: true, description: true },
       }),
