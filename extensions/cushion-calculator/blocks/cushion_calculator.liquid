@@ -648,26 +648,35 @@
   .kraft2026zion-view-more-btn:hover { background: rgba(250, 100, 57, 0.05); border-color: #fa6439; }
   .kraft2026zion-fabric-browser-empty { text-align: center; padding: 40px 16px; color: #94a3b8; font-size: 0.8rem; }
   @media (max-width: 600px) {
-    .kraft2026zion-fabric-browser-modal { width: 100%; height: 100%; max-height: 100vh; border-radius: 0; }
+    /* Full screen modal — dvh accounts for mobile browser chrome bar */
+    .kraft2026zion-fabric-browser-modal { width: 100%; height: 100dvh; max-height: 100dvh; border-radius: 0; }
+    /* Filters: CSS Grid guarantees exactly 2 per row regardless of flex-grow behaviour */
+    .kraft2026zion-filter-row-compact { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+    .kraft2026zion-filter-select-compact { flex: unset; max-width: none; width: 100%; font-size: 0.72rem; }
+    .kraft2026zion-filter-btn-compact { width: 100%; }
+    /* Body: stacked column */
     .kraft2026zion-fabric-browser-body { flex-direction: column; }
-    /* Grid area: fixed viewport height so detail panel always has room */
-    .kraft2026zion-fabric-browser-content { border-right: none; border-bottom: 1px solid #e2e8f0; height: 42vh; flex-shrink: 0; max-height: none; }
-    /* 4 columns on mobile — larger thumbnails, easier to tap */
-    .kraft2026zion-fabric-browser-grid { grid-template-columns: repeat(4, 1fr); }
-    /* Detail panel fills remaining space */
+    /* Grid area: fixed height, no right border */
+    .kraft2026zion-fabric-browser-content { border-right: none; border-bottom: 1px solid #e2e8f0; height: 40vh; flex-shrink: 0; max-height: none; overflow: hidden; }
+    /* 3 columns — large enough to tap, few enough to see the detail panel below */
+    .kraft2026zion-fabric-browser-grid { grid-template-columns: repeat(3, 1fr); padding: 8px; gap: 6px; }
+    /* Detail panel fills all remaining space */
     .kraft2026zion-fabric-detail-panel { width: 100%; flex: 1; min-height: 0; }
-    /* Keep detail content as a column so footer button stays at bottom */
-    .kraft2026zion-fabric-detail-content { flex-direction: column; }
-    /* Image left, info right — row layout goes here, not on the outer wrapper */
-    .kraft2026zion-fabric-detail-scrollable { display: flex; flex-direction: row; overflow: hidden; }
-    .kraft2026zion-fabric-detail-image-wrap { width: 110px; flex-shrink: 0; padding: 8px; border-bottom: none; border-right: 1px solid #e2e8f0; }
-    .kraft2026zion-fabric-detail-image-wrap img { border-radius: 4px; }
-    /* Info scrolls independently so all rows (brand, pattern, color…) are reachable */
-    .kraft2026zion-fabric-detail-info { flex: 1; overflow-y: auto; padding: 8px; min-width: 0; }
-    /* Filters: 2 per row so each dropdown has enough width to read */
-    .kraft2026zion-filter-row-compact { flex-wrap: wrap; gap: 4px; }
-    .kraft2026zion-filter-select-compact { flex: 1 1 calc(50% - 2px); max-width: none; }
-    .kraft2026zion-filter-btn-compact { flex: 1 1 calc(50% - 2px); }
+    /* Detail content: column so scrollable sits above pinned footer button */
+    .kraft2026zion-fabric-detail-content { flex-direction: column; height: 100%; }
+    /* Scrollable: flex-row + align-items:flex-start prevents image-wrap from stretching to full row height */
+    .kraft2026zion-fabric-detail-scrollable { display: flex; flex-direction: row; align-items: flex-start; flex: 1; overflow-y: auto; min-height: 0; padding: 10px; gap: 10px; }
+    /* Image: fixed 84×84px — explicitly overrides base 'width:100%; aspect-ratio:1' that caused the giant swatch */
+    .kraft2026zion-fabric-detail-image-wrap { width: 84px; height: 84px; flex-shrink: 0; padding: 0; border-bottom: none; border-right: none; background: transparent; }
+    .kraft2026zion-fabric-detail-image-wrap img { width: 84px; height: 84px; border-radius: 6px; object-fit: cover; aspect-ratio: unset; display: block; }
+    /* Info: fills remaining width */
+    .kraft2026zion-fabric-detail-info { flex: 1; overflow: visible; padding: 0; min-width: 0; }
+    /* Name: 2-line clamp + word-break so underscore-heavy names don't split at odd points */
+    .kraft2026zion-fabric-detail-info h4 { font-size: 0.78rem; margin: 0 0 6px; line-height: 1.3; word-break: break-word; overflow-wrap: break-word; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    /* Tighter meta rows */
+    .kraft2026zion-detail-row { padding: 2px 0; font-size: 0.7rem; }
+    /* Footer: reduced padding, button full-width inherited from desktop rule */
+    .kraft2026zion-fabric-detail-footer { padding: 8px 10px; }
   }
 
   /* Fabric Category Tabs */
