@@ -503,7 +503,7 @@ CushionCalculator.prototype.loadPaginatedFabrics = async function() {
 
   try {
     var isMobile = window.innerWidth <= 600;
-    var params = new URLSearchParams({ shop: this.shopDomain, page: this.browserCurrentPage, limit: isMobile ? 25 : 50 });
+    var params = new URLSearchParams({ shop: this.shopDomain, page: this.browserCurrentPage, limit: isMobile ? 21 : 50 });
 
     if (this.browserCurrentCategoryId && this.browserCurrentCategoryId !== 'all') {
       params.append('categoryId', this.browserCurrentCategoryId);
