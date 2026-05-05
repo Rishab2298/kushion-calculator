@@ -425,6 +425,7 @@ CushionCalculator.prototype.openFabricBrowserPopup = function(categoryId, catego
   var previewFabrics = previewData ? (previewData.fabrics || []) : [];
   var categoryDefault =
     previewFabrics.find(function(f) { return f.isDefault; }) ||
+    ((this.config.fabricCategories || []).find(function(c) { return c.id === categoryId; }) || {}).defaultFabric ||
     previewFabrics[0] ||
     null;
   this.browserSelectedFabric = (this.selectedFabric && this.selectedFabric.categoryId === categoryId)
