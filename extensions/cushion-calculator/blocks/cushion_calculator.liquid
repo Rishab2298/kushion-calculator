@@ -650,14 +650,24 @@
   @media (max-width: 600px) {
     .kraft2026zion-fabric-browser-modal { width: 100%; height: 100%; max-height: 100vh; border-radius: 0; }
     .kraft2026zion-fabric-browser-body { flex-direction: column; }
-    .kraft2026zion-fabric-browser-content { border-right: none; border-bottom: 1px solid #e2e8f0; max-height: 50%; }
-    .kraft2026zion-fabric-detail-panel { width: 100%; flex: 1; }
-    .kraft2026zion-fabric-detail-content { flex-direction: row; }
-    .kraft2026zion-fabric-detail-image-wrap { width: 40%; padding: 10px; }
-    .kraft2026zion-fabric-detail-info { width: 60%; }
-    .kraft2026zion-filter-row-compact { flex-wrap: wrap; }
-    .kraft2026zion-filter-select-compact { flex: 1 1 30%; max-width: none; }
-    .kraft2026zion-filter-btn-compact { flex: 1 1 45%; }
+    /* Grid area: fixed viewport height so detail panel always has room */
+    .kraft2026zion-fabric-browser-content { border-right: none; border-bottom: 1px solid #e2e8f0; height: 42vh; flex-shrink: 0; max-height: none; }
+    /* 4 columns on mobile — larger thumbnails, easier to tap */
+    .kraft2026zion-fabric-browser-grid { grid-template-columns: repeat(4, 1fr); }
+    /* Detail panel fills remaining space */
+    .kraft2026zion-fabric-detail-panel { width: 100%; flex: 1; min-height: 0; }
+    /* Keep detail content as a column so footer button stays at bottom */
+    .kraft2026zion-fabric-detail-content { flex-direction: column; }
+    /* Image left, info right — row layout goes here, not on the outer wrapper */
+    .kraft2026zion-fabric-detail-scrollable { display: flex; flex-direction: row; overflow: hidden; }
+    .kraft2026zion-fabric-detail-image-wrap { width: 110px; flex-shrink: 0; padding: 8px; border-bottom: none; border-right: 1px solid #e2e8f0; }
+    .kraft2026zion-fabric-detail-image-wrap img { border-radius: 4px; }
+    /* Info scrolls independently so all rows (brand, pattern, color…) are reachable */
+    .kraft2026zion-fabric-detail-info { flex: 1; overflow-y: auto; padding: 8px; min-width: 0; }
+    /* Filters: 2 per row so each dropdown has enough width to read */
+    .kraft2026zion-filter-row-compact { flex-wrap: wrap; gap: 4px; }
+    .kraft2026zion-filter-select-compact { flex: 1 1 calc(50% - 2px); max-width: none; }
+    .kraft2026zion-filter-btn-compact { flex: 1 1 calc(50% - 2px); }
   }
 
   /* Fabric Category Tabs */
