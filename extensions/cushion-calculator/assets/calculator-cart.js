@@ -169,6 +169,7 @@ CushionCalculator.prototype.addToCart = async function() {
 
     btn.textContent = 'Adding to cart...';
     if (floatingBtn) floatingBtn.textContent = 'Adding...';
+    properties['_calculated_price'] = unitPrice.toFixed(2);
 
     var cartResponse = await fetch('/cart/add.js', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -378,6 +379,7 @@ CushionCalculator.prototype.addMultiPieceToCart = async function() {
 
     btn.textContent = 'Adding to cart...';
     if (floatingBtn) floatingBtn.textContent = 'Adding...';
+    properties['_calculated_price'] = unitPrice.toFixed(2);
 
     var cartResponse = await fetch('/cart/add.js', {
       method: 'POST',
@@ -493,9 +495,15 @@ CushionCalculator.prototype.applyUrlConfiguration = async function() {
       if (kv[0] && kv[1]) {
         var numValue = parseFloat(kv[1]);
         if (!isNaN(numValue)) {
-          self.dimensions[kv[0]] = numValue;
           var input = document.getElementById('dim-' + kv[0] + '-' + blockId);
-          if (input) input.value = numValue;
+          if (input) {
+            var minVal = parseFloat(input.min);
+            var maxVal = parseFloat(input.max);
+            if (!isNaN(minVal) && numValue < minVal) numValue = minVal;
+            if (!isNaN(maxVal) && numValue > maxVal) numValue = maxVal;
+            input.value = numValue;
+          }
+          self.dimensions[kv[0]] = numValue;
         }
       }
     });
