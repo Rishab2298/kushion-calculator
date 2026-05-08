@@ -30,6 +30,10 @@
     setTimeout(checkAndFixPrices, 1500);
     setTimeout(checkAndFixPrices, 3000);
 
+    // Inject Customize buttons
+    setTimeout(injectCustomizeButtons, 1000);
+    setTimeout(injectCustomizeButtons, 3000);
+
     // Set up observer for dynamic cart changes
     setupCartObserver();
 
@@ -38,6 +42,8 @@
     document.addEventListener('cart:refresh', checkAndFixPrices);
     document.addEventListener('cart:change', checkAndFixPrices);
     window.addEventListener('cart:updated', checkAndFixPrices);
+    document.addEventListener('cart:updated', injectCustomizeButtons);
+    window.addEventListener('cart:updated', injectCustomizeButtons);
   }
 
   function setupCartObserver() {
@@ -262,6 +268,73 @@
     }
   }
 
+  // ── Customize button injection ──────────────────────────────────────────
+  // For each cart item with a _c property, fetch its saved config and inject
+  // a "Customize" link that takes the customer back to the product page with
+  // all their previous selections pre-filled.
+
+  async function injectCustomizeButtons() {
+    try {
+      const cart = await fetch('/cart.js').then(r => r.json());
+      if (!cart.items || !cart.items.length) return;
+
+      for (const item of cart.items) {
+        const configId = item.properties && item.properties['_c'];
+        if (!configId) continue;
+
+        const containers = findItemContainers(item, item.properties || {});
+        if (!containers.length) continue;
+
+        // Skip if already injected in all containers
+        const needsButton = containers.some(c => !c.querySelector('.cushion-customize-btn'));
+        if (!needsButton) continue;
+
+        // Fetch saved config
+        let config;
+        try {
+          const resp = await fetch('/apps/cushion-api/save-config?id=' + encodeURIComponent(configId));
+          if (!resp.ok) continue;
+          const data = await resp.json();
+          config = data.config;
+        } catch (e) { continue; }
+
+        if (!config || !config.productHandle || config.isMultiPiece) continue;
+
+        // Build customize URL
+        const p = new URLSearchParams({ customize: 'true' });
+        if (config.profileId)  p.set('profileId',  config.profileId);
+        if (config.shapeId)    p.set('shapeId',    config.shapeId);
+        if (config.fillId)     p.set('fillId',     config.fillId);
+        if (config.fabricId)   p.set('fabricId',   config.fabricId);
+        if (config.dimensions) p.set('dimensions', config.dimensions);
+        if (config.pipingId    && config.pipingId    !== 'none') p.set('pipingId',    config.pipingId);
+        if (config.buttonId    && config.buttonId    !== 'none') p.set('buttonId',    config.buttonId);
+        if (config.antiSkidId  && config.antiSkidId  !== 'none') p.set('antiSkidId',  config.antiSkidId);
+        if (config.tiesId      && config.tiesId      !== 'none') p.set('tiesId',      config.tiesId);
+        if (config.fabricTiesId && config.fabricTiesId !== 'none') p.set('fabricTiesId', config.fabricTiesId);
+        if (config.rodPocketId && config.rodPocketId !== 'none') p.set('rodPocketId', config.rodPocketId);
+        if (config.drawstringId && config.drawstringId !== 'none') p.set('drawstringId', config.drawstringId);
+        if (config.designId    && config.designId    !== 'none') p.set('designId',    config.designId);
+        if (config.qty && config.qty !== '1') p.set('qty', config.qty);
+        if (config.panelCount  && config.panelCount  !== '1') p.set('panelCount', config.panelCount);
+        if (config.instructions) p.set('instructions', config.instructions);
+
+        const href = '/products/' + config.productHandle + '?' + p.toString();
+
+        for (const container of containers) {
+          if (container.querySelector('.cushion-customize-btn')) continue;
+          const btn = document.createElement('a');
+          btn.href = href;
+          btn.className = 'cushion-customize-btn';
+          btn.textContent = 'Customize';
+          container.appendChild(btn);
+        }
+      }
+    } catch (e) {
+      console.error('[CushionPriceFix] Customize button error:', e);
+    }
+  }
+
 })();
 </script>
 
@@ -288,6 +361,24 @@
 
   @keyframes cushion-spin {
     to { transform: rotate(360deg); }
+  }
+
+  .cushion-customize-btn {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 4px 10px;
+    font-size: 0.78rem;
+    color: #555;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    text-decoration: none;
+    background: #fff;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .cushion-customize-btn:hover {
+    border-color: #333;
+    color: #111;
   }
 </style>
 
