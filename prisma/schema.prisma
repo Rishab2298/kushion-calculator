@@ -446,6 +446,19 @@ model RodPocketOption {
   @@index([shop])
 }
 
+// ============ ORDER CONFIG STORAGE ============
+// Stores cushion configuration IDs per order line item.
+// Only a short reference ID (_c) is sent as a Shopify line item property,
+// keeping the admin order view clean while preserving all config data.
+model OrderConfig {
+  id        String   @id @default(uuid())
+  shop      String
+  config    Json
+  createdAt DateTime @default(now())
+
+  @@index([shop])
+}
+
 // ============ DRAWSTRING OPTIONS ============
 model DrawstringOption {
   id          String  @id @default(uuid())

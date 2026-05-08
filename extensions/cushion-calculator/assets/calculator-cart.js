@@ -95,54 +95,41 @@ CushionCalculator.prototype.addToCart = async function() {
     properties['Discount'] = totalDiscountPct + '% off';
   }
 
-  // Add price and hidden IDs
+  // Human-readable price and optional fields
   properties['Unit Price'] = '$' + unitPrice.toFixed(2);
-  properties['_shapeId'] = this.selectedShape.id;
-  properties['_fillId'] = effectiveFill.id;
-  properties['_fabricId'] = effectiveFabric.id;
-  properties['_dimensions'] = dimUrlStr;
-  properties['_productHandle'] = this.productHandle;
-  properties['_profileId'] = this.profileId || '';
-  properties['_qty'] = qty.toString();
-  properties['_panelCount'] = effectivePanelCount.toString();
-  properties['_priceDisplay'] = '$' + unitPrice.toFixed(2);
-  properties['_totalDisplay'] = '$' + (unitPrice * qty).toFixed(2);
-
-  // Conditionally add hidden IDs only for visible sections
-  if (visibility.showDesignSection !== false) {
-    properties['_designId'] = effectiveDesign ? effectiveDesign.id : 'none';
-  }
-  if (visibility.showPipingSection !== false) {
-    properties['_pipingId'] = effectivePiping ? effectivePiping.id : 'none';
-  }
-  if (visibility.showButtonSection !== false) {
-    properties['_buttonId'] = effectiveButton ? effectiveButton.id : 'none';
-  }
-  if (visibility.showAntiSkidSection !== false) {
-    properties['_antiSkidId'] = effectiveAntiSkid ? effectiveAntiSkid.id : 'none';
-  }
-  if (visibility.showRodPocketSection !== false) {
-    properties['_rodPocketId'] = effectiveRodPocket ? effectiveRodPocket.id : 'none';
-  }
-  if (visibility.showTiesSection !== false) {
-    properties['_tiesId'] = effectiveTies ? effectiveTies.id : 'none';
-  }
-  if (visibility.showFabricTiesSection !== false) {
-    properties['_fabricTiesId'] = effectiveFabricTies ? effectiveFabricTies.id : 'none';
-  }
-  if (visibility.showDrawstringSection !== false) {
-    properties['_drawstringId'] = effectiveDrawstring ? effectiveDrawstring.id : 'none';
-  }
   if (instructions) {
     properties['Special Instructions'] = instructions;
-    properties['_instructions'] = encodeURIComponent(instructions);
   }
   if (this.attachmentUrl) {
     properties['Reference Image'] = this.attachmentUrl;
-    properties['_attachmentUrl'] = this.attachmentUrl;
-    if (this.attachmentFileName) {
-      properties['_attachmentFileName'] = this.attachmentFileName;
-    }
+  }
+
+  // Build config data for server-side storage (keeps IDs out of admin order view)
+  var configData = {
+    shapeId: this.selectedShape.id,
+    fillId: effectiveFill.id,
+    fabricId: effectiveFabric.id,
+    dimensions: dimUrlStr,
+    productHandle: this.productHandle,
+    profileId: this.profileId || '',
+    qty: qty.toString(),
+    panelCount: effectivePanelCount.toString(),
+    priceDisplay: '$' + unitPrice.toFixed(2),
+    totalDisplay: '$' + (unitPrice * qty).toFixed(2),
+    calculatedPrice: unitPrice.toFixed(2)
+  };
+  if (visibility.showDesignSection !== false) configData.designId = effectiveDesign ? effectiveDesign.id : 'none';
+  if (visibility.showPipingSection !== false) configData.pipingId = effectivePiping ? effectivePiping.id : 'none';
+  if (visibility.showButtonSection !== false) configData.buttonId = effectiveButton ? effectiveButton.id : 'none';
+  if (visibility.showAntiSkidSection !== false) configData.antiSkidId = effectiveAntiSkid ? effectiveAntiSkid.id : 'none';
+  if (visibility.showRodPocketSection !== false) configData.rodPocketId = effectiveRodPocket ? effectiveRodPocket.id : 'none';
+  if (visibility.showTiesSection !== false) configData.tiesId = effectiveTies ? effectiveTies.id : 'none';
+  if (visibility.showFabricTiesSection !== false) configData.fabricTiesId = effectiveFabricTies ? effectiveFabricTies.id : 'none';
+  if (visibility.showDrawstringSection !== false) configData.drawstringId = effectiveDrawstring ? effectiveDrawstring.id : 'none';
+  if (instructions) configData.instructions = encodeURIComponent(instructions);
+  if (this.attachmentUrl) {
+    configData.attachmentUrl = this.attachmentUrl;
+    if (this.attachmentFileName) configData.attachmentFileName = this.attachmentFileName;
   }
 
   var btn = document.getElementById('add-cart-btn-' + blockId);
@@ -158,17 +145,30 @@ CushionCalculator.prototype.addToCart = async function() {
   try {
     var configHash = Math.abs(JSON.stringify({ shape: this.selectedShape.id, dimensions: dimensions, fill: effectiveFill.id, fabric: effectiveFabric.id, piping: effectivePiping ? effectivePiping.id : null, button: effectiveButton ? effectiveButton.id : null, antiSkid: effectiveAntiSkid ? effectiveAntiSkid.id : null, ties: effectiveTies ? effectiveTies.id : null, price: unitPrice }).split('').reduce(function(a, b) { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0)).toString(36);
 
-    var variantResponse = await fetch('/apps/cushion-api/create-variant', {
+    var saveConfigPromise = fetch('/apps/cushion-api/save-config', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shop: this.shopDomain, config: configData })
+    });
+
+    var variantPromise = fetch('/apps/cushion-api/create-variant', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ shop: this.shopDomain, productId: this.productId, price: unitPrice.toFixed(2), configHash: configHash, configSummary: this.selectedShape.name + ' - ' + dimStr })
     });
+
+    var parallelResults = await Promise.all([saveConfigPromise, variantPromise]);
+    var saveConfigResponse = parallelResults[0];
+    var variantResponse = parallelResults[1];
+
+    if (saveConfigResponse.ok) {
+      var savedConfig = await saveConfigResponse.json();
+      if (savedConfig.id) properties['_c'] = savedConfig.id;
+    }
 
     if (!variantResponse.ok) { var err = await variantResponse.json(); throw new Error(err.error || 'Failed to create variant'); }
     var variantData = await variantResponse.json();
 
     btn.textContent = 'Adding to cart...';
     if (floatingBtn) floatingBtn.textContent = 'Adding...';
-    properties['_calculated_price'] = unitPrice.toFixed(2);
 
     var cartResponse = await fetch('/cart/add.js', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -207,10 +207,14 @@ CushionCalculator.prototype.addMultiPieceToCart = async function() {
 
   // Build properties for each piece
   var properties = {
-    'Fabric': this.selectedFabric.name,
-    '_fabricId': this.selectedFabric.id,
-    '_isMultiPiece': 'true',
-    '_pieceCount': this.pieces.length.toString()
+    'Fabric': this.selectedFabric.name
+  };
+
+  // Config data for server-side storage
+  var configData = {
+    fabricId: this.selectedFabric.id,
+    isMultiPiece: true,
+    pieceCount: this.pieces.length
   };
 
   // Add each piece's details (only for visible sections)
@@ -251,40 +255,26 @@ CushionCalculator.prototype.addMultiPieceToCart = async function() {
       properties[prefix + ' - Drawstring'] = piece.drawstring.name;
     }
 
-    // Hidden IDs for reorder (base properties always included)
-    properties['_piece' + idx + '_shapeId'] = piece.shape.id;
-    properties['_piece' + idx + '_fillId'] = piece.fill.id;
-
-    // Conditionally add hidden IDs only for visible sections
-    if (visibility.showDesignSection !== false) {
-      properties['_piece' + idx + '_designId'] = piece.design ? piece.design.id : 'none';
-    }
-    if (visibility.showPipingSection !== false) {
-      properties['_piece' + idx + '_pipingId'] = piece.piping ? piece.piping.id : 'none';
-    }
-    if (visibility.showButtonSection !== false) {
-      properties['_piece' + idx + '_buttonId'] = piece.button ? piece.button.id : 'none';
-    }
-    if (visibility.showAntiSkidSection !== false) {
-      properties['_piece' + idx + '_antiSkidId'] = piece.antiSkid ? piece.antiSkid.id : 'none';
-    }
-    if (visibility.showRodPocketSection !== false) {
-      properties['_piece' + idx + '_rodPocketId'] = piece.rodPocket ? piece.rodPocket.id : 'none';
-    }
-    if (visibility.showTiesSection !== false) {
-      properties['_piece' + idx + '_tiesId'] = piece.ties ? piece.ties.id : 'none';
-    }
-    if (visibility.showFabricTiesSection !== false) {
-      properties['_piece' + idx + '_fabricTiesId'] = piece.fabricTies ? piece.fabricTies.id : 'none';
-    }
-    if (visibility.showDrawstringSection !== false) {
-      properties['_piece' + idx + '_drawstringId'] = piece.drawstring ? piece.drawstring.id : 'none';
-    }
+    // Store per-piece IDs in configData (server-side)
+    var pieceConfig = {
+      shapeId: piece.shape.id,
+      fillId: piece.fill.id
+    };
+    if (visibility.showDesignSection !== false) pieceConfig.designId = piece.design ? piece.design.id : 'none';
+    if (visibility.showPipingSection !== false) pieceConfig.pipingId = piece.piping ? piece.piping.id : 'none';
+    if (visibility.showButtonSection !== false) pieceConfig.buttonId = piece.button ? piece.button.id : 'none';
+    if (visibility.showAntiSkidSection !== false) pieceConfig.antiSkidId = piece.antiSkid ? piece.antiSkid.id : 'none';
+    if (visibility.showRodPocketSection !== false) pieceConfig.rodPocketId = piece.rodPocket ? piece.rodPocket.id : 'none';
+    if (visibility.showTiesSection !== false) pieceConfig.tiesId = piece.ties ? piece.ties.id : 'none';
+    if (visibility.showFabricTiesSection !== false) pieceConfig.fabricTiesId = piece.fabricTies ? piece.fabricTies.id : 'none';
+    if (visibility.showDrawstringSection !== false) pieceConfig.drawstringId = piece.drawstring ? piece.drawstring.id : 'none';
 
     var dimUrlStr = piece.shape.inputFields.map(function(f) {
       return f.key + ':' + (piece.dimensions[f.key] || 0);
     }).join(',');
-    properties['_piece' + idx + '_dimensions'] = dimUrlStr;
+    pieceConfig.dimensions = dimUrlStr;
+    if (!configData.pieces) configData.pieces = [];
+    configData.pieces.push(pieceConfig);
   });
 
   // Calculate unit price
@@ -292,22 +282,24 @@ CushionCalculator.prototype.addMultiPieceToCart = async function() {
   if (unitPrice < 1) unitPrice = 1;
 
   properties['Unit Price'] = '$' + unitPrice.toFixed(2);
-  properties['_productHandle'] = this.productHandle;
-  properties['_profileId'] = this.profileId || '';
-  properties['_qty'] = qty.toString();
-  properties['_priceDisplay'] = '$' + unitPrice.toFixed(2);
-  properties['_totalDisplay'] = '$' + this.calculatedPrice.toFixed(2);
-
   if (instructions) {
     properties['Special Instructions'] = instructions;
-    properties['_instructions'] = encodeURIComponent(instructions);
   }
   if (this.attachmentUrl) {
     properties['Reference Image'] = this.attachmentUrl;
-    properties['_attachmentUrl'] = this.attachmentUrl;
-    if (this.attachmentFileName) {
-      properties['_attachmentFileName'] = this.attachmentFileName;
-    }
+  }
+
+  // Store remaining config data server-side
+  configData.productHandle = this.productHandle;
+  configData.profileId = this.profileId || '';
+  configData.qty = qty.toString();
+  configData.priceDisplay = '$' + unitPrice.toFixed(2);
+  configData.totalDisplay = '$' + this.calculatedPrice.toFixed(2);
+  configData.calculatedPrice = unitPrice.toFixed(2);
+  if (instructions) configData.instructions = encodeURIComponent(instructions);
+  if (this.attachmentUrl) {
+    configData.attachmentUrl = this.attachmentUrl;
+    if (this.attachmentFileName) configData.attachmentFileName = this.attachmentFileName;
   }
 
   var btn = document.getElementById('add-cart-btn-' + blockId);
@@ -331,7 +323,7 @@ CushionCalculator.prototype.addMultiPieceToCart = async function() {
     var configSummary = this.pieces.map(function(p) { return p.label; }).join(' + ');
 
     // Create hash from all pieces
-    var configData = {
+    var hashData = {
       fabric: this.selectedFabric.id,
       pieces: this.pieces.map(function(p) {
         return {
@@ -346,12 +338,18 @@ CushionCalculator.prototype.addMultiPieceToCart = async function() {
       }),
       price: unitPrice
     };
-    var configHash = Math.abs(JSON.stringify(configData).split('').reduce(function(a, b) {
+    var configHash = Math.abs(JSON.stringify(hashData).split('').reduce(function(a, b) {
       a = ((a << 5) - a) + b.charCodeAt(0);
       return a & a;
     }, 0)).toString(36);
 
-    var variantResponse = await fetch('/apps/cushion-api/create-variant', {
+    var saveConfigPromise = fetch('/apps/cushion-api/save-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shop: this.shopDomain, config: configData })
+    });
+
+    var variantPromise = fetch('/apps/cushion-api/create-variant', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -363,6 +361,15 @@ CushionCalculator.prototype.addMultiPieceToCart = async function() {
       })
     });
 
+    var parallelResults = await Promise.all([saveConfigPromise, variantPromise]);
+    var saveConfigResponse = parallelResults[0];
+    var variantResponse = parallelResults[1];
+
+    if (saveConfigResponse.ok) {
+      var savedConfig = await saveConfigResponse.json();
+      if (savedConfig.id) properties['_c'] = savedConfig.id;
+    }
+
     if (!variantResponse.ok) {
       var err = await variantResponse.json();
       throw new Error(err.error || 'Failed to create variant');
@@ -371,7 +378,6 @@ CushionCalculator.prototype.addMultiPieceToCart = async function() {
 
     btn.textContent = 'Adding to cart...';
     if (floatingBtn) floatingBtn.textContent = 'Adding...';
-    properties['_calculated_price'] = unitPrice.toFixed(2);
 
     var cartResponse = await fetch('/cart/add.js', {
       method: 'POST',
