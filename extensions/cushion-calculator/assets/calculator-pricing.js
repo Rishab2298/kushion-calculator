@@ -211,9 +211,6 @@ CushionCalculator.prototype.calculateMultiPiecePrice = function() {
     var surfaceArea = self.evaluateFormula(surfaceAreaFormula, piece.dimensions);
     var volume = self.evaluateFormula(piece.shape.volumeFormula, piece.dimensions);
 
-    var fabricCost = surfaceArea * (parseFloat(self.selectedFabric.pricePerSqInch) || 0) * conversionMultiplier;
-    var fillCost = (fillVisible && piece.fill) ? volume * (parseFloat(piece.fill.pricePerCubicInch) || 0) * conversionMultiplier : 0;
-
     // Check piece-level visibility before including costs (multi-piece is piece-dependent)
     var pc = piece.config || {};
     var fillVisible = pc.showFillSection !== false;
@@ -226,6 +223,8 @@ CushionCalculator.prototype.calculateMultiPiecePrice = function() {
     var fabricTiesVisible = pc.showFabricTiesSection !== false;
     var drawstringVisible = pc.showDrawstringSection !== false;
 
+    var fabricCost = surfaceArea * (parseFloat(self.selectedFabric.pricePerSqInch) || 0) * conversionMultiplier;
+    var fillCost = (fillVisible && piece.fill) ? volume * (parseFloat(piece.fill.pricePerCubicInch) || 0) * conversionMultiplier : 0;
     var tiesCost = (tiesVisible && piece.ties) ? (parseFloat(piece.ties.price) || 0) * conversionMultiplier : 0;
     var fabricTiesCost = (fabricTiesVisible && piece.fabricTies) ? (parseFloat(piece.fabricTies.price) || 0) * conversionMultiplier : 0;
 
