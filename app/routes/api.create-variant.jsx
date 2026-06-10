@@ -100,7 +100,7 @@ export const action = async ({ request }) => {
                 },
               ],
               inventoryPolicy: "CONTINUE",
-              inventoryQuantities: [],
+              inventoryItem: { tracked: false },
             },
           ],
         },
