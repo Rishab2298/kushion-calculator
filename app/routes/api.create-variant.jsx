@@ -80,6 +80,7 @@ export const action = async ({ request }) => {
             id
             title
             price
+            inventoryItem { id }
           }
           userErrors {
             field
@@ -100,7 +101,7 @@ export const action = async ({ request }) => {
                 },
               ],
               inventoryPolicy: "CONTINUE",
-              inventoryItem: { tracked: false },
+              inventoryQuantities: [],
             },
           ],
         },
@@ -146,6 +147,29 @@ export const action = async ({ request }) => {
 
     const variantGid = createdVariant.id;
     const numericId = variantGid.replace("gid://shopify/ProductVariant/", "");
+
+    const inventoryItemGid = createdVariant.inventoryItem?.id;
+    if (inventoryItemGid) {
+      try {
+        const updateResp = await admin.graphql(
+          `#graphql
+          mutation DisableTracking($id: ID!, $input: InventoryItemInput!) {
+            inventoryItemUpdate(id: $id, input: $input) {
+              inventoryItem { id tracked }
+              userErrors { field message }
+            }
+          }`,
+          { variables: { id: inventoryItemGid, input: { tracked: false } } }
+        );
+        const updateJson = await updateResp.json();
+        const updateErrors = updateJson.data?.inventoryItemUpdate?.userErrors;
+        if (updateErrors?.length) {
+          console.error("Failed to disable inventory tracking:", updateErrors);
+        }
+      } catch (err) {
+        console.error("inventoryItemUpdate threw:", err.message);
+      }
+    }
 
     console.log(`Variant ${numericId} created. Waiting for price propagation...`);
 
