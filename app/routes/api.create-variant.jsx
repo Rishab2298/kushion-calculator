@@ -11,6 +11,30 @@ import { unauthenticated } from "../shopify.server";
  * 4. Frontend then adds to cart - price shows correctly!
  */
 
+const VARIANT_INITIAL_STOCK = 10;
+const primaryLocationCache = new Map();
+
+async function getPrimaryLocationId(admin, shop) {
+  if (primaryLocationCache.has(shop)) return primaryLocationCache.get(shop);
+  try {
+    const resp = await admin.graphql(
+      `#graphql
+      query PrimaryLocation {
+        locations(first: 1) {
+          edges { node { id } }
+        }
+      }`
+    );
+    const json = await resp.json();
+    const locationId = json.data?.locations?.edges?.[0]?.node?.id || null;
+    if (locationId) primaryLocationCache.set(shop, locationId);
+    return locationId;
+  } catch (err) {
+    console.error("Failed to fetch primary location:", err.message);
+    return null;
+  }
+}
+
 // Handle CORS preflight requests
 export const loader = async ({ request }) => {
   if (request.method === "OPTIONS") {
@@ -72,6 +96,11 @@ export const action = async ({ request }) => {
     // Step 1: Create the variant with the calculated price
     console.log(`Creating variant with price $${parsedPrice}...`);
 
+    const locationId = await getPrimaryLocationId(admin, shop);
+    const inventoryQuantities = locationId
+      ? [{ availableQuantity: VARIANT_INITIAL_STOCK, locationId }]
+      : [];
+
     const response = await admin.graphql(
       `#graphql
       mutation CreateVariant($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
@@ -80,7 +109,6 @@ export const action = async ({ request }) => {
             id
             title
             price
-            inventoryItem { id }
           }
           userErrors {
             field
@@ -101,7 +129,7 @@ export const action = async ({ request }) => {
                 },
               ],
               inventoryPolicy: "CONTINUE",
-              inventoryQuantities: [],
+              inventoryQuantities,
             },
           ],
         },
@@ -147,29 +175,6 @@ export const action = async ({ request }) => {
 
     const variantGid = createdVariant.id;
     const numericId = variantGid.replace("gid://shopify/ProductVariant/", "");
-
-    const inventoryItemGid = createdVariant.inventoryItem?.id;
-    if (inventoryItemGid) {
-      try {
-        const updateResp = await admin.graphql(
-          `#graphql
-          mutation DisableTracking($id: ID!, $input: InventoryItemInput!) {
-            inventoryItemUpdate(id: $id, input: $input) {
-              inventoryItem { id tracked }
-              userErrors { field message }
-            }
-          }`,
-          { variables: { id: inventoryItemGid, input: { tracked: false } } }
-        );
-        const updateJson = await updateResp.json();
-        const updateErrors = updateJson.data?.inventoryItemUpdate?.userErrors;
-        if (updateErrors?.length) {
-          console.error("Failed to disable inventory tracking:", updateErrors);
-        }
-      } catch (err) {
-        console.error("inventoryItemUpdate threw:", err.message);
-      }
-    }
 
     console.log(`Variant ${numericId} created. Waiting for price propagation...`);
 
