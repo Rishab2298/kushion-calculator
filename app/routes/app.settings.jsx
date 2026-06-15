@@ -37,6 +37,12 @@ export const action = async ({ request }) => {
   const conversionPercent = parseFloat(formData.get("conversionPercent")) || 0;
   const debugPricing = formData.get("debugPricing") === "true";
 
+  // Minimum flat-rate shipping & labour settings
+  const enableMinimumFlatRate = formData.get("enableMinimumFlatRate") === "true";
+  const flatRateThreshold = parseFloat(formData.get("flatRateThreshold")) || 50;
+  const flatShippingAmount = parseFloat(formData.get("flatShippingAmount")) || 50;
+  const flatLabourAmount = parseFloat(formData.get("flatLabourAmount")) || 50;
+
   // Margin calculation settings
   const marginCalculationMethod = formData.get("marginCalculationMethod") || "tier";
   const flatMarginThreshold = parseFloat(formData.get("flatMarginThreshold")) || 50;
@@ -60,6 +66,10 @@ export const action = async ({ request }) => {
       labourPercent,
       conversionPercent,
       debugPricing,
+      enableMinimumFlatRate,
+      flatRateThreshold,
+      flatShippingAmount,
+      flatLabourAmount,
       marginCalculationMethod,
       flatMarginThreshold,
       flatMarginPercent,
@@ -79,6 +89,10 @@ export const action = async ({ request }) => {
       labourPercent,
       conversionPercent,
       debugPricing,
+      enableMinimumFlatRate,
+      flatRateThreshold,
+      flatShippingAmount,
+      flatLabourAmount,
       marginCalculationMethod,
       flatMarginThreshold,
       flatMarginPercent,
@@ -110,6 +124,10 @@ export default function Settings() {
     labourPercent: settings.labourPercent?.toString() || "100",
     conversionPercent: settings.conversionPercent?.toString() || "0",
     debugPricing: settings.debugPricing || false,
+    enableMinimumFlatRate: settings.enableMinimumFlatRate ?? true,
+    flatRateThreshold: settings.flatRateThreshold?.toString() || "50",
+    flatShippingAmount: settings.flatShippingAmount?.toString() || "50",
+    flatLabourAmount: settings.flatLabourAmount?.toString() || "50",
     marginCalculationMethod: settings.marginCalculationMethod || "tier",
     flatMarginThreshold: settings.flatMarginThreshold?.toString() || "50",
     flatMarginPercent: settings.flatMarginPercent?.toString() || "100",
@@ -130,6 +148,10 @@ export default function Settings() {
     data.append("labourPercent", formData.labourPercent);
     data.append("conversionPercent", formData.conversionPercent);
     data.append("debugPricing", formData.debugPricing.toString());
+    data.append("enableMinimumFlatRate", formData.enableMinimumFlatRate.toString());
+    data.append("flatRateThreshold", formData.flatRateThreshold);
+    data.append("flatShippingAmount", formData.flatShippingAmount);
+    data.append("flatLabourAmount", formData.flatLabourAmount);
     data.append("marginCalculationMethod", formData.marginCalculationMethod);
     data.append("flatMarginThreshold", formData.flatMarginThreshold);
     data.append("flatMarginPercent", formData.flatMarginPercent);
@@ -258,6 +280,65 @@ export default function Settings() {
               max="500"
               step="1"
               suffix="%"
+            />
+          </s-stack>
+        </s-box>
+      </s-section>
+
+      <s-section heading="Minimum Flat-Rate Shipping & Labour">
+        <s-box padding="base" borderWidth="base" borderRadius="base">
+          <s-stack direction="block" gap="loose">
+            <s-paragraph>
+              For low-cost cushions, charge a flat shipping and labour fee instead of the
+              percentages above. When the fabric cost + fill cost is below the threshold,
+              shipping and labour are each set to the flat amounts below. In multi-piece
+              mode the combined fabric + fill across all pieces is compared, and the flat
+              fees are applied once to the whole order.
+            </s-paragraph>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={formData.enableMinimumFlatRate}
+                  onChange={(e) => setFormData({ ...formData, enableMinimumFlatRate: e.target.checked })}
+                  style={{ width: "18px", height: "18px" }}
+                />
+                <span style={{ fontWeight: "500" }}>Enable minimum flat-rate shipping & labour</span>
+              </label>
+            </div>
+
+            <s-text-field
+              label="Threshold (Fabric + Fill cost)"
+              type="number"
+              value={formData.flatRateThreshold}
+              onChange={(e) => setFormData({ ...formData, flatRateThreshold: e.target.value })}
+              helpText="If fabric cost + fill cost is below this amount, the flat fees below are used"
+              min="0"
+              step="1"
+              prefix="$"
+            />
+
+            <s-text-field
+              label="Flat Shipping Amount"
+              type="number"
+              value={formData.flatShippingAmount}
+              onChange={(e) => setFormData({ ...formData, flatShippingAmount: e.target.value })}
+              helpText="Flat shipping fee charged when below the threshold"
+              min="0"
+              step="1"
+              prefix="$"
+            />
+
+            <s-text-field
+              label="Flat Labour Amount"
+              type="number"
+              value={formData.flatLabourAmount}
+              onChange={(e) => setFormData({ ...formData, flatLabourAmount: e.target.value })}
+              helpText="Flat labour fee charged when below the threshold"
+              min="0"
+              step="1"
+              prefix="$"
             />
           </s-stack>
         </s-box>

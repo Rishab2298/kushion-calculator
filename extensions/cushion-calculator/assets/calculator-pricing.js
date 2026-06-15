@@ -120,8 +120,18 @@ CushionCalculator.prototype.calculatePrice = function() {
   var labourPct = this.config.settings && this.config.settings.labourPercent != null ? this.config.settings.labourPercent : 100;
   var tiesInShippingLabour = this.config.settings && this.config.settings.tiesIncludeInShippingLabour != null ? this.config.settings.tiesIncludeInShippingLabour : true;
   var shippingLabourBase = tiesInShippingLabour ? subtotalAfterAddons : (subtotalAfterAddons - tiesCost - fabricTiesCost);
-  var shippingCost = shippingLabourBase * (shippingPct / 100);
-  var labourCost = shippingLabourBase * (labourPct / 100);
+
+  // Minimum flat-rate shipping & labour: when (fabric + fill) is below the
+  // threshold, charge flat amounts instead of the percentages above.
+  var fs = this.config.settings || {};
+  var flatEnabled = fs.enableMinimumFlatRate !== false;
+  var flatThreshold = fs.flatRateThreshold != null ? fs.flatRateThreshold : 50;
+  var flatShippingAmt = fs.flatShippingAmount != null ? fs.flatShippingAmount : 50;
+  var flatLabourAmt = fs.flatLabourAmount != null ? fs.flatLabourAmount : 50;
+  var flatRateApplied = flatEnabled && (baseSubtotal < flatThreshold);
+
+  var shippingCost = flatRateApplied ? flatShippingAmt : shippingLabourBase * (shippingPct / 100);
+  var labourCost = flatRateApplied ? flatLabourAmt : shippingLabourBase * (labourPct / 100);
 
   var preTotalUnit = subtotalAfterAddons + shippingCost + labourCost;
 
@@ -157,6 +167,7 @@ CushionCalculator.prototype.calculatePrice = function() {
     drawstringPct: drawstringPct, drawstringCost: drawstringCost,
     profilePct: profilePct, profileCost: profileCost,
     shippingPct: shippingPct, shippingCost: shippingCost, labourPct: labourPct, labourCost: labourCost,
+    flatRateApplied: flatRateApplied,
     preTotalUnit: preTotalUnit, marginPct: marginPct, marginAmt: marginAmt,
     discountPct: totalDiscountPct, discountAmt: discountAmt,
     panelCount: effectivePanelCount,
@@ -197,6 +208,30 @@ CushionCalculator.prototype.calculateMultiPiecePrice = function() {
 
   // Fabric discount (shared fabric across all pieces)
   var fabricDiscountPct = (this.selectedFabric && this.selectedFabric.discountEnabled) ? (parseFloat(this.selectedFabric.discountPercent) || 0) : 0;
+
+  // Minimum flat-rate shipping & labour (order-level): when the combined
+  // fabric + fill cost across ALL pieces is below the threshold, charge flat
+  // shipping & labour once for the whole order instead of per-piece percentages.
+  var fs = this.config.settings || {};
+  var flatEnabled = fs.enableMinimumFlatRate !== false;
+  var flatThreshold = fs.flatRateThreshold != null ? fs.flatRateThreshold : 50;
+  var flatShippingAmt = fs.flatShippingAmount != null ? fs.flatShippingAmount : 50;
+  var flatLabourAmt = fs.flatLabourAmount != null ? fs.flatLabourAmount : 50;
+  var totalRawMaterial = 0;
+  this.pieces.forEach(function(piece) {
+    var isWp = self.config.profile && self.config.profile.enableWeatherproof;
+    var saFormula = (isWp && piece.shape.surfaceAreaWithoutBaseFormula)
+      ? piece.shape.surfaceAreaWithoutBaseFormula
+      : piece.shape.surfaceAreaFormula;
+    var sa = self.evaluateFormula(saFormula, piece.dimensions);
+    var vol = self.evaluateFormula(piece.shape.volumeFormula, piece.dimensions);
+    var pcfg = piece.config || {};
+    var fillShown = pcfg.showFillSection !== false;
+    var fc = sa * (parseFloat(self.selectedFabric.pricePerSqInch) || 0) * conversionMultiplier;
+    var flc = (fillShown && piece.fill) ? vol * (parseFloat(piece.fill.pricePerCubicInch) || 0) * conversionMultiplier : 0;
+    totalRawMaterial += fc + flc;
+  });
+  var flatRateApplied = flatEnabled && (totalRawMaterial < flatThreshold);
 
   var pieceBreakdowns = [];
   var totalFinalPrice = 0;
@@ -256,9 +291,11 @@ CushionCalculator.prototype.calculateMultiPiecePrice = function() {
     var pieceAfterProfile = pieceSubtotal + pieceProfileCost;
 
     // 2. Shipping/Labour base (optionally exclude ties and fabric ties)
+    // When the order qualifies for flat-rate, per-piece shipping/labour are zeroed
+    // here and the flat fees are added once to the order total after the loop.
     var pieceShippingLabourBase = tiesInShippingLabour ? pieceAfterProfile : (pieceAfterProfile - tiesCost - fabricTiesCost);
-    var pieceShippingCost = pieceShippingLabourBase * (shippingPct / 100);
-    var pieceLabourCost = pieceShippingLabourBase * (labourPct / 100);
+    var pieceShippingCost = flatRateApplied ? 0 : pieceShippingLabourBase * (shippingPct / 100);
+    var pieceLabourCost = flatRateApplied ? 0 : pieceShippingLabourBase * (labourPct / 100);
 
     var piecePreMargin = pieceAfterProfile + pieceShippingCost + pieceLabourCost;
 
@@ -333,12 +370,20 @@ CushionCalculator.prototype.calculateMultiPiecePrice = function() {
     });
   });
 
+  // Order-level flat shipping & labour floor (applied once for the whole order)
+  if (flatRateApplied) {
+    totalFinalPrice += flatShippingAmt + flatLabourAmt;
+  }
+
   var unitTotal = totalFinalPrice;
   var total = unitTotal * qty;
 
   this.calculatedPrice = total;
 
   this.updateMultiPiecePriceDisplay({
+    flatRateApplied: flatRateApplied,
+    flatShippingAmt: flatShippingAmt,
+    flatLabourAmt: flatLabourAmt,
     pieceBreakdowns: pieceBreakdowns,
     piecesSubtotal: totalPiecesSubtotal,
     profilePct: profilePct,
@@ -398,8 +443,10 @@ CushionCalculator.prototype.updateMultiPiecePriceDisplay = function(d) {
         if ((d.profilePct || 0) > 0) {
           html += '<div class="kraft2026zion-mp-detail-row"><span>Profile (' + d.profilePct + '%)</span><span>+' + f(pb.profileCost) + '</span></div>';
         }
-        html += '<div class="kraft2026zion-mp-detail-row"><span>Shipping (' + (d.shippingPct || 0) + '%)</span><span>+' + f(pb.shippingCost) + '</span></div>';
-        html += '<div class="kraft2026zion-mp-detail-row"><span>Labour (' + (d.labourPct || 0) + '%)</span><span>+' + f(pb.labourCost) + '</span></div>';
+        if (!d.flatRateApplied) {
+          html += '<div class="kraft2026zion-mp-detail-row"><span>Shipping (' + (d.shippingPct || 0) + '%)</span><span>+' + f(pb.shippingCost) + '</span></div>';
+          html += '<div class="kraft2026zion-mp-detail-row"><span>Labour (' + (d.labourPct || 0) + '%)</span><span>+' + f(pb.labourCost) + '</span></div>';
+        }
         html += '<div class="kraft2026zion-mp-detail-row mp-detail-subtotal"><span>Pre-Margin</span><span>' + f(pb.preMargin) + '</span></div>';
 
         if ((pb.marginPct || 0) !== 0) {
@@ -428,6 +475,10 @@ CushionCalculator.prototype.updateMultiPiecePriceDisplay = function(d) {
 
       html += '<div class="kraft2026zion-mp-breakdown-divider"></div>';
       html += '<div class="kraft2026zion-mp-breakdown-row"><span>All Pieces Subtotal</span><span>' + f(d.piecesSubtotal) + '</span></div>';
+      if (d.flatRateApplied) {
+        html += '<div class="kraft2026zion-mp-breakdown-row"><span>Shipping (flat)</span><span>+' + f(d.flatShippingAmt) + '</span></div>';
+        html += '<div class="kraft2026zion-mp-breakdown-row"><span>Labour (flat)</span><span>+' + f(d.flatLabourAmt) + '</span></div>';
+      }
       html += '<div class="kraft2026zion-mp-breakdown-row mp-breakdown-total"><span>Unit Total</span><span>' + f(d.unitTotal) + '</span></div>';
       html += '<div class="kraft2026zion-mp-breakdown-row mp-breakdown-total"><span>x ' + d.qty + '</span><span>' + f(d.total) + '</span></div>';
     } else if (d.incomplete) {
@@ -519,9 +570,16 @@ CushionCalculator.prototype.updatePriceDisplay = function(d) {
   profileRow.style.display = (d.profilePct || 0) > 0 ? 'flex' : 'none';
   document.getElementById('bd-profile-pct-' + blockId).textContent = d.profilePct || 0;
   document.getElementById('bd-profile-' + blockId).textContent = f(d.profileCost);
-  document.getElementById('bd-shipping-pct-' + blockId).textContent = d.shippingPct || 0;
+  var shippingLabelEl = document.getElementById('bd-shipping-label-' + blockId);
+  var labourLabelEl = document.getElementById('bd-labour-label-' + blockId);
+  if (d.flatRateApplied) {
+    if (shippingLabelEl) shippingLabelEl.textContent = 'Shipping (flat):';
+    if (labourLabelEl) labourLabelEl.textContent = 'Labour (flat):';
+  } else {
+    if (shippingLabelEl) shippingLabelEl.textContent = 'Shipping (' + (Number(d.shippingPct) || 0) + '%):';
+    if (labourLabelEl) labourLabelEl.textContent = 'Labour (' + (Number(d.labourPct) || 0) + '%):';
+  }
   document.getElementById('bd-shipping-' + blockId).textContent = f(d.shippingCost);
-  document.getElementById('bd-labour-pct-' + blockId).textContent = d.labourPct || 0;
   document.getElementById('bd-labour-' + blockId).textContent = f(d.labourCost);
   document.getElementById('bd-pretotal-' + blockId).textContent = f(d.preTotalUnit);
   var marginRow = document.getElementById('bd-margin-row-' + blockId);
