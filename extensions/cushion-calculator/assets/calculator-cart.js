@@ -55,12 +55,16 @@ CushionCalculator.prototype.addToCart = async function() {
   var debugMode = this.config.settings && this.config.settings.debugPricing;
 
   // Start with base properties that are always shown
-  var properties = {
-    'Shape': this.selectedShape.name,
-    'Dimensions': dimStr,
-    'Fill Type': effectiveFill.name,
-    'Fabric': effectiveFabric.name
-  };
+  var properties = {};
+  // Show the product the customer configured. Custom variants live on a shared hidden
+  // product, so this preserves the real product name in the cart and on the order.
+  if (this.productTitle) {
+    properties['Product'] = this.productTitle;
+  }
+  properties['Shape'] = this.selectedShape.name;
+  properties['Dimensions'] = dimStr;
+  properties['Fill Type'] = effectiveFill.name;
+  properties['Fabric'] = effectiveFabric.name;
   // Only show panels if more than 1
   if (effectivePanelCount > 1) {
     properties['Panels'] = effectivePanelCount + ' panels';
@@ -207,9 +211,12 @@ CushionCalculator.prototype.addMultiPieceToCart = async function() {
   var visibility = this.config.sectionVisibility || {};
 
   // Build properties for each piece
-  var properties = {
-    'Fabric': this.selectedFabric.name
-  };
+  var properties = {};
+  // Preserve the real product name (custom variants live on a shared hidden product).
+  if (this.productTitle) {
+    properties['Product'] = this.productTitle;
+  }
+  properties['Fabric'] = this.selectedFabric.name;
 
   // Config data for server-side storage
   var configData = {
