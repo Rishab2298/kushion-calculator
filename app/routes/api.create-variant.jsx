@@ -85,29 +85,24 @@ export const action = async ({ request }) => {
     // Get the admin context for this shop
     const { admin } = await unauthenticated.admin(shop);
 
-    // Create a unique option value for this variant
+    // Build a unique-but-readable option value for this variant. The readable summary
+    // (e.g. "Rectangle - 10\" x 10\" x 4\"") becomes the variant title shown in the cart,
+    // checkout and on the order; a short suffix keeps it unique per product as Shopify
+    // requires. Falls back to the legacy "Custom-..." format if no summary was sent.
     const timestamp = Date.now();
     const shortHash = configHash ? configHash.substring(0, 8) : timestamp.toString(36);
-    const optionValue = `Custom-${shortHash}-${timestamp.toString(36)}`;
+    const uniqueSuffix = `${shortHash}${timestamp.toString(36)}`;
+    const summary = typeof configSummary === "string" ? configSummary.trim() : "";
+    const optionValue = summary
+      ? `${summary} (${uniqueSuffix})`
+      : `Custom-${uniqueSuffix}`;
 
-    // Route the variant onto the hidden "Custom Cart" product when configured, so it never
-    // lands on (and pollutes the Google Merchant Center feed of) the displayed catalog
-    // product. Falls back to the incoming productId for backward compatibility.
-    let customCartProductId = null;
-    try {
-      const settings = await prisma.calculatorSettings.findUnique({
-        where: { shop },
-        select: { customCartProductId: true },
-      });
-      customCartProductId = settings?.customCartProductId?.trim() || null;
-    } catch (settingsErr) {
-      console.error("Failed to load calculator settings:", settingsErr.message);
-    }
-
-    const targetProductRef = customCartProductId || productId;
-    const productGid = targetProductRef.includes("gid://")
-      ? targetProductRef
-      : `gid://shopify/Product/${targetProductRef}`;
+    // Variants are created on the real product the customer is viewing, so the correct
+    // product name shows everywhere. Accumulation is prevented by auto-delete (orders/create
+    // webhook + the scheduled cleanup sweep), not by hiding them on a separate product.
+    const productGid = productId.includes("gid://")
+      ? productId
+      : `gid://shopify/Product/${productId}`;
 
     // Step 1: Create the variant with the calculated price
     console.log(`Creating variant with price $${parsedPrice}...`);
