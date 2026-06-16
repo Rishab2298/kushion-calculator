@@ -83,6 +83,11 @@ model CalculatorSettings {
   sampleMinItems        Int     @default(4)
   samplePerItemPrice    Float   @default(5.0)
 
+  // Hidden "Custom Cart" product that all dynamically-created cushion variants are
+  // attached to. Keeps the displayed catalog products clean (and out of the Google
+  // Merchant Center feed) instead of accumulating one variant per add-to-cart.
+  customCartProductId String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -95,6 +100,21 @@ model PriceTier {
   adjustmentPercent Float
 
   @@index([shop])
+}
+
+// Tracks each dynamically-created cushion variant so it can be deleted after the
+// order is placed (orders/create webhook) or swept once abandoned (cleanup job).
+// Orders snapshot their line items, so deleting the variant never affects a placed order.
+model CustomVariant {
+  id         String    @id @default(uuid())
+  shop       String
+  variantGid String    @unique
+  productGid String
+  orderId    String? // set when the variant is consumed by an order
+  createdAt  DateTime  @default(now())
+  deletedAt  DateTime? // set once the variant has been removed from Shopify
+
+  @@index([shop, deletedAt])
 }
 
 // ============ SHAPES ============

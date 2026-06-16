@@ -4,6 +4,7 @@ import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { invalidateConfigCache } from "./api.calculator-config";
+import { cleanupExistingCustomVariants } from "../lib/variant-cleanup.server";
 
 export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
@@ -28,9 +29,20 @@ export const loader = async ({ request }) => {
 };
 
 export const action = async ({ request }) => {
-  const { session } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
   const shop = session.shop;
   const formData = await request.formData();
+
+  // One-time cleanup of pre-existing junk variants (scans Shopify, deletes Custom-* variants).
+  if (formData.get("intent") === "cleanup") {
+    try {
+      const result = await cleanupExistingCustomVariants(admin);
+      return { cleanup: { ...result, success: true } };
+    } catch (err) {
+      console.error("Custom variant cleanup failed:", err.message);
+      return { cleanup: { success: false, error: err.message } };
+    }
+  }
 
   const shippingPercent = parseFloat(formData.get("shippingPercent")) || 0;
   const labourPercent = parseFloat(formData.get("labourPercent")) || 0;
@@ -59,6 +71,9 @@ export const action = async ({ request }) => {
   const sampleMinItems = parseInt(formData.get("sampleMinItems")) || 4;
   const samplePerItemPrice = parseFloat(formData.get("samplePerItemPrice")) || 5;
 
+  // Hidden "Custom Cart" product that dynamic cushion variants are attached to.
+  const customCartProductId = formData.get("customCartProductId")?.trim() || null;
+
   await prisma.calculatorSettings.upsert({
     where: { shop },
     update: {
@@ -82,6 +97,7 @@ export const action = async ({ request }) => {
       sampleBundlePrice,
       sampleMinItems,
       samplePerItemPrice,
+      customCartProductId,
     },
     create: {
       shop,
@@ -105,6 +121,7 @@ export const action = async ({ request }) => {
       sampleBundlePrice,
       sampleMinItems,
       samplePerItemPrice,
+      customCartProductId,
     },
   });
 
@@ -117,6 +134,7 @@ export const action = async ({ request }) => {
 export default function Settings() {
   const { settings } = useLoaderData();
   const fetcher = useFetcher();
+  const cleanupFetcher = useFetcher();
   const shopify = useAppBridge();
 
   const [formData, setFormData] = useState({
@@ -140,6 +158,7 @@ export default function Settings() {
     sampleBundlePrice: settings.sampleBundlePrice?.toString() || "25",
     sampleMinItems: settings.sampleMinItems?.toString() || "4",
     samplePerItemPrice: settings.samplePerItemPrice?.toString() || "5",
+    customCartProductId: settings.customCartProductId || "",
   });
 
   const handleSave = () => {
@@ -164,8 +183,21 @@ export default function Settings() {
     data.append("sampleBundlePrice", formData.sampleBundlePrice);
     data.append("sampleMinItems", formData.sampleMinItems);
     data.append("samplePerItemPrice", formData.samplePerItemPrice);
+    data.append("customCartProductId", formData.customCartProductId);
     fetcher.submit(data, { method: "POST" });
     shopify.toast.show("Settings saved");
+  };
+
+  const handleCleanup = () => {
+    const confirmed = window.confirm(
+      "Delete custom cushion variants older than 24 hours across all products? " +
+        "Variants tied to placed orders keep their snapshot, so existing orders are unaffected. " +
+        "This may take a moment for products with many variants."
+    );
+    if (!confirmed) return;
+    const data = new FormData();
+    data.append("intent", "cleanup");
+    cleanupFetcher.submit(data, { method: "POST" });
   };
 
   // Calculate example - Conversion is applied to raw materials first
@@ -580,6 +612,67 @@ export default function Settings() {
                 6 items = ${(parseFloat(formData.sampleBundlePrice) + 2 * parseFloat(formData.samplePerItemPrice)).toFixed(2)})
               </s-text>
             </s-box>
+          </s-stack>
+        </s-box>
+      </s-section>
+
+      <s-section heading="Custom Cart Product (GMC Fix)">
+        <s-box padding="base" borderWidth="base" borderRadius="base">
+          <s-stack direction="block" gap="loose">
+            <s-paragraph>
+              Each time a customer adds a configured cushion to the cart, the app creates a
+              hidden Shopify variant to carry the custom price. To keep your real catalog
+              products clean — and stop these variants from flooding the Google Merchant
+              Center feed — point them at a single dedicated product instead of the product
+              being viewed.
+            </s-paragraph>
+
+            <s-box padding="base" background="subdued" borderRadius="base">
+              <s-text fontSize="small">
+                Setup: create a product (e.g. &quot;Custom Cart – do not delete&quot;), publish it to the
+                <s-text fontWeight="semibold"> Online Store</s-text> channel only and
+                <s-text fontWeight="semibold"> uncheck Google &amp; YouTube</s-text>, then paste
+                its GID below. Leave blank to keep attaching variants to the viewed product
+                (not recommended).
+              </s-text>
+            </s-box>
+
+            <s-text-field
+              label="Custom Cart Product ID"
+              value={formData.customCartProductId}
+              onChange={(e) => setFormData({ ...formData, customCartProductId: e.target.value })}
+              helpText="Shopify product ID or GID (e.g. gid://shopify/Product/123). All dynamic cushion variants are attached here."
+              placeholder="gid://shopify/Product/..."
+            />
+
+            <s-stack direction="block" gap="tight">
+              <s-text fontWeight="semibold">Clean up existing variants</s-text>
+              <s-paragraph fontSize="small">
+                Delete custom cushion variants (titled &quot;Custom-…&quot;) older than 24 hours from
+                all products. Placed orders are unaffected because they keep their own
+                line-item snapshot. Run this once to clear the variants already polluting GMC.
+              </s-paragraph>
+              <div>
+                <s-button
+                  variant="secondary"
+                  tone="critical"
+                  onClick={handleCleanup}
+                  loading={cleanupFetcher.state !== "idle" ? "" : undefined}
+                  disabled={cleanupFetcher.state !== "idle" ? "" : undefined}
+                >
+                  {cleanupFetcher.state !== "idle" ? "Cleaning up…" : "Clean up custom variants"}
+                </s-button>
+              </div>
+              {cleanupFetcher.data?.cleanup && (
+                <s-box padding="base" background="subdued" borderRadius="base">
+                  <s-text fontSize="small">
+                    {cleanupFetcher.data.cleanup.success
+                      ? `Done. Scanned ${cleanupFetcher.data.cleanup.scannedProducts} product(s), deleted ${cleanupFetcher.data.cleanup.deletedCount} custom variant(s).`
+                      : `Cleanup failed: ${cleanupFetcher.data.cleanup.error}`}
+                  </s-text>
+                </s-box>
+              )}
+            </s-stack>
           </s-stack>
         </s-box>
       </s-section>

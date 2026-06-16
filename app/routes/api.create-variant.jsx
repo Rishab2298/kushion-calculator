@@ -1,4 +1,5 @@
 import { unauthenticated } from "../shopify.server";
+import prisma from "../db.server";
 
 /**
  * API endpoint for creating dynamic product variants with custom prices.
@@ -89,9 +90,24 @@ export const action = async ({ request }) => {
     const shortHash = configHash ? configHash.substring(0, 8) : timestamp.toString(36);
     const optionValue = `Custom-${shortHash}-${timestamp.toString(36)}`;
 
-    const productGid = productId.includes("gid://")
-      ? productId
-      : `gid://shopify/Product/${productId}`;
+    // Route the variant onto the hidden "Custom Cart" product when configured, so it never
+    // lands on (and pollutes the Google Merchant Center feed of) the displayed catalog
+    // product. Falls back to the incoming productId for backward compatibility.
+    let customCartProductId = null;
+    try {
+      const settings = await prisma.calculatorSettings.findUnique({
+        where: { shop },
+        select: { customCartProductId: true },
+      });
+      customCartProductId = settings?.customCartProductId?.trim() || null;
+    } catch (settingsErr) {
+      console.error("Failed to load calculator settings:", settingsErr.message);
+    }
+
+    const targetProductRef = customCartProductId || productId;
+    const productGid = targetProductRef.includes("gid://")
+      ? targetProductRef
+      : `gid://shopify/Product/${targetProductRef}`;
 
     // Step 1: Create the variant with the calculated price
     console.log(`Creating variant with price $${parsedPrice}...`);
@@ -175,6 +191,16 @@ export const action = async ({ request }) => {
 
     const variantGid = createdVariant.id;
     const numericId = variantGid.replace("gid://shopify/ProductVariant/", "");
+
+    // Track the created variant so it can be auto-deleted after the order is placed
+    // or swept once abandoned. Best-effort: never block the add-to-cart on a DB hiccup.
+    try {
+      await prisma.customVariant.create({
+        data: { shop, variantGid, productGid },
+      });
+    } catch (trackErr) {
+      console.error("Failed to track custom variant:", trackErr.message);
+    }
 
     console.log(`Variant ${numericId} created. Waiting for price propagation...`);
 
