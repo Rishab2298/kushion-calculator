@@ -19,12 +19,78 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // Variant titles created by the calculator start with this prefix (see api.create-variant.jsx).
 export const CUSTOM_VARIANT_PREFIX = "Custom-";
 
+// Stock to give a freshly created "Default Title" anchor variant (mirrors api.create-variant.jsx).
+const VARIANT_INITIAL_STOCK = 10;
+const primaryLocationCache = new Map();
+
 const BULK_DELETE_MUTATION = `#graphql
   mutation BulkDeleteVariants($productId: ID!, $variantsIds: [ID!]!) {
     productVariantsBulkDelete(productId: $productId, variantsIds: $variantsIds) {
       userErrors { field message }
     }
   }`;
+
+const CREATE_ANCHOR_MUTATION = `#graphql
+  mutation CreateAnchor($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
+    productVariantsBulkCreate(productId: $productId, variants: $variants) {
+      productVariants { id }
+      userErrors { field message }
+    }
+  }`;
+
+async function getPrimaryLocationId(admin, shop) {
+  if (primaryLocationCache.has(shop)) return primaryLocationCache.get(shop);
+  try {
+    const resp = await admin.graphql(
+      `#graphql
+      query PrimaryLocation { locations(first: 1) { edges { node { id } } } }`
+    );
+    const json = await resp.json();
+    const locationId = json.data?.locations?.edges?.[0]?.node?.id || null;
+    if (locationId) primaryLocationCache.set(shop, locationId);
+    return locationId;
+  } catch (err) {
+    console.error("Failed to fetch primary location:", err.message);
+    return null;
+  }
+}
+
+/**
+ * Create a clean "Default Title" anchor variant so a product can keep a sensible single
+ * listing after all custom variants are deleted (Shopify requires ≥1 variant per product).
+ * Returns true on success.
+ */
+async function createDefaultAnchor(admin, shop, productGid, price) {
+  const locationId = await getPrimaryLocationId(admin, shop);
+  const inventoryQuantities = locationId
+    ? [{ availableQuantity: VARIANT_INITIAL_STOCK, locationId }]
+    : [];
+  try {
+    const resp = await admin.graphql(CREATE_ANCHOR_MUTATION, {
+      variables: {
+        productId: productGid,
+        variants: [
+          {
+            price: price.toFixed(2),
+            optionValues: [{ name: "Default Title", optionName: "Title" }],
+            inventoryPolicy: "CONTINUE",
+            inventoryQuantities,
+          },
+        ],
+      },
+    });
+    const json = await resp.json();
+    const errors = json.data?.productVariantsBulkCreate?.userErrors || [];
+    if (errors.length) {
+      console.error(`Anchor create failed for ${productGid}: ${errors.map((e) => e.message).join("; ")}`);
+      return false;
+    }
+    return Boolean(json.data?.productVariantsBulkCreate?.productVariants?.[0]);
+  } catch (err) {
+    console.error(`Anchor create request failed for ${productGid}:`, err.message);
+    return false;
+  }
+}
 
 /** Validate the shared secret used to guard the scheduled cleanup endpoint. */
 export function verifyCleanupSecret(provided) {
@@ -136,7 +202,7 @@ async function fetchAllVariants(admin, productGid) {
         product(id: $id) {
           variants(first: 100, after: $cursor) {
             pageInfo { hasNextPage endCursor }
-            edges { node { id title createdAt } }
+            edges { node { id title createdAt price } }
           }
         }
       }`,
@@ -154,17 +220,36 @@ async function fetchAllVariants(admin, productGid) {
 }
 
 /**
- * One-time cleanup: scan every product in the shop, find variants whose title starts
- * with the custom prefix and are older than the cutoff, and delete them. Always leaves
- * at least one variant on each product (Shopify requires ≥1). Used by the admin button
- * to clear out variants created before DB tracking existed.
+ * Comprehensive cleanup: scan every product and delete all custom cushion variants older
+ * than the cutoff. A variant is "custom" if its title starts with `Custom-` (legacy format)
+ * OR its gid is tracked in the CustomVariant table (covers new readable-titled variants).
  *
- * @returns { scannedProducts, deletedCount }
+ * To guarantee one clean Google listing per product, if deleting the customs would leave the
+ * product with no variant, a clean "Default Title" anchor is created first (priced at the
+ * product's lowest current variant price). A product that already has a non-custom variant
+ * keeps it as the anchor. Normal products with no custom variants are untouched.
+ *
+ * @returns { scannedProducts, deletedCount, anchorsCreated }
  */
-export async function cleanupExistingCustomVariants(admin, { olderThanMs = DAY_MS } = {}) {
+export async function cleanupExistingCustomVariants(admin, shop, { olderThanMs = DAY_MS } = {}) {
   const cutoff = Date.now() - olderThanMs;
   let scannedProducts = 0;
   let deletedCount = 0;
+  let anchorsCreated = 0;
+
+  // Tracked custom variant gids for this shop (so we also catch readable-titled variants).
+  let trackedSet = new Set();
+  if (shop) {
+    const tracked = await prisma.customVariant.findMany({
+      where: { shop, deletedAt: null },
+      select: { variantGid: true },
+    });
+    trackedSet = new Set(tracked.map((t) => t.variantGid));
+  }
+
+  const isCustom = (v) =>
+    (typeof v.title === "string" && v.title.startsWith(CUSTOM_VARIANT_PREFIX)) ||
+    trackedSet.has(v.id);
 
   let cursor = null;
   let hasNext = true;
@@ -178,10 +263,9 @@ export async function cleanupExistingCustomVariants(admin, { olderThanMs = DAY_M
           edges {
             node {
               id
-              variantsCount { count }
               variants(first: 100) {
                 pageInfo { hasNextPage }
-                edges { node { id title createdAt } }
+                edges { node { id title createdAt price } }
               }
             }
           }
@@ -196,7 +280,6 @@ export async function cleanupExistingCustomVariants(admin, { olderThanMs = DAY_M
     for (const edge of conn.edges) {
       scannedProducts++;
       const product = edge.node;
-      const totalVariants = product.variantsCount?.count ?? product.variants.edges.length;
 
       // If the product has more than the first page of variants, fetch them all.
       let variantNodes;
@@ -206,20 +289,33 @@ export async function cleanupExistingCustomVariants(admin, { olderThanMs = DAY_M
         variantNodes = product.variants.edges.map((e) => e.node);
       }
 
-      const stale = variantNodes.filter(
-        (v) =>
-          typeof v.title === "string" &&
-          v.title.startsWith(CUSTOM_VARIANT_PREFIX) &&
-          new Date(v.createdAt).getTime() < cutoff
+      // Delete custom variants older than the cutoff (younger ones may still be in a live cart).
+      const toDelete = variantNodes.filter(
+        (v) => isCustom(v) && new Date(v.createdAt).getTime() < cutoff
       );
-      if (!stale.length) continue;
-
-      // Never delete the product's last remaining variant.
-      let toDelete = stale;
-      if (stale.length >= totalVariants) {
-        toDelete = stale.slice(0, totalVariants - 1);
-      }
       if (!toDelete.length) continue;
+
+      // Would anything survive the deletion? If not, seed a clean anchor first.
+      const survivors = variantNodes.length - toDelete.length;
+      if (survivors === 0) {
+        const prices = variantNodes
+          .map((v) => parseFloat(v.price))
+          .filter((p) => Number.isFinite(p) && p > 0);
+        const anchorPrice = prices.length ? Math.min(...prices) : null;
+        if (anchorPrice == null) {
+          // Can't determine a sane price — fall back to keeping one custom rather than risk a $0 ad.
+          toDelete.pop();
+          if (!toDelete.length) continue;
+        } else {
+          const ok = await createDefaultAnchor(admin, shop, product.id, anchorPrice);
+          if (ok) anchorsCreated++;
+          else {
+            // Anchor failed — keep one variant so we never orphan the product.
+            toDelete.pop();
+            if (!toDelete.length) continue;
+          }
+        }
+      }
 
       const { deletedGids } = await bulkDeleteForProduct(
         admin,
@@ -228,7 +324,6 @@ export async function cleanupExistingCustomVariants(admin, { olderThanMs = DAY_M
       );
       if (deletedGids.length) {
         deletedCount += deletedGids.length;
-        // Keep our tracking table consistent for any rows we happened to know about.
         await prisma.customVariant.updateMany({
           where: { variantGid: { in: deletedGids }, deletedAt: null },
           data: { deletedAt: new Date() },
@@ -240,5 +335,5 @@ export async function cleanupExistingCustomVariants(admin, { olderThanMs = DAY_M
     cursor = conn.pageInfo.endCursor;
   }
 
-  return { scannedProducts, deletedCount };
+  return { scannedProducts, deletedCount, anchorsCreated };
 }

@@ -1,6 +1,10 @@
 import { unauthenticated } from "../shopify.server";
 import prisma from "../db.server";
-import { sweepAbandonedVariants, verifyCleanupSecret } from "../lib/variant-cleanup.server";
+import {
+  sweepAbandonedVariants,
+  cleanupExistingCustomVariants,
+  verifyCleanupSecret,
+} from "../lib/variant-cleanup.server";
 
 /**
  * Scheduled sweep of abandoned custom variants (those never consumed by an order).
@@ -28,31 +32,41 @@ export const action = async ({ request }) => {
     Number.isFinite(hours) && hours >= 0 ? hours * 60 * 60 * 1000 : undefined;
   const onlyShop = url.searchParams.get("shop");
 
-  // Sweep only shops that actually have pending tracked variants.
+  // Run for every installed shop (union of shops with tracked variants + active sessions), so the
+  // product scan also clears old/untracked junk on shops that have no tracked rows.
   let shops;
   if (onlyShop) {
     shops = [onlyShop];
   } else {
-    const grouped = await prisma.customVariant.findMany({
-      where: { deletedAt: null },
-      distinct: ["shop"],
-      select: { shop: true },
-    });
-    shops = grouped.map((g) => g.shop);
+    const [tracked, sessions] = await Promise.all([
+      prisma.customVariant.findMany({
+        where: { deletedAt: null },
+        distinct: ["shop"],
+        select: { shop: true },
+      }),
+      prisma.session.findMany({ distinct: ["shop"], select: { shop: true } }),
+    ]);
+    shops = [...new Set([...tracked, ...sessions].map((s) => s.shop))];
   }
 
+  const opts = olderThanMs != null ? { olderThanMs } : {};
   const results = [];
   for (const shop of shops) {
     try {
       const { admin } = await unauthenticated.admin(shop);
-      const deleted = await sweepAbandonedVariants(
-        admin,
+      // 1) Fast sweep of DB-tracked abandoned variants.
+      const sweptTracked = await sweepAbandonedVariants(admin, shop, opts);
+      // 2) Comprehensive product scan (legacy Custom-* + tracked) with clean-anchor guarantee.
+      const scan = await cleanupExistingCustomVariants(admin, shop, opts);
+      results.push({
         shop,
-        olderThanMs != null ? { olderThanMs } : {}
-      );
-      results.push({ shop, deleted });
+        sweptTracked,
+        scannedProducts: scan.scannedProducts,
+        deletedCount: scan.deletedCount,
+        anchorsCreated: scan.anchorsCreated,
+      });
     } catch (err) {
-      console.error(`Cleanup sweep failed for ${shop}:`, err.message);
+      console.error(`Cleanup failed for ${shop}:`, err.message);
       results.push({ shop, error: err.message });
     }
   }

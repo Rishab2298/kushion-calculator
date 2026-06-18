@@ -36,7 +36,7 @@ export const action = async ({ request }) => {
   // One-time cleanup of pre-existing junk variants (scans Shopify, deletes Custom-* variants).
   if (formData.get("intent") === "cleanup") {
     try {
-      const result = await cleanupExistingCustomVariants(admin);
+      const result = await cleanupExistingCustomVariants(admin, shop);
       return { cleanup: { ...result, success: true } };
     } catch (err) {
       console.error("Custom variant cleanup failed:", err.message);
