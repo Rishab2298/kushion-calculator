@@ -19,5 +19,5 @@ jobs:
           CLEANUP_SECRET: ${{ secrets.CLEANUP_SECRET }}
         run: |
           curl -fsS -X POST \
-            "https://cushion-calculator-production.up.railway.app/api/cleanup-variants?hours=24" \
+            "https://cushion-calculator-production.up.railway.app/api/cleanup-variants?hours=6" \
             -H "x-cleanup-secret: $CLEANUP_SECRET"

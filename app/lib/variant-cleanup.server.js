@@ -247,9 +247,17 @@ export async function cleanupExistingCustomVariants(admin, shop, { olderThanMs =
     trackedSet = new Set(tracked.map((t) => t.variantGid));
   }
 
+  // A variant is a disposable custom one if its title uses the legacy prefix, it's tracked in the
+  // DB, or its title carries the calculator's config signature (catches readable-titled variants
+  // whose best-effort DB tracking insert failed). Real catalog variants ("Default Title") never match.
+  const looksLikeConfig = (t) =>
+    typeof t === "string" &&
+    /inches/i.test(t) &&
+    /(length|width|thickness)\s*:/i.test(t);
   const isCustom = (v) =>
     (typeof v.title === "string" && v.title.startsWith(CUSTOM_VARIANT_PREFIX)) ||
-    trackedSet.has(v.id);
+    trackedSet.has(v.id) ||
+    looksLikeConfig(v.title);
 
   let cursor = null;
   let hasNext = true;
@@ -289,33 +297,32 @@ export async function cleanupExistingCustomVariants(admin, shop, { olderThanMs =
         variantNodes = product.variants.edges.map((e) => e.node);
       }
 
-      // Delete custom variants older than the cutoff (younger ones may still be in a live cart).
-      const toDelete = variantNodes.filter(
-        (v) => isCustom(v) && new Date(v.createdAt).getTime() < cutoff
-      );
-      if (!toDelete.length) continue;
+      const customs = variantNodes.filter((v) => isCustom(v));
+      if (!customs.length) continue; // not a calculator product — leave it alone
 
-      // Would anything survive the deletion? If not, seed a clean anchor first.
-      const survivors = variantNodes.length - toDelete.length;
-      if (survivors === 0) {
+      // Custom variants old enough to remove (younger ones may still be in a live cart).
+      const toDelete = customs.filter((v) => new Date(v.createdAt).getTime() < cutoff);
+      const hasKeeper = variantNodes.length > customs.length; // a non-custom variant exists
+
+      // Proactively ensure a clean "Default Title" anchor: any calculator product with no
+      // non-custom variant gets one, so its primary Google listing is never a config title —
+      // even while a young custom variant is still present.
+      if (!hasKeeper) {
         const prices = variantNodes
           .map((v) => parseFloat(v.price))
           .filter((p) => Number.isFinite(p) && p > 0);
         const anchorPrice = prices.length ? Math.min(...prices) : null;
         if (anchorPrice == null) {
-          // Can't determine a sane price — fall back to keeping one custom rather than risk a $0 ad.
-          toDelete.pop();
-          if (!toDelete.length) continue;
+          // Can't price an anchor — fall back to keeping one custom so we never orphan the product.
+          if (toDelete.length) toDelete.pop();
         } else {
           const ok = await createDefaultAnchor(admin, shop, product.id, anchorPrice);
           if (ok) anchorsCreated++;
-          else {
-            // Anchor failed — keep one variant so we never orphan the product.
-            toDelete.pop();
-            if (!toDelete.length) continue;
-          }
+          else if (toDelete.length) toDelete.pop(); // anchor failed → keep one variant
         }
       }
+
+      if (!toDelete.length) continue;
 
       const { deletedGids } = await bulkDeleteForProduct(
         admin,
