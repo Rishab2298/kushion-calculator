@@ -1,5 +1,6 @@
 import { unauthenticated } from "../shopify.server";
 import prisma from "../db.server";
+import { ensureDefaultTitleAnchor } from "../lib/variant-cleanup.server";
 
 /**
  * API endpoint for creating dynamic product variants with custom prices.
@@ -196,6 +197,11 @@ export const action = async ({ request }) => {
     } catch (trackErr) {
       console.error("Failed to track custom variant:", trackErr.message);
     }
+
+    // Creating a custom variant can drop the product's implicit "Default Title" variant, leaving the
+    // catalog price as the customer's config price until the hourly cron repairs it. Re-assert a $59
+    // "Default Title" now so the product always shows its base price. Best-effort (never throws).
+    await ensureDefaultTitleAnchor(admin, shop, productGid);
 
     console.log(`Variant ${numericId} created. Waiting for price propagation...`);
 

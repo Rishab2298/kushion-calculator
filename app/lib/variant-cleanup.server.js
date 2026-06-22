@@ -151,6 +151,34 @@ async function setVariantPrices(admin, productGid, variantIds, price) {
   }
 }
 
+/**
+ * Ensure a calculator product has a "Default Title" variant pinned at ANCHOR_PRICE ($59).
+ * Creating a custom variant on a single-variant product can drop the implicit "Default Title",
+ * so callers (e.g. api.create-variant.jsx) invoke this right after an Add-to-Cart to re-assert the
+ * base price immediately instead of waiting for the hourly cron. Best-effort; never throws.
+ * Returns true if a Default Title exists (or was created) afterward.
+ */
+export async function ensureDefaultTitleAnchor(admin, shop, productGid) {
+  try {
+    const resp = await admin.graphql(
+      `#graphql
+      query DefaultTitleCheck($id: ID!) {
+        product(id: $id) {
+          variants(first: 100) { edges { node { id title } } }
+        }
+      }`,
+      { variables: { id: productGid } }
+    );
+    const json = await resp.json();
+    const nodes = json.data?.product?.variants?.edges?.map((e) => e.node) || [];
+    if (nodes.some((v) => v.title === "Default Title")) return true; // already present
+    return await createDefaultAnchor(admin, shop, productGid, ANCHOR_PRICE);
+  } catch (err) {
+    console.error(`ensureDefaultTitleAnchor failed for ${productGid}:`, err.message);
+    return false;
+  }
+}
+
 /** Validate the shared secret used to guard the scheduled cleanup endpoint. */
 export function verifyCleanupSecret(provided) {
   const secret = process.env.CLEANUP_SECRET;
