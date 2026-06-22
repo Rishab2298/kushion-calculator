@@ -21,6 +21,11 @@ export const CUSTOM_VARIANT_PREFIX = "Custom-";
 
 // Stock to give a freshly created "Default Title" anchor variant (mirrors api.create-variant.jsx).
 const VARIANT_INITIAL_STOCK = 10;
+
+// Fixed base price for the "actual product" — its "Default Title" variant. The guard pins every
+// calculator product's Default Title at this price so it never inherits a cheap custom-config price.
+const ANCHOR_PRICE = 59;
+
 const primaryLocationCache = new Map();
 
 const BULK_DELETE_MUTATION = `#graphql
@@ -37,6 +42,33 @@ const CREATE_ANCHOR_MUTATION = `#graphql
       userErrors { field message }
     }
   }`;
+
+const PRICE_UPDATE_MUTATION = `#graphql
+  mutation UpdateVariantPrice($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
+    productVariantsBulkUpdate(productId: $productId, variants: $variants) {
+      productVariants { id price }
+      userErrors { field message }
+    }
+  }`;
+
+// Metafield that marks a product as a calculator product (set by the app on install/config).
+// Used to scope the $59 price guard so only calculator products are affected.
+const CALC_METAFIELD = `metafield(namespace: "custom", key: "cushion_calculator_profile_id") { id }`;
+
+// A variant is a disposable custom one if its title uses the legacy prefix, it's tracked in the DB,
+// or its title carries the calculator's config signature (catches readable-titled variants whose
+// best-effort DB tracking insert failed). Real catalog variants ("Default Title") never match.
+const looksLikeConfig = (t) =>
+  typeof t === "string" &&
+  /inches/i.test(t) &&
+  /(length|width|thickness)\s*:/i.test(t);
+
+function buildIsCustom(trackedSet) {
+  return (v) =>
+    (typeof v.title === "string" && v.title.startsWith(CUSTOM_VARIANT_PREFIX)) ||
+    trackedSet.has(v.id) ||
+    looksLikeConfig(v.title);
+}
 
 async function getPrimaryLocationId(admin, shop) {
   if (primaryLocationCache.has(shop)) return primaryLocationCache.get(shop);
@@ -89,6 +121,33 @@ async function createDefaultAnchor(admin, shop, productGid, price) {
   } catch (err) {
     console.error(`Anchor create request failed for ${productGid}:`, err.message);
     return false;
+  }
+}
+
+/**
+ * Force the given variant ids on a product to a fixed price. Used to keep each calculator
+ * product's "Default Title" variant (its real catalog price) pinned at ANCHOR_PRICE.
+ * Returns the number of variants successfully updated.
+ */
+async function setVariantPrices(admin, productGid, variantIds, price) {
+  if (!variantIds.length) return 0;
+  try {
+    const resp = await admin.graphql(PRICE_UPDATE_MUTATION, {
+      variables: {
+        productId: productGid,
+        variants: variantIds.map((id) => ({ id, price: price.toFixed(2) })),
+      },
+    });
+    const json = await resp.json();
+    const errors = json.data?.productVariantsBulkUpdate?.userErrors || [];
+    if (errors.length) {
+      console.error(`Price update failed for ${productGid}: ${errors.map((e) => e.message).join("; ")}`);
+      return 0;
+    }
+    return json.data?.productVariantsBulkUpdate?.productVariants?.length || 0;
+  } catch (err) {
+    console.error(`Price update request failed for ${productGid}:`, err.message);
+    return 0;
   }
 }
 
@@ -220,22 +279,21 @@ async function fetchAllVariants(admin, productGid) {
 }
 
 /**
- * Comprehensive cleanup: scan every product and delete all custom cushion variants older
- * than the cutoff. A variant is "custom" if its title starts with `Custom-` (legacy format)
- * OR its gid is tracked in the CustomVariant table (covers new readable-titled variants).
+ * Comprehensive cleanup for calculator products (identified by the cushion_calculator_profile_id
+ * metafield): delete custom cushion variants older than the cutoff, and guarantee the product's
+ * "Default Title" variant (its real catalog price) is pinned at ANCHOR_PRICE ($59) — overwriting a
+ * drifted price, or creating a Default Title anchor if the product was left with none. A variant is
+ * "custom" if its title starts with `Custom-`, its gid is tracked in the CustomVariant table, or its
+ * title carries the calculator's config signature. Non-calculator products are left untouched.
  *
- * To guarantee one clean Google listing per product, if deleting the customs would leave the
- * product with no variant, a clean "Default Title" anchor is created first (priced at the
- * product's lowest current variant price). A product that already has a non-custom variant
- * keeps it as the anchor. Normal products with no custom variants are untouched.
- *
- * @returns { scannedProducts, deletedCount, anchorsCreated }
+ * @returns { scannedProducts, deletedCount, anchorsCreated, pricesGuarded }
  */
 export async function cleanupExistingCustomVariants(admin, shop, { olderThanMs = DAY_MS } = {}) {
   const cutoff = Date.now() - olderThanMs;
   let scannedProducts = 0;
   let deletedCount = 0;
   let anchorsCreated = 0;
+  let pricesGuarded = 0;
 
   // Tracked custom variant gids for this shop (so we also catch readable-titled variants).
   let trackedSet = new Set();
@@ -247,17 +305,7 @@ export async function cleanupExistingCustomVariants(admin, shop, { olderThanMs =
     trackedSet = new Set(tracked.map((t) => t.variantGid));
   }
 
-  // A variant is a disposable custom one if its title uses the legacy prefix, it's tracked in the
-  // DB, or its title carries the calculator's config signature (catches readable-titled variants
-  // whose best-effort DB tracking insert failed). Real catalog variants ("Default Title") never match.
-  const looksLikeConfig = (t) =>
-    typeof t === "string" &&
-    /inches/i.test(t) &&
-    /(length|width|thickness)\s*:/i.test(t);
-  const isCustom = (v) =>
-    (typeof v.title === "string" && v.title.startsWith(CUSTOM_VARIANT_PREFIX)) ||
-    trackedSet.has(v.id) ||
-    looksLikeConfig(v.title);
+  const isCustom = buildIsCustom(trackedSet);
 
   let cursor = null;
   let hasNext = true;
@@ -271,6 +319,7 @@ export async function cleanupExistingCustomVariants(admin, shop, { olderThanMs =
           edges {
             node {
               id
+              ${CALC_METAFIELD}
               variants(first: 100) {
                 pageInfo { hasNextPage }
                 edges { node { id title createdAt price } }
@@ -298,27 +347,47 @@ export async function cleanupExistingCustomVariants(admin, shop, { olderThanMs =
       }
 
       const customs = variantNodes.filter((v) => isCustom(v));
-      if (!customs.length) continue; // not a calculator product — leave it alone
+      // Calculator products carry this metafield; the $59 price guard applies only to them. Custom-
+      // variant cleanup below still runs for any product with customs (e.g. the Fabric Samples product).
+      const isCalcProduct = Boolean(product.metafield);
+      if (!isCalcProduct && !customs.length) continue; // nothing to guard, nothing to clean
+
+      const hasKeeper = variantNodes.length > customs.length; // a non-custom variant exists
+      const defaultTitles = variantNodes.filter((v) => v.title === "Default Title");
 
       // Custom variants old enough to remove (younger ones may still be in a live cart).
       const toDelete = customs.filter((v) => new Date(v.createdAt).getTime() < cutoff);
-      const hasKeeper = variantNodes.length > customs.length; // a non-custom variant exists
 
-      // Proactively ensure a clean "Default Title" anchor: any calculator product with no
-      // non-custom variant gets one, so its primary Google listing is never a config title —
-      // even while a young custom variant is still present.
-      if (!hasKeeper) {
+      if (isCalcProduct) {
+        // Guard the actual product price: a calculator product's "Default Title" variant is its real
+        // catalog price, so pin it at ANCHOR_PRICE ($59) — overwrite any that drifted, or create one
+        // if the product was left with no real variant (Shopify requires >= 1 variant per product).
+        if (defaultTitles.length) {
+          const mispriced = defaultTitles
+            .filter((v) => parseFloat(v.price) !== ANCHOR_PRICE)
+            .map((v) => v.id);
+          if (mispriced.length) {
+            pricesGuarded += await setVariantPrices(admin, product.id, mispriced, ANCHOR_PRICE);
+          }
+        } else if (!hasKeeper) {
+          const ok = await createDefaultAnchor(admin, shop, product.id, ANCHOR_PRICE);
+          if (ok) anchorsCreated++;
+          else if (toDelete.length) toDelete.pop(); // anchor failed → keep one variant
+        }
+        // else: real (non-custom) variants but no "Default Title" — leave pricing alone.
+      } else if (!hasKeeper) {
+        // Non-calculator product (e.g. Fabric Samples) reduced to only custom variants: keep it from
+        // being orphaned with a Default Title anchor at its lowest current price (legacy behavior).
         const prices = variantNodes
           .map((v) => parseFloat(v.price))
           .filter((p) => Number.isFinite(p) && p > 0);
         const anchorPrice = prices.length ? Math.min(...prices) : null;
         if (anchorPrice == null) {
-          // Can't price an anchor — fall back to keeping one custom so we never orphan the product.
           if (toDelete.length) toDelete.pop();
         } else {
           const ok = await createDefaultAnchor(admin, shop, product.id, anchorPrice);
           if (ok) anchorsCreated++;
-          else if (toDelete.length) toDelete.pop(); // anchor failed → keep one variant
+          else if (toDelete.length) toDelete.pop();
         }
       }
 
@@ -342,5 +411,102 @@ export async function cleanupExistingCustomVariants(admin, shop, { olderThanMs =
     cursor = conn.pageInfo.endCursor;
   }
 
-  return { scannedProducts, deletedCount, anchorsCreated };
+  return { scannedProducts, deletedCount, anchorsCreated, pricesGuarded };
+}
+
+/**
+ * Read-only diagnostic: scan every product and report the state of each calculator product's
+ * "Default Title" (its real catalog price). Performs NO mutations — used by api.variant-report.jsx
+ * to inspect what the guard would do before any writes.
+ *
+ * @returns { scannedProducts, calculatorProducts, report: [{ productId, title, totalVariants,
+ *            customCount, oldCustomCount, hasDefaultTitle, defaultTitlePrice, plannedAction }] }
+ */
+export async function scanCalculatorProducts(admin, shop, { olderThanMs = DAY_MS } = {}) {
+  const cutoff = Date.now() - olderThanMs;
+
+  let trackedSet = new Set();
+  if (shop) {
+    const tracked = await prisma.customVariant.findMany({
+      where: { shop, deletedAt: null },
+      select: { variantGid: true },
+    });
+    trackedSet = new Set(tracked.map((t) => t.variantGid));
+  }
+  const isCustom = buildIsCustom(trackedSet);
+
+  let scannedProducts = 0;
+  const report = [];
+  let cursor = null;
+  let hasNext = true;
+
+  while (hasNext) {
+    const resp = await admin.graphql(
+      `#graphql
+      query ScanProducts($cursor: String) {
+        products(first: 50, after: $cursor) {
+          pageInfo { hasNextPage endCursor }
+          edges {
+            node {
+              id
+              title
+              ${CALC_METAFIELD}
+              variants(first: 100) {
+                pageInfo { hasNextPage }
+                edges { node { id title createdAt price } }
+              }
+            }
+          }
+        }
+      }`,
+      { variables: { cursor } }
+    );
+    const json = await resp.json();
+    const conn = json.data?.products;
+    if (!conn) break;
+
+    for (const edge of conn.edges) {
+      scannedProducts++;
+      const product = edge.node;
+      if (!product.metafield) continue; // not a calculator product
+
+      let variantNodes;
+      if (product.variants.pageInfo.hasNextPage) {
+        variantNodes = await fetchAllVariants(admin, product.id);
+      } else {
+        variantNodes = product.variants.edges.map((e) => e.node);
+      }
+
+      const customs = variantNodes.filter((v) => isCustom(v));
+      const oldCustomCount = customs.filter((v) => new Date(v.createdAt).getTime() < cutoff).length;
+      const nonCustoms = variantNodes.filter((v) => !isCustom(v));
+      const defaultTitle = variantNodes.find((v) => v.title === "Default Title");
+      const defaultTitlePrice = defaultTitle ? parseFloat(defaultTitle.price) : null;
+
+      let plannedAction;
+      if (defaultTitle) {
+        plannedAction = defaultTitlePrice === ANCHOR_PRICE ? "already-59" : "update-to-59";
+      } else if (nonCustoms.length === 0) {
+        plannedAction = "create-anchor-59";
+      } else {
+        plannedAction = "skip-real-options";
+      }
+
+      report.push({
+        productId: product.id,
+        title: product.title,
+        totalVariants: variantNodes.length,
+        customCount: customs.length,
+        oldCustomCount,
+        hasDefaultTitle: Boolean(defaultTitle),
+        defaultTitlePrice,
+        plannedAction,
+      });
+    }
+
+    hasNext = conn.pageInfo.hasNextPage;
+    cursor = conn.pageInfo.endCursor;
+  }
+
+  return { scannedProducts, calculatorProducts: report.length, report };
 }

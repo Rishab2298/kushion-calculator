@@ -1,20 +1,18 @@
 import { unauthenticated } from "../shopify.server";
 import prisma from "../db.server";
 import {
-  sweepAbandonedVariants,
-  cleanupExistingCustomVariants,
+  scanCalculatorProducts,
   verifyCleanupSecret,
 } from "../lib/variant-cleanup.server";
 
 /**
- * Scheduled sweep of abandoned custom variants (those never consumed by an order).
+ * Read-only diagnostic for the $59 price guard. Reports, per calculator product, whether it has a
+ * "Default Title" variant and what it's priced at, plus what the guard would do — WITHOUT making
+ * any changes. Same auth as the cleanup endpoint, but no mutation code path exists here.
  *
- * Not a Shopify-authenticated route — meant to be triggered by an external scheduler
- * (e.g. Railway/Render/GitHub Actions cron). Guarded by a shared secret:
- *
- *   POST /api/cleanup-variants
+ *   POST /api/variant-report
  *   Header: x-cleanup-secret: <CLEANUP_SECRET env var>
- *   Optional query: ?hours=24   (age threshold, default 24h)
+ *   Optional query: ?hours=24   (age threshold used only to count "old" customs, default 24h)
  *                   ?shop=foo.myshopify.com  (limit to one shop)
  */
 export const action = async ({ request }) => {
@@ -32,8 +30,7 @@ export const action = async ({ request }) => {
     Number.isFinite(hours) && hours >= 0 ? hours * 60 * 60 * 1000 : undefined;
   const onlyShop = url.searchParams.get("shop");
 
-  // Run for every installed shop (union of shops with tracked variants + active sessions), so the
-  // product scan also clears old/untracked junk on shops that have no tracked rows.
+  // Same shop resolution as the cleanup endpoint (tracked variants + active sessions).
   let shops;
   if (onlyShop) {
     shops = [onlyShop];
@@ -54,20 +51,21 @@ export const action = async ({ request }) => {
   for (const shop of shops) {
     try {
       const { admin } = await unauthenticated.admin(shop);
-      // 1) Fast sweep of DB-tracked abandoned variants.
-      const sweptTracked = await sweepAbandonedVariants(admin, shop, opts);
-      // 2) Comprehensive product scan (legacy Custom-* + tracked) with clean-anchor guarantee.
-      const scan = await cleanupExistingCustomVariants(admin, shop, opts);
+      const scan = await scanCalculatorProducts(admin, shop, opts);
+      // Roll up planned actions across the shop's calculator products.
+      const summary = scan.report.reduce((acc, r) => {
+        acc[r.plannedAction] = (acc[r.plannedAction] || 0) + 1;
+        return acc;
+      }, {});
       results.push({
         shop,
-        sweptTracked,
         scannedProducts: scan.scannedProducts,
-        deletedCount: scan.deletedCount,
-        anchorsCreated: scan.anchorsCreated,
-        pricesGuarded: scan.pricesGuarded,
+        calculatorProducts: scan.calculatorProducts,
+        summary,
+        report: scan.report,
       });
     } catch (err) {
-      console.error(`Cleanup failed for ${shop}:`, err.message);
+      console.error(`Variant report failed for ${shop}:`, err.message);
       results.push({ shop, error: err.message });
     }
   }
@@ -75,5 +73,5 @@ export const action = async ({ request }) => {
   return Response.json({ success: true, results });
 };
 
-// Block GET.
+// Block GET (read-only, but still secret-guarded via POST).
 export const loader = () => new Response("Method not allowed", { status: 405 });
