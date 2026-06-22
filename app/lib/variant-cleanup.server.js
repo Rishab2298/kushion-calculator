@@ -19,8 +19,10 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // Variant titles created by the calculator start with this prefix (see api.create-variant.jsx).
 export const CUSTOM_VARIANT_PREFIX = "Custom-";
 
-// Stock to give a freshly created "Default Title" anchor variant (mirrors api.create-variant.jsx).
-const VARIANT_INITIAL_STOCK = 10;
+// Stock for a freshly created "Default Title" anchor variant. Stocked high (with the CONTINUE
+// policy below) so the catalog anchor never shows sold out. Purchasable custom variants are
+// stocked separately in api.create-variant.jsx.
+const ANCHOR_STOCK = 1000;
 
 // Fixed base price for the "actual product" — its "Default Title" variant. The guard pins every
 // calculator product's Default Title at this price so it never inherits a cheap custom-config price.
@@ -95,7 +97,7 @@ async function getPrimaryLocationId(admin, shop) {
 async function createDefaultAnchor(admin, shop, productGid, price) {
   const locationId = await getPrimaryLocationId(admin, shop);
   const inventoryQuantities = locationId
-    ? [{ availableQuantity: VARIANT_INITIAL_STOCK, locationId }]
+    ? [{ availableQuantity: ANCHOR_STOCK, locationId }]
     : [];
   try {
     const resp = await admin.graphql(CREATE_ANCHOR_MUTATION, {
