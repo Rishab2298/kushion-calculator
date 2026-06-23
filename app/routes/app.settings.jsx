@@ -33,12 +33,12 @@ export const action = async ({ request }) => {
   const shop = session.shop;
   const formData = await request.formData();
 
-  // One-time cleanup of pre-existing junk variants (scans Shopify, deletes Custom-* variants).
+  // On-demand cleanup of leftover junk variants (scans Shopify, deletes Custom-* variants).
   if (formData.get("intent") === "cleanup") {
     try {
-      // olderThanMs: 0 → delete every custom variant immediately, ignoring the abandoned-cart age
-      // window. Deliberate admin-triggered "clear now" action (the hourly cron keeps its 6h window).
-      const result = await cleanupExistingCustomVariants(admin, shop, { olderThanMs: 0 });
+      // Use the default 30-day retention window so this never drops a fresh variant that's still in
+      // a shopper's cart — it only clears custom variants older than 30 days, same rule as the cron.
+      const result = await cleanupExistingCustomVariants(admin, shop);
       return { cleanup: { ...result, success: true } };
     } catch (err) {
       console.error("Custom variant cleanup failed:", err.message);
@@ -616,18 +616,18 @@ export default function Settings() {
           <s-stack direction="block" gap="loose">
             <s-paragraph>
               Each configured cushion added to the cart creates a Shopify variant on the product
-              to carry its custom price. These are auto-deleted once an order is placed and swept
-              hourly if a cart is abandoned, so they don&apos;t pile up in your Google Merchant Center
-              feed. Use the button below to clear out any leftover custom variants on demand.
+              to carry its custom price. These are auto-deleted once an order is placed, and abandoned
+              ones are swept every 6 hours after a 30-day retention window — so a shopper who returns
+              to an older cart still finds their configured item intact. Use the button below to clear
+              out leftover custom variants on demand.
             </s-paragraph>
 
             <s-stack direction="block" gap="tight">
               <s-paragraph fontSize="small">
-                Immediately deletes all custom cushion variants from every product, regardless of
-                age. Placed orders are unaffected (they keep their own line-item snapshot), but a
-                variant currently in a shopper&apos;s cart will drop out of that cart — they would
-                need to reconfigure. The hourly auto-cleanup still uses a 6-hour safety window; only
-                this button is immediate.
+                Deletes custom cushion variants older than 30 days from every product — the same
+                retention rule as the automatic cleanup, so a variant still in a shopper&apos;s cart
+                (younger than 30 days) is never dropped. Placed orders are unaffected (they keep their
+                own line-item snapshot).
               </s-paragraph>
               <div>
                 <s-button

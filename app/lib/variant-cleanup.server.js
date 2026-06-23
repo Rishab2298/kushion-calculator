@@ -16,6 +16,11 @@ import prisma from "../db.server";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// Default retention for abandoned custom variants. They're kept this long so a shopper who returns
+// to an abandoned cart days later still finds their configured variant intact; only variants older
+// than this are swept. Purchased variants are deleted instantly by the orders/create webhook.
+export const THIRTY_DAYS_MS = 30 * DAY_MS;
+
 // Variant titles created by the calculator start with this prefix (see api.create-variant.jsx).
 export const CUSTOM_VARIANT_PREFIX = "Custom-";
 
@@ -314,11 +319,12 @@ export async function deleteTrackedVariantRows(admin, rows, { orderId } = {}) {
 
 /**
  * Scheduled sweep: delete tracked variants older than the cutoff that were never
- * consumed by an order (abandoned carts).
+ * consumed by an order (abandoned carts). Defaults to a 30-day retention window so returning
+ * shoppers keep their carts; younger variants are left untouched.
  *
  * @returns number of variants deleted
  */
-export async function sweepAbandonedVariants(admin, shop, { olderThanMs = DAY_MS } = {}) {
+export async function sweepAbandonedVariants(admin, shop, { olderThanMs = THIRTY_DAYS_MS } = {}) {
   const cutoff = new Date(Date.now() - olderThanMs);
   const rows = await prisma.customVariant.findMany({
     where: { shop, deletedAt: null, createdAt: { lt: cutoff } },
@@ -367,9 +373,12 @@ async function fetchAllVariants(admin, productGid) {
  * "custom" if its title starts with `Custom-`, its gid is tracked in the CustomVariant table, or its
  * title carries the calculator's config signature. Non-calculator products are left untouched.
  *
+ * Custom variants are removed once older than the retention window (default 30 days), so younger
+ * abandoned-cart variants survive; the price/position guard runs regardless of age.
+ *
  * @returns { scannedProducts, deletedCount, anchorsCreated, pricesGuarded, reorderedToFront }
  */
-export async function cleanupExistingCustomVariants(admin, shop, { olderThanMs = DAY_MS } = {}) {
+export async function cleanupExistingCustomVariants(admin, shop, { olderThanMs = THIRTY_DAYS_MS } = {}) {
   const cutoff = Date.now() - olderThanMs;
   let scannedProducts = 0;
   let deletedCount = 0;
@@ -510,7 +519,7 @@ export async function cleanupExistingCustomVariants(admin, shop, { olderThanMs =
  * @returns { scannedProducts, calculatorProducts, report: [{ productId, title, totalVariants,
  *            customCount, oldCustomCount, hasDefaultTitle, defaultTitlePrice, plannedAction }] }
  */
-export async function scanCalculatorProducts(admin, shop, { olderThanMs = DAY_MS } = {}) {
+export async function scanCalculatorProducts(admin, shop, { olderThanMs = THIRTY_DAYS_MS } = {}) {
   const cutoff = Date.now() - olderThanMs;
 
   let trackedSet = new Set();

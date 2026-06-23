@@ -1,0 +1,25 @@
+name: Cleanup custom variants (daily scan)
+
+# Once-daily full catalog scan backstop. Beyond the cheap sweep, this paginates every product to:
+#   - delete legacy / untracked Custom-* junk older than the retention window (default 30 days),
+#   - re-assert the $59 "Default Title" price guard, and
+#   - keep the Default Title as the product's first/representative variant (position 1).
+# Add-to-cart already guards price/position inline, so this only needs to run daily. It's the
+# expensive path (full GraphQL scan), which is why it's split out from the every-6h sweep.
+
+on:
+  schedule:
+    - cron: "30 3 * * *" # daily at 03:30 UTC
+  workflow_dispatch: {} # allow manual runs from the Actions tab
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: POST /api/cleanup-variants?scan=1 (sweep + full catalog scan)
+        env:
+          CLEANUP_SECRET: ${{ secrets.CLEANUP_SECRET }}
+        run: |
+          curl -fsS -X POST \
+            "https://cushion-calculator-production.up.railway.app/api/cleanup-variants?scan=1" \
+            -H "x-cleanup-secret: $CLEANUP_SECRET"

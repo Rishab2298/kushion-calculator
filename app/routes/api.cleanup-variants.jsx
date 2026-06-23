@@ -14,8 +14,14 @@ import {
  *
  *   POST /api/cleanup-variants
  *   Header: x-cleanup-secret: <CLEANUP_SECRET env var>
- *   Optional query: ?hours=24   (age threshold, default 24h)
+ *   Optional query: ?days=30    (age threshold; default 30 days)
+ *                   ?hours=6     (legacy threshold override; honored if present)
+ *                   ?scan=1      (also run the full catalog scan; default = DB sweep only)
  *                   ?shop=foo.myshopify.com  (limit to one shop)
+ *
+ * The cheap DB sweep runs on every call (every 6h via the cron). The heavy full catalog scan —
+ * which also re-asserts the $59 / position guard and catches legacy untracked junk — only runs
+ * when ?scan=1 (daily backstop), since add-to-cart already guards price/position inline.
  */
 export const action = async ({ request }) => {
   if (request.method !== "POST") {
@@ -27,9 +33,17 @@ export const action = async ({ request }) => {
   }
 
   const url = new URL(request.url);
+  // Age threshold: prefer ?days=, fall back to legacy ?hours=; otherwise undefined → the lib
+  // default (30 days). The full catalog scan only runs when explicitly requested with ?scan=1.
+  const days = parseFloat(url.searchParams.get("days"));
   const hours = parseFloat(url.searchParams.get("hours"));
-  const olderThanMs =
-    Number.isFinite(hours) && hours >= 0 ? hours * 60 * 60 * 1000 : undefined;
+  let olderThanMs;
+  if (Number.isFinite(days) && days >= 0) {
+    olderThanMs = days * 24 * 60 * 60 * 1000;
+  } else if (Number.isFinite(hours) && hours >= 0) {
+    olderThanMs = hours * 60 * 60 * 1000;
+  }
+  const runScan = url.searchParams.get("scan") === "1";
   const onlyShop = url.searchParams.get("shop");
 
   // Run for every installed shop (union of shops with tracked variants + active sessions), so the
@@ -54,19 +68,20 @@ export const action = async ({ request }) => {
   for (const shop of shops) {
     try {
       const { admin } = await unauthenticated.admin(shop);
-      // 1) Fast sweep of DB-tracked abandoned variants.
+      // 1) Fast sweep of DB-tracked abandoned variants (runs every call).
       const sweptTracked = await sweepAbandonedVariants(admin, shop, opts);
-      // 2) Comprehensive product scan (legacy Custom-* + tracked) with clean-anchor guarantee.
-      const scan = await cleanupExistingCustomVariants(admin, shop, opts);
-      results.push({
-        shop,
-        sweptTracked,
-        scannedProducts: scan.scannedProducts,
-        deletedCount: scan.deletedCount,
-        anchorsCreated: scan.anchorsCreated,
-        pricesGuarded: scan.pricesGuarded,
-        reorderedToFront: scan.reorderedToFront,
-      });
+      const result = { shop, sweptTracked, scanned: runScan };
+      // 2) Comprehensive product scan (legacy Custom-* + tracked) with the clean-anchor / price /
+      //    position guarantee. Only on ?scan=1 (daily backstop) — it's the expensive path.
+      if (runScan) {
+        const scan = await cleanupExistingCustomVariants(admin, shop, opts);
+        result.scannedProducts = scan.scannedProducts;
+        result.deletedCount = scan.deletedCount;
+        result.anchorsCreated = scan.anchorsCreated;
+        result.pricesGuarded = scan.pricesGuarded;
+        result.reorderedToFront = scan.reorderedToFront;
+      }
+      results.push(result);
     } catch (err) {
       console.error(`Cleanup failed for ${shop}:`, err.message);
       results.push({ shop, error: err.message });

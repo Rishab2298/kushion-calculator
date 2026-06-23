@@ -1,23 +1,24 @@
-name: Cleanup custom variants
+name: Cleanup custom variants (sweep)
 
-# Hourly sweep of abandoned-cart cushion variants. The app endpoint deletes tracked
-# CustomVariant rows older than the threshold (default 24h) so they don't pile up in
-# the Google Merchant Center feed. Variants from placed orders are deleted instantly
-# by the orders/create webhook, independent of this job.
+# Every-6-hours sweep of abandoned-cart cushion variants. Deletes tracked CustomVariant rows older
+# than the retention window (default 30 days) so returning shoppers keep their carts while old junk
+# is still cleared. This is the cheap DB-only path — no full catalog scan (that's the separate daily
+# "cleanup-variants-scan" workflow). Variants from placed orders are deleted instantly by the
+# orders/create webhook, independent of this job.
 
 on:
   schedule:
-    - cron: "0 * * * *" # every hour, on the hour (UTC)
+    - cron: "0 */6 * * *" # every 6 hours, on the hour (UTC)
   workflow_dispatch: {} # allow manual runs from the Actions tab
 
 jobs:
-  cleanup:
+  sweep:
     runs-on: ubuntu-latest
     steps:
-      - name: POST /api/cleanup-variants
+      - name: POST /api/cleanup-variants (sweep only)
         env:
           CLEANUP_SECRET: ${{ secrets.CLEANUP_SECRET }}
         run: |
           curl -fsS -X POST \
-            "https://cushion-calculator-production.up.railway.app/api/cleanup-variants?hours=6" \
+            "https://cushion-calculator-production.up.railway.app/api/cleanup-variants" \
             -H "x-cleanup-secret: $CLEANUP_SECRET"

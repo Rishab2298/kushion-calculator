@@ -114,7 +114,9 @@ model CustomVariant {
   createdAt  DateTime  @default(now())
   deletedAt  DateTime? // set once the variant has been removed from Shopify
 
-  @@index([shop, deletedAt])
+  // createdAt is part of the index so the 30-day sweep (shop + deletedAt: null + createdAt < cutoff)
+  // is a direct range scan rather than filtering createdAt after the fact.
+  @@index([shop, deletedAt, createdAt])
 }
 
 // ============ SHAPES ============
