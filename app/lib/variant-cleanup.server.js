@@ -53,6 +53,13 @@ const PRICE_UPDATE_MUTATION = `#graphql
     }
   }`;
 
+const REORDER_MUTATION = `#graphql
+  mutation ReorderVariants($productId: ID!, $positions: [ProductVariantPositionInput!]!) {
+    productVariantsBulkReorder(productId: $productId, positions: $positions) {
+      userErrors { field message }
+    }
+  }`;
+
 // Metafield that marks a product as a calculator product (set by the app on install/config).
 // Used to scope the $59 price guard so only calculator products are affected.
 const CALC_METAFIELD = `metafield(namespace: "custom", key: "cushion_calculator_profile_id") { id }`;
@@ -90,9 +97,38 @@ async function getPrimaryLocationId(admin, shop) {
 }
 
 /**
+ * Move a single variant to position 1 (the product's representative variant). Shopify positions
+ * are 1-indexed; setting one variant to position 1 shifts the rest down. Used to keep the "Default
+ * Title" anchor as the product's first/featured variant so the catalog shows the $59 base price
+ * (and the right entry feeds Google Merchant Center) instead of whichever custom config landed in
+ * slot 1. Best-effort; never throws. Returns true on success.
+ */
+async function moveVariantToFront(admin, productGid, variantId) {
+  try {
+    const resp = await admin.graphql(REORDER_MUTATION, {
+      variables: {
+        productId: productGid,
+        positions: [{ id: variantId, position: 1 }],
+      },
+    });
+    const json = await resp.json();
+    const errors = json.data?.productVariantsBulkReorder?.userErrors || [];
+    if (errors.length) {
+      console.error(`Variant reorder failed for ${productGid}: ${errors.map((e) => e.message).join("; ")}`);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error(`Variant reorder request failed for ${productGid}:`, err.message);
+    return false;
+  }
+}
+
+/**
  * Create a clean "Default Title" anchor variant so a product can keep a sensible single
  * listing after all custom variants are deleted (Shopify requires ≥1 variant per product).
- * Returns true on success.
+ * Newly created variants are appended last, so the anchor is immediately moved to position 1 to
+ * stay the product's representative variant. Returns the new variant's gid on success, else null.
  */
 async function createDefaultAnchor(admin, shop, productGid, price) {
   const locationId = await getPrimaryLocationId(admin, shop);
@@ -117,12 +153,16 @@ async function createDefaultAnchor(admin, shop, productGid, price) {
     const errors = json.data?.productVariantsBulkCreate?.userErrors || [];
     if (errors.length) {
       console.error(`Anchor create failed for ${productGid}: ${errors.map((e) => e.message).join("; ")}`);
-      return false;
+      return null;
     }
-    return Boolean(json.data?.productVariantsBulkCreate?.productVariants?.[0]);
+    const created = json.data?.productVariantsBulkCreate?.productVariants?.[0];
+    if (!created) return null;
+    // Anchor is appended at the end on create; pull it to the front so it's the representative variant.
+    await moveVariantToFront(admin, productGid, created.id);
+    return created.id;
   } catch (err) {
     console.error(`Anchor create request failed for ${productGid}:`, err.message);
-    return false;
+    return null;
   }
 }
 
@@ -154,11 +194,13 @@ async function setVariantPrices(admin, productGid, variantIds, price) {
 }
 
 /**
- * Ensure a calculator product has a "Default Title" variant pinned at ANCHOR_PRICE ($59).
- * Creating a custom variant on a single-variant product can drop the implicit "Default Title",
- * so callers (e.g. api.create-variant.jsx) invoke this right after an Add-to-Cart to re-assert the
- * base price immediately instead of waiting for the hourly cron. Best-effort; never throws.
- * Returns true if a Default Title exists (or was created) afterward.
+ * Ensure a calculator product has a "Default Title" variant pinned at ANCHOR_PRICE ($59) sitting at
+ * position 1. Creating a custom variant on a single-variant product can drop the implicit "Default
+ * Title" and leave the customer's custom config as the product's first/representative variant (which
+ * drives the catalog price and the Google Merchant Center entry). Callers (e.g. api.create-variant.jsx)
+ * invoke this right after an Add-to-Cart to re-assert the base price AND restore the anchor to slot 1
+ * immediately, instead of waiting for the hourly cron. Best-effort; never throws.
+ * Returns true if a Default Title exists (or was created) at the front afterward.
  */
 export async function ensureDefaultTitleAnchor(admin, shop, productGid) {
   try {
@@ -172,9 +214,18 @@ export async function ensureDefaultTitleAnchor(admin, shop, productGid) {
       { variables: { id: productGid } }
     );
     const json = await resp.json();
+    // Variants come back in position order, so nodes[0] is the product's representative variant.
     const nodes = json.data?.product?.variants?.edges?.map((e) => e.node) || [];
-    if (nodes.some((v) => v.title === "Default Title")) return true; // already present
-    return await createDefaultAnchor(admin, shop, productGid, ANCHOR_PRICE);
+    const existing = nodes.find((v) => v.title === "Default Title");
+    if (existing) {
+      // Already present — make sure it's the first variant (a custom config may have taken slot 1).
+      if (nodes[0]?.id !== existing.id) {
+        await moveVariantToFront(admin, productGid, existing.id);
+      }
+      return true;
+    }
+    // No Default Title — create one; createDefaultAnchor moves it to the front.
+    return Boolean(await createDefaultAnchor(admin, shop, productGid, ANCHOR_PRICE));
   } catch (err) {
     console.error(`ensureDefaultTitleAnchor failed for ${productGid}:`, err.message);
     return false;
@@ -316,7 +367,7 @@ async function fetchAllVariants(admin, productGid) {
  * "custom" if its title starts with `Custom-`, its gid is tracked in the CustomVariant table, or its
  * title carries the calculator's config signature. Non-calculator products are left untouched.
  *
- * @returns { scannedProducts, deletedCount, anchorsCreated, pricesGuarded }
+ * @returns { scannedProducts, deletedCount, anchorsCreated, pricesGuarded, reorderedToFront }
  */
 export async function cleanupExistingCustomVariants(admin, shop, { olderThanMs = DAY_MS } = {}) {
   const cutoff = Date.now() - olderThanMs;
@@ -324,6 +375,7 @@ export async function cleanupExistingCustomVariants(admin, shop, { olderThanMs =
   let deletedCount = 0;
   let anchorsCreated = 0;
   let pricesGuarded = 0;
+  let reorderedToFront = 0;
 
   // Tracked custom variant gids for this shop (so we also catch readable-titled variants).
   let trackedSet = new Set();
@@ -399,6 +451,12 @@ export async function cleanupExistingCustomVariants(admin, shop, { olderThanMs =
           if (mispriced.length) {
             pricesGuarded += await setVariantPrices(admin, product.id, mispriced, ANCHOR_PRICE);
           }
+          // Keep the Default Title as the product's representative variant: if a custom config has
+          // drifted into slot 1 (variantNodes come back in position order), pull the anchor to front.
+          const anchor = defaultTitles[0];
+          if (variantNodes[0] && variantNodes[0].id !== anchor.id) {
+            if (await moveVariantToFront(admin, product.id, anchor.id)) reorderedToFront++;
+          }
         } else if (!hasKeeper) {
           const ok = await createDefaultAnchor(admin, shop, product.id, ANCHOR_PRICE);
           if (ok) anchorsCreated++;
@@ -441,7 +499,7 @@ export async function cleanupExistingCustomVariants(admin, shop, { olderThanMs =
     cursor = conn.pageInfo.endCursor;
   }
 
-  return { scannedProducts, deletedCount, anchorsCreated, pricesGuarded };
+  return { scannedProducts, deletedCount, anchorsCreated, pricesGuarded, reorderedToFront };
 }
 
 /**

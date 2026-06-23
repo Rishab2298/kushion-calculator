@@ -65,6 +65,7 @@ export const action = async ({ request }) => {
         deletedCount: scan.deletedCount,
         anchorsCreated: scan.anchorsCreated,
         pricesGuarded: scan.pricesGuarded,
+        reorderedToFront: scan.reorderedToFront,
       });
     } catch (err) {
       console.error(`Cleanup failed for ${shop}:`, err.message);
