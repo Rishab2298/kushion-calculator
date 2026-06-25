@@ -213,6 +213,13 @@ CushionCalculator.prototype.toggleSection = function(name, forceOpen) {
     // Gallery integration: show shape when dimensions opens
     if (name === 'dimensions') {
       this.showShapeInGallery();
+      // The dimensions scroll row may have been measured at width 0 while collapsed; re-evaluate the
+      // arrow disabled state now that it's visible (and again after the expand settles).
+      if (this._refreshDimArrows) {
+        var self = this;
+        setTimeout(function() { self._refreshDimArrows(); }, 60);
+        setTimeout(function() { self._refreshDimArrows(); }, 400);
+      }
     } else {
       this.hideShapeFromGallery();
     }

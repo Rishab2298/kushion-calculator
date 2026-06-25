@@ -137,15 +137,42 @@ CushionCalculator.prototype.renderDimensionFields = function(shape) {
 CushionCalculator.prototype.initDimensionsScrollArrows = function() {
   var blockId = this.blockId;
   var w = document.getElementById('dimensions-scroll-wrapper-' + blockId);
-  var l = document.getElementById('dimensions-scroll-left-' + blockId);
-  var r = document.getElementById('dimensions-scroll-right-' + blockId);
-  if (!w || !l || !r) return;
-  var st = function() { l.disabled = w.scrollLeft <= 0; r.disabled = w.scrollLeft + w.clientWidth >= w.scrollWidth - 1; };
-  var nl = l.cloneNode(true), nr = r.cloneNode(true);
-  l.parentNode.replaceChild(nl, l); r.parentNode.replaceChild(nr, r);
-  nl.onclick = function() { w.scrollBy({ left: -176, behavior: 'smooth' }); };
-  nr.onclick = function() { w.scrollBy({ left: 176, behavior: 'smooth' }); };
-  w.onscroll = st; setTimeout(st, 100);
+  var lOld = document.getElementById('dimensions-scroll-left-' + blockId);
+  var rOld = document.getElementById('dimensions-scroll-right-' + blockId);
+  if (!w || !lOld || !rOld) return;
+
+  // Replace the buttons with clones so any listeners from a previous shape render are dropped.
+  var l = lOld.cloneNode(true), r = rOld.cloneNode(true);
+  lOld.parentNode.replaceChild(l, lOld); rOld.parentNode.replaceChild(r, rOld);
+
+  var form = document.getElementById('dimensions-form-' + blockId);
+
+  // Disable an arrow when there's nothing more to reveal in that direction. The right edge is keyed
+  // off the LAST field's actual position (getBoundingClientRect) rather than the wrapper's scrollWidth
+  // — scrollWidth can include trailing/phantom space, which is what let the right arrow keep scrolling
+  // past the final input. This makes the arrow stop exactly where the inputs end.
+  var update = function() {
+    if (!form || !form.children.length || w.clientWidth === 0) return; // not measurable yet
+    var wRight = w.getBoundingClientRect().right;
+    var lastRight = form.children[form.children.length - 1].getBoundingClientRect().right;
+    l.disabled = w.scrollLeft <= 1;
+    r.disabled = (lastRight - wRight) <= 1;
+  };
+  var step = function() { return Math.max(140, Math.round(w.clientWidth * 0.85)); };
+
+  l.onclick = function() { w.scrollBy({ left: -step(), behavior: 'smooth' }); };
+  r.onclick = function() { w.scrollBy({ left: step(), behavior: 'smooth' }); };
+
+  // Expose a refresher so the dimensions accordion opening and window resizes can re-evaluate state
+  // (the section may be measured at width 0 while collapsed).
+  this._refreshDimArrows = update;
+  if (this._dimResizeHandler) window.removeEventListener('resize', this._dimResizeHandler);
+  this._dimResizeHandler = update;
+  window.addEventListener('resize', update);
+
+  w.onscroll = update;
+  setTimeout(update, 100);
+  setTimeout(update, 600);
 };
 
 CushionCalculator.prototype.renderPipingOptions = function() {
