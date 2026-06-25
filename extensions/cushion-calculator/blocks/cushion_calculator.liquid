@@ -533,7 +533,7 @@
   .kraft2026zion-dimensions-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; }
   .kraft2026zion-dim-field { display: flex; flex-direction: column; }
   .kraft2026zion-dim-field label { font-size: 0.85rem; font-weight: 500; color: #555; margin-bottom: 6px; }
-  .kraft2026zion-dim-field input { padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; transition: border-color 0.2s; }
+  .kraft2026zion-dim-field input { box-sizing: border-box; width: 100%; min-width: 0; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; transition: border-color 0.2s; }
   .kraft2026zion-dim-field input:focus { outline: none; border-color: {{ block.settings.accent_color | default: '#5c6ac4' }}; }
   .kraft2026zion-dim-unit { font-size: 0.75rem; color: #888; margin-top: 4px; }
   .kraft2026zion-dim-field input.kraft2026zion-dim-out-of-range { border-color: #dc3545 !important; background: #fff5f5; }
