@@ -1,7 +1,7 @@
 name: Cleanup custom variants (sweep)
 
 # Every-6-hours sweep of abandoned-cart cushion variants. Deletes tracked CustomVariant rows older
-# than the retention window (default 30 days) so returning shoppers keep their carts while old junk
+# than the retention window (default 90 days) so returning shoppers keep their carts while old junk
 # is still cleared. This is the cheap DB-only path — no full catalog scan (that's the separate daily
 # "cleanup-variants-scan" workflow). Variants from placed orders are deleted instantly by the
 # orders/create webhook, independent of this job.

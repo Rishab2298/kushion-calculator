@@ -36,8 +36,8 @@ export const action = async ({ request }) => {
   // On-demand cleanup of leftover junk variants (scans Shopify, deletes Custom-* variants).
   if (formData.get("intent") === "cleanup") {
     try {
-      // Use the default 30-day retention window so this never drops a fresh variant that's still in
-      // a shopper's cart — it only clears custom variants older than 30 days, same rule as the cron.
+      // Use the default 90-day retention window so this never drops a fresh variant that's still in
+      // a shopper's cart — it only clears custom variants older than 90 days, same rule as the cron.
       const result = await cleanupExistingCustomVariants(admin, shop);
       return { cleanup: { ...result, success: true } };
     } catch (err) {
@@ -617,16 +617,16 @@ export default function Settings() {
             <s-paragraph>
               Each configured cushion added to the cart creates a Shopify variant on the product
               to carry its custom price. These are auto-deleted once an order is placed, and abandoned
-              ones are swept every 6 hours after a 30-day retention window — so a shopper who returns
+              ones are swept every 6 hours after a 90-day retention window — so a shopper who returns
               to an older cart still finds their configured item intact. Use the button below to clear
               out leftover custom variants on demand.
             </s-paragraph>
 
             <s-stack direction="block" gap="tight">
               <s-paragraph fontSize="small">
-                Deletes custom cushion variants older than 30 days from every product — the same
+                Deletes custom cushion variants older than 90 days from every product — the same
                 retention rule as the automatic cleanup, so a variant still in a shopper&apos;s cart
-                (younger than 30 days) is never dropped. Placed orders are unaffected (they keep their
+                (younger than 90 days) is never dropped. Placed orders are unaffected (they keep their
                 own line-item snapshot).
               </s-paragraph>
               <div>

@@ -55,7 +55,7 @@ CushionCalculator.prototype.renderDimensionFields = function(shape) {
 
   form.innerHTML = shape.inputFields.map(function(f) {
     return '<div class="kraft2026zion-dim-field"><label for="dim-' + f.key + '-' + blockId + '">' + f.label + (f.required ? ' *' : '') + '</label>' +
-      '<input type="number" id="dim-' + f.key + '-' + blockId + '" data-key="' + f.key + '" min="' + f.min + '" max="' + f.max + '" step="0.5" value="' + (f.defaultValue || '') + '" placeholder="' + f.min + '-' + f.max + '" ' + (f.required ? 'required' : '') + '>' +
+      '<input type="number" autocomplete="off" id="dim-' + f.key + '-' + blockId + '" data-key="' + f.key + '" min="' + f.min + '" max="' + f.max + '" step="0.5" value="' + (f.defaultValue || '') + '" placeholder="' + f.min + '-' + f.max + '" ' + (f.required ? 'required' : '') + '>' +
       '<span class="kraft2026zion-dim-unit">' + f.unit + '</span>' +
       '<span class="kraft2026zion-dim-range-error"></span></div>';
   }).join('');

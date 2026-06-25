@@ -1,7 +1,7 @@
 name: Cleanup custom variants (daily scan)
 
 # Once-daily full catalog scan backstop. Beyond the cheap sweep, this paginates every product to:
-#   - delete legacy / untracked Custom-* junk older than the retention window (default 30 days),
+#   - delete legacy / untracked Custom-* junk older than the retention window (default 90 days),
 #   - re-assert the $59 "Default Title" price guard, and
 #   - keep the Default Title as the product's first/representative variant (position 1).
 # Add-to-cart already guards price/position inline, so this only needs to run daily. It's the

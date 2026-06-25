@@ -14,7 +14,7 @@ import {
  *
  *   POST /api/cleanup-variants
  *   Header: x-cleanup-secret: <CLEANUP_SECRET env var>
- *   Optional query: ?days=30    (age threshold; default 30 days)
+ *   Optional query: ?days=90    (age threshold; default 90 days)
  *                   ?hours=6     (legacy threshold override; honored if present)
  *                   ?scan=1      (also run the full catalog scan; default = DB sweep only)
  *                   ?shop=foo.myshopify.com  (limit to one shop)
@@ -34,7 +34,7 @@ export const action = async ({ request }) => {
 
   const url = new URL(request.url);
   // Age threshold: prefer ?days=, fall back to legacy ?hours=; otherwise undefined → the lib
-  // default (30 days). The full catalog scan only runs when explicitly requested with ?scan=1.
+  // default (90 days). The full catalog scan only runs when explicitly requested with ?scan=1.
   const days = parseFloat(url.searchParams.get("days"));
   const hours = parseFloat(url.searchParams.get("hours"));
   let olderThanMs;

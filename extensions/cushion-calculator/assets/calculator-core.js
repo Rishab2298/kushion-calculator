@@ -80,6 +80,17 @@ CushionCalculator.prototype.init = async function() {
 
     this.setupEventListeners();
     this.setupFabricBrowserEventListeners();
+
+    // Force the quantity back to its default on every load. The quantity input is the only source of
+    // truth for quantity (state lives in the DOM input, not in JS), and it's a nameless number input,
+    // so on a mobile tab-reopen the browser's form-state restoration can drop a stray restored value
+    // (e.g. a dimension like 70) into it before the dimension fields re-render. Resetting it here
+    // guarantees such a value can never survive into pricing or add-to-cart. (autocomplete="off" on
+    // the number inputs is the primary guard; this is the deterministic backstop.)
+    var qtyInput = document.getElementById('quantity-' + this.blockId);
+    if (qtyInput) qtyInput.value = '1';
+    this.syncFloatingFooter();
+
     this.loadingDiv.style.display = 'none';
     this.container.style.display = 'block';
 
