@@ -25,7 +25,15 @@ export const loader = async ({ request }) => {
     });
   }
 
-  return { settings };
+  // Active fabric categories, with their Sample Shop visibility flag, for the
+  // enable/disable list in the Fabric & Fill Sample Shop section.
+  const categories = await prisma.fabricCategory.findMany({
+    where: { shop, isActive: true },
+    orderBy: { sortOrder: "asc" },
+    select: { id: true, name: true, showInSampleShop: true },
+  });
+
+  return { settings, categories };
 };
 
 export const action = async ({ request }) => {
@@ -122,6 +130,39 @@ export const action = async ({ request }) => {
     },
   });
 
+  // Fabric Sample Shop: which categories are shown in the storefront block.
+  // The form submits the enabled category IDs; everything else (for this shop) is hidden.
+  const enabledCategoryIds = (formData.get("sampleShopCategoryIds") || "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+
+  // Only reconcile the categories shown in the form (active ones); leave inactive
+  // categories' visibility untouched.
+  const activeCategories = await prisma.fabricCategory.findMany({
+    where: { shop, isActive: true },
+    select: { id: true },
+  });
+  const enabledSet = new Set(enabledCategoryIds);
+  const disabledCategoryIds = activeCategories
+    .map((c) => c.id)
+    .filter((id) => !enabledSet.has(id));
+
+  await Promise.all([
+    enabledCategoryIds.length
+      ? prisma.fabricCategory.updateMany({
+          where: { shop, id: { in: enabledCategoryIds } },
+          data: { showInSampleShop: true },
+        })
+      : null,
+    disabledCategoryIds.length
+      ? prisma.fabricCategory.updateMany({
+          where: { shop, id: { in: disabledCategoryIds } },
+          data: { showInSampleShop: false },
+        })
+      : null,
+  ]);
+
   // Invalidate the config cache so the storefront gets the updated values
   invalidateConfigCache(shop);
 
@@ -129,7 +170,7 @@ export const action = async ({ request }) => {
 };
 
 export default function Settings() {
-  const { settings } = useLoaderData();
+  const { settings, categories } = useLoaderData();
   const fetcher = useFetcher();
   const cleanupFetcher = useFetcher();
   const shopify = useAppBridge();
@@ -155,7 +196,21 @@ export default function Settings() {
     sampleBundlePrice: settings.sampleBundlePrice?.toString() || "25",
     sampleMinItems: settings.sampleMinItems?.toString() || "4",
     samplePerItemPrice: settings.samplePerItemPrice?.toString() || "5",
+    sampleCategories: (categories || []).map((c) => ({
+      id: c.id,
+      name: c.name,
+      showInSampleShop: c.showInSampleShop !== false,
+    })),
   });
+
+  const toggleSampleCategory = (id) => {
+    setFormData((prev) => ({
+      ...prev,
+      sampleCategories: prev.sampleCategories.map((c) =>
+        c.id === id ? { ...c, showInSampleShop: !c.showInSampleShop } : c
+      ),
+    }));
+  };
 
   const handleSave = () => {
     const data = new FormData();
@@ -179,6 +234,13 @@ export default function Settings() {
     data.append("sampleBundlePrice", formData.sampleBundlePrice);
     data.append("sampleMinItems", formData.sampleMinItems);
     data.append("samplePerItemPrice", formData.samplePerItemPrice);
+    data.append(
+      "sampleShopCategoryIds",
+      formData.sampleCategories
+        .filter((c) => c.showInSampleShop)
+        .map((c) => c.id)
+        .join(",")
+    );
     fetcher.submit(data, { method: "POST" });
     shopify.toast.show("Settings saved");
   };
@@ -607,6 +669,44 @@ export default function Settings() {
                 6 items = ${(parseFloat(formData.sampleBundlePrice) + 2 * parseFloat(formData.samplePerItemPrice)).toFixed(2)})
               </s-text>
             </s-box>
+
+            <s-divider />
+
+            <s-stack direction="block" gap="tight">
+              <s-text fontWeight="semibold">Categories shown in the Sample Shop</s-text>
+              <s-paragraph fontSize="small">
+                Choose which fabric categories customers can browse in the Sample Shop. Unchecked
+                categories (and their fabrics) are hidden from the sample shop only — they still
+                appear in the main calculator. Uncategorized fabrics are always shown.
+              </s-paragraph>
+
+              {formData.sampleCategories.length === 0 ? (
+                <s-box padding="base" background="subdued" borderRadius="base">
+                  <s-text fontSize="small">
+                    No active fabric categories yet. Add categories under Fabrics to manage them here.
+                  </s-text>
+                </s-box>
+              ) : (
+                <s-box padding="base" borderWidth="base" borderRadius="base">
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    {formData.sampleCategories.map((cat) => (
+                      <label
+                        key={cat.id}
+                        style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={cat.showInSampleShop}
+                          onChange={() => toggleSampleCategory(cat.id)}
+                          style={{ width: "18px", height: "18px" }}
+                        />
+                        <span style={{ fontWeight: "500" }}>{cat.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </s-box>
+              )}
+            </s-stack>
           </s-stack>
         </s-box>
       </s-section>

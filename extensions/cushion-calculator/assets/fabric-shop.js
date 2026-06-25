@@ -408,6 +408,7 @@
       shop: this.shop,
       page: this.fabricPagination.page,
       limit: 40,
+      sampleShop: '1',
     });
     if (this.filters.search) params.set('search', this.filters.search);
     if (this.filters.categoryId) params.set('categoryId', this.filters.categoryId);

@@ -195,13 +195,17 @@ enum FabricPriceTier {
 
 // ============ FABRIC CATEGORIES ============
 model FabricCategory {
-  id          String  @id @default(uuid())
-  shop        String
-  name        String
-  description String?
-  imageUrl    String?
-  isActive    Boolean @default(true)
-  sortOrder   Int     @default(0)
+  id               String  @id @default(uuid())
+  shop             String
+  name             String
+  description      String?
+  imageUrl         String?
+  isActive         Boolean @default(true)
+  // Whether this category is shown in the Fabric & Fill Sample Shop storefront block.
+  // Independent of isActive (which controls the main calculator) so a category can be
+  // available in the calculator but hidden from the sample shop, or vice versa.
+  showInSampleShop Boolean @default(true)
+  sortOrder        Int     @default(0)
 
   fabrics Fabric[]
 

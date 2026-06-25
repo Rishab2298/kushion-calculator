@@ -25,7 +25,7 @@ export const loader = async ({ request }) => {
         select: { id: true, name: true, imageUrl: true, description: true },
       }),
       prisma.fabricCategory.findMany({
-        where: { shop, isActive: true },
+        where: { shop, isActive: true, showInSampleShop: true },
         orderBy: { sortOrder: "asc" },
         select: { id: true, name: true },
       }),

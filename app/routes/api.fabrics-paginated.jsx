@@ -25,6 +25,10 @@ export const loader = async ({ request }) => {
   const priceTier = url.searchParams.get("priceTier") || null;
   const materialId = url.searchParams.get("materialId") || null;
   const search = url.searchParams.get("search") || null;
+  // When called from the Fabric & Fill Sample Shop block, hide fabrics whose category
+  // has been disabled for the sample shop (showInSampleShop=false). Uncategorized
+  // fabrics are always shown. Does not affect the main calculator (no flag passed).
+  const sampleShop = url.searchParams.get("sampleShop") === "1";
 
   // Sorting parameters
   const sortBy = url.searchParams.get("sortBy") || "sortOrder";
@@ -44,6 +48,13 @@ export const loader = async ({ request }) => {
       } else {
         where.categoryId = categoryId;
       }
+    } else if (sampleShop) {
+      // No specific category selected: in the sample shop, only show fabrics from
+      // sample-enabled categories (plus uncategorized fabrics).
+      where.OR = [
+        { category: { showInSampleShop: true } },
+        { categoryId: null },
+      ];
     }
 
     // Direct field filters
