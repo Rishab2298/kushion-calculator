@@ -1,6 +1,6 @@
 import { unauthenticated } from "../shopify.server";
 import prisma from "../db.server";
-import { ensureDefaultTitleAnchor } from "../lib/variant-cleanup.server";
+import { ensureDefaultTitleAnchor, syncBasePrice } from "../lib/variant-cleanup.server";
 
 /**
  * API endpoint for creating dynamic product variants with custom prices.
@@ -105,6 +105,29 @@ export const action = async ({ request }) => {
       ? productId
       : `gid://shopify/Product/${productId}`;
 
+    // Capture the product's real base price BEFORE creating the custom variant, while its "Default
+    // Title" variant still holds the merchant-set price. Persisted to the custom.cushion_base_price
+    // metafield so the anchor can be recreated at the right price if Shopify later drops the Default
+    // Title. Best-effort — never block add-to-cart.
+    try {
+      const baseResp = await admin.graphql(
+        `#graphql
+        query BaseDefaultTitle($id: ID!) {
+          product(id: $id) {
+            variants(first: 100) { edges { node { title price } } }
+          }
+        }`,
+        { variables: { id: productGid } }
+      );
+      const baseJson = await baseResp.json();
+      const defaultTitle = baseJson.data?.product?.variants?.edges
+        ?.map((e) => e.node)
+        .find((v) => v.title === "Default Title");
+      if (defaultTitle) await syncBasePrice(admin, productGid, defaultTitle.price);
+    } catch (baseErr) {
+      console.error("Failed to capture base price:", baseErr.message);
+    }
+
     // Step 1: Create the variant with the calculated price
     console.log(`Creating variant with price $${parsedPrice}...`);
 
@@ -199,8 +222,9 @@ export const action = async ({ request }) => {
     }
 
     // Creating a custom variant can drop the product's implicit "Default Title" variant, leaving the
-    // catalog price as the customer's config price until the hourly cron repairs it. Re-assert a $59
-    // "Default Title" now so the product always shows its base price. Best-effort (never throws).
+    // catalog price as the customer's config price until the cron repairs it. Re-assert the "Default
+    // Title" now (at the product's captured base price) so the product always shows its base price.
+    // Best-effort (never throws).
     await ensureDefaultTitleAnchor(admin, shop, productGid);
 
     console.log(`Variant ${numericId} created. Waiting for price propagation...`);

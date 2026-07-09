@@ -20,7 +20,7 @@ import {
  *                   ?shop=foo.myshopify.com  (limit to one shop)
  *
  * The cheap DB sweep runs on every call (every 6h via the cron). The heavy full catalog scan —
- * which also re-asserts the $59 / position guard and catches legacy untracked junk — only runs
+ * which also re-asserts the base-price / position guard and catches legacy untracked junk — only runs
  * when ?scan=1 (daily backstop), since add-to-cart already guards price/position inline.
  */
 export const action = async ({ request }) => {
@@ -71,14 +71,14 @@ export const action = async ({ request }) => {
       // 1) Fast sweep of DB-tracked abandoned variants (runs every call).
       const sweptTracked = await sweepAbandonedVariants(admin, shop, opts);
       const result = { shop, sweptTracked, scanned: runScan };
-      // 2) Comprehensive product scan (legacy Custom-* + tracked) with the clean-anchor / price /
-      //    position guarantee. Only on ?scan=1 (daily backstop) — it's the expensive path.
+      // 2) Comprehensive product scan (legacy Custom-* + tracked) with the clean-anchor / base-price
+      //    sync / position guarantee. Only on ?scan=1 (daily backstop) — it's the expensive path.
       if (runScan) {
         const scan = await cleanupExistingCustomVariants(admin, shop, opts);
         result.scannedProducts = scan.scannedProducts;
         result.deletedCount = scan.deletedCount;
         result.anchorsCreated = scan.anchorsCreated;
-        result.pricesGuarded = scan.pricesGuarded;
+        result.basePricesSynced = scan.basePricesSynced;
         result.reorderedToFront = scan.reorderedToFront;
       }
       results.push(result);

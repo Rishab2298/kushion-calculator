@@ -6,9 +6,9 @@ import {
 } from "../lib/variant-cleanup.server";
 
 /**
- * Read-only diagnostic for the $59 price guard. Reports, per calculator product, whether it has a
- * "Default Title" variant and what it's priced at, plus what the guard would do — WITHOUT making
- * any changes. Same auth as the cleanup endpoint, but no mutation code path exists here.
+ * Read-only diagnostic for the base-price guard. Reports, per calculator product, whether it has a
+ * "Default Title" variant, what it's priced at, and its stored base price, plus what the guard would
+ * do — WITHOUT making any changes. Same auth as the cleanup endpoint, but no mutation code path here.
  *
  *   POST /api/variant-report
  *   Header: x-cleanup-secret: <CLEANUP_SECRET env var>

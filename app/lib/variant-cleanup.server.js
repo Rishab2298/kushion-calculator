@@ -29,9 +29,18 @@ export const CUSTOM_VARIANT_PREFIX = "Custom-";
 // stocked separately in api.create-variant.jsx.
 const ANCHOR_STOCK = 1000;
 
-// Fixed base price for the "actual product" — its "Default Title" variant. The guard pins every
-// calculator product's Default Title at this price so it never inherits a cheap custom-config price.
-const ANCHOR_PRICE = 59;
+// Last-resort base price for a "Default Title" anchor when a product's real base price can't be
+// resolved (no live Default Title price and no stored base-price metafield). Only used to avoid
+// creating a $0 variant; the real base price comes from resolveBasePrice() below.
+const FALLBACK_ANCHOR_PRICE = 59;
+
+// Product metafield that stores the merchant's real base price, captured from the Default Title
+// variant while it's intact (see api.create-variant.jsx). Used to recreate the anchor at the right
+// price when Shopify drops the implicit Default Title during custom-variant creation.
+const BASE_PRICE_NAMESPACE = "custom";
+const BASE_PRICE_KEY = "cushion_base_price";
+// Alias so a products query can fetch both the calc-profile marker and the stored base price at once.
+const BASE_PRICE_METAFIELD = `basePrice: metafield(namespace: "${BASE_PRICE_NAMESPACE}", key: "${BASE_PRICE_KEY}") { value }`;
 
 const primaryLocationCache = new Map();
 
@@ -50,18 +59,24 @@ const CREATE_ANCHOR_MUTATION = `#graphql
     }
   }`;
 
-const PRICE_UPDATE_MUTATION = `#graphql
-  mutation UpdateVariantPrice($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
-    productVariantsBulkUpdate(productId: $productId, variants: $variants) {
-      productVariants { id price }
-      userErrors { field message }
-    }
-  }`;
-
 const REORDER_MUTATION = `#graphql
   mutation ReorderVariants($productId: ID!, $positions: [ProductVariantPositionInput!]!) {
     productVariantsBulkReorder(productId: $productId, positions: $positions) {
       userErrors { field message }
+    }
+  }`;
+
+const BASE_PRICE_SET_MUTATION = `#graphql
+  mutation SetBasePrice($metafields: [MetafieldsSetInput!]!) {
+    metafieldsSet(metafields: $metafields) {
+      userErrors { field message }
+    }
+  }`;
+
+const BASE_PRICE_READ_QUERY = `#graphql
+  query BasePrice($id: ID!) {
+    product(id: $id) {
+      metafield(namespace: "${BASE_PRICE_NAMESPACE}", key: "${BASE_PRICE_KEY}") { value }
     }
   }`;
 
@@ -98,6 +113,59 @@ async function getPrimaryLocationId(admin, shop) {
   } catch (err) {
     console.error("Failed to fetch primary location:", err.message);
     return null;
+  }
+}
+
+/** Parse a price-like value into a positive finite number, or null if it isn't one. */
+function toValidPrice(value) {
+  const n = parseFloat(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/**
+ * Read a product's stored base price from the custom.cushion_base_price metafield. Returns a positive
+ * number, or null if unset/invalid. Best-effort; never throws.
+ */
+async function readBasePrice(admin, productGid) {
+  try {
+    const resp = await admin.graphql(BASE_PRICE_READ_QUERY, { variables: { id: productGid } });
+    const json = await resp.json();
+    return toValidPrice(json.data?.product?.metafield?.value);
+  } catch (err) {
+    console.error(`readBasePrice failed for ${productGid}:`, err.message);
+    return null;
+  }
+}
+
+/**
+ * Persist a product's real base price to the custom.cushion_base_price metafield so the anchor can be
+ * recreated at the right price after Shopify drops the implicit Default Title. Only writes a positive
+ * price. Best-effort; never throws.
+ */
+export async function syncBasePrice(admin, productGid, price) {
+  const valid = toValidPrice(price);
+  if (valid == null) return;
+  try {
+    const resp = await admin.graphql(BASE_PRICE_SET_MUTATION, {
+      variables: {
+        metafields: [
+          {
+            ownerId: productGid,
+            namespace: BASE_PRICE_NAMESPACE,
+            key: BASE_PRICE_KEY,
+            type: "number_decimal",
+            value: valid.toFixed(2),
+          },
+        ],
+      },
+    });
+    const json = await resp.json();
+    const errors = json.data?.metafieldsSet?.userErrors || [];
+    if (errors.length) {
+      console.error(`syncBasePrice failed for ${productGid}: ${errors.map((e) => e.message).join("; ")}`);
+    }
+  } catch (err) {
+    console.error(`syncBasePrice request failed for ${productGid}:`, err.message);
   }
 }
 
@@ -172,39 +240,16 @@ async function createDefaultAnchor(admin, shop, productGid, price) {
 }
 
 /**
- * Force the given variant ids on a product to a fixed price. Used to keep each calculator
- * product's "Default Title" variant (its real catalog price) pinned at ANCHOR_PRICE.
- * Returns the number of variants successfully updated.
- */
-async function setVariantPrices(admin, productGid, variantIds, price) {
-  if (!variantIds.length) return 0;
-  try {
-    const resp = await admin.graphql(PRICE_UPDATE_MUTATION, {
-      variables: {
-        productId: productGid,
-        variants: variantIds.map((id) => ({ id, price: price.toFixed(2) })),
-      },
-    });
-    const json = await resp.json();
-    const errors = json.data?.productVariantsBulkUpdate?.userErrors || [];
-    if (errors.length) {
-      console.error(`Price update failed for ${productGid}: ${errors.map((e) => e.message).join("; ")}`);
-      return 0;
-    }
-    return json.data?.productVariantsBulkUpdate?.productVariants?.length || 0;
-  } catch (err) {
-    console.error(`Price update request failed for ${productGid}:`, err.message);
-    return 0;
-  }
-}
-
-/**
- * Ensure a calculator product has a "Default Title" variant pinned at ANCHOR_PRICE ($59) sitting at
- * position 1. Creating a custom variant on a single-variant product can drop the implicit "Default
- * Title" and leave the customer's custom config as the product's first/representative variant (which
- * drives the catalog price and the Google Merchant Center entry). Callers (e.g. api.create-variant.jsx)
- * invoke this right after an Add-to-Cart to re-assert the base price AND restore the anchor to slot 1
- * immediately, instead of waiting for the hourly cron. Best-effort; never throws.
+ * Ensure a calculator product keeps its "Default Title" variant at the product's real base price,
+ * sitting at position 1. Creating a custom variant on a single-variant product can drop the implicit
+ * "Default Title" and leave the customer's custom config as the product's first/representative variant
+ * (which drives the catalog price and the Google Merchant Center entry). Callers (e.g.
+ * api.create-variant.jsx) invoke this right after an Add-to-Cart to restore the anchor to slot 1
+ * immediately, instead of waiting for the cron.
+ *
+ * The existing Default Title's price is never overwritten — it IS the merchant's base price, so it's
+ * synced into the base-price metafield instead. Only a missing Default Title is recreated, at the
+ * stored base price (falling back to FALLBACK_ANCHOR_PRICE if none is known). Best-effort; never throws.
  * Returns true if a Default Title exists (or was created) at the front afterward.
  */
 export async function ensureDefaultTitleAnchor(admin, shop, productGid) {
@@ -213,7 +258,7 @@ export async function ensureDefaultTitleAnchor(admin, shop, productGid) {
       `#graphql
       query DefaultTitleCheck($id: ID!) {
         product(id: $id) {
-          variants(first: 100) { edges { node { id title } } }
+          variants(first: 100) { edges { node { id title price } } }
         }
       }`,
       { variables: { id: productGid } }
@@ -223,14 +268,17 @@ export async function ensureDefaultTitleAnchor(admin, shop, productGid) {
     const nodes = json.data?.product?.variants?.edges?.map((e) => e.node) || [];
     const existing = nodes.find((v) => v.title === "Default Title");
     if (existing) {
-      // Already present — make sure it's the first variant (a custom config may have taken slot 1).
+      // Present — keep its price as the base of truth and make sure it's the first variant
+      // (a custom config may have taken slot 1).
+      await syncBasePrice(admin, productGid, existing.price);
       if (nodes[0]?.id !== existing.id) {
         await moveVariantToFront(admin, productGid, existing.id);
       }
       return true;
     }
-    // No Default Title — create one; createDefaultAnchor moves it to the front.
-    return Boolean(await createDefaultAnchor(admin, shop, productGid, ANCHOR_PRICE));
+    // No Default Title — recreate one at the stored base price; createDefaultAnchor moves it to front.
+    const basePrice = (await readBasePrice(admin, productGid)) ?? FALLBACK_ANCHOR_PRICE;
+    return Boolean(await createDefaultAnchor(admin, shop, productGid, basePrice));
   } catch (err) {
     console.error(`ensureDefaultTitleAnchor failed for ${productGid}:`, err.message);
     return false;
@@ -367,23 +415,25 @@ async function fetchAllVariants(admin, productGid) {
 
 /**
  * Comprehensive cleanup for calculator products (identified by the cushion_calculator_profile_id
- * metafield): delete custom cushion variants older than the cutoff, and guarantee the product's
- * "Default Title" variant (its real catalog price) is pinned at ANCHOR_PRICE ($59) — overwriting a
- * drifted price, or creating a Default Title anchor if the product was left with none. A variant is
- * "custom" if its title starts with `Custom-`, its gid is tracked in the CustomVariant table, or its
- * title carries the calculator's config signature. Non-calculator products are left untouched.
+ * metafield): delete custom cushion variants older than the cutoff, and guarantee the product keeps a
+ * "Default Title" variant at its own real base price sitting at position 1. A variant is "custom" if
+ * its title starts with `Custom-`, its gid is tracked in the CustomVariant table, or its title carries
+ * the calculator's config signature. Non-calculator products are left untouched.
+ *
+ * The Default Title's price is never overwritten — it IS the merchant's base price, so it's synced into
+ * the base-price metafield instead. Only a missing Default Title is recreated, at the stored base price.
  *
  * Custom variants are removed once older than the retention window (default 90 days), so younger
- * abandoned-cart variants survive; the price/position guard runs regardless of age.
+ * abandoned-cart variants survive; the base-price sync / position guard runs regardless of age.
  *
- * @returns { scannedProducts, deletedCount, anchorsCreated, pricesGuarded, reorderedToFront }
+ * @returns { scannedProducts, deletedCount, anchorsCreated, basePricesSynced, reorderedToFront }
  */
 export async function cleanupExistingCustomVariants(admin, shop, { olderThanMs = RETENTION_WINDOW_MS } = {}) {
   const cutoff = Date.now() - olderThanMs;
   let scannedProducts = 0;
   let deletedCount = 0;
   let anchorsCreated = 0;
-  let pricesGuarded = 0;
+  let basePricesSynced = 0;
   let reorderedToFront = 0;
 
   // Tracked custom variant gids for this shop (so we also catch readable-titled variants).
@@ -411,6 +461,7 @@ export async function cleanupExistingCustomVariants(admin, shop, { olderThanMs =
             node {
               id
               ${CALC_METAFIELD}
+              ${BASE_PRICE_METAFIELD}
               variants(first: 100) {
                 pageInfo { hasNextPage }
                 edges { node { id title createdAt price } }
@@ -438,36 +489,40 @@ export async function cleanupExistingCustomVariants(admin, shop, { olderThanMs =
       }
 
       const customs = variantNodes.filter((v) => isCustom(v));
-      // Calculator products carry this metafield; the $59 price guard applies only to them. Custom-
+      // Calculator products carry this metafield; the base-price guard applies only to them. Custom-
       // variant cleanup below still runs for any product with customs (e.g. the Fabric Samples product).
       const isCalcProduct = Boolean(product.metafield);
       if (!isCalcProduct && !customs.length) continue; // nothing to guard, nothing to clean
 
       const hasKeeper = variantNodes.length > customs.length; // a non-custom variant exists
       const defaultTitles = variantNodes.filter((v) => v.title === "Default Title");
+      const storedBasePrice = toValidPrice(product.basePrice?.value);
 
       // Custom variants old enough to remove (younger ones may still be in a live cart).
       const toDelete = customs.filter((v) => new Date(v.createdAt).getTime() < cutoff);
 
       if (isCalcProduct) {
-        // Guard the actual product price: a calculator product's "Default Title" variant is its real
-        // catalog price, so pin it at ANCHOR_PRICE ($59) — overwrite any that drifted, or create one
-        // if the product was left with no real variant (Shopify requires >= 1 variant per product).
+        // The "Default Title" variant is the product's own base/catalog price — NEVER overwrite it.
+        // Keep the base-price metafield in sync from its live price so the anchor can be recreated at
+        // the right price if Shopify later drops it, and keep it as the representative (position-1)
+        // variant.
         if (defaultTitles.length) {
-          const mispriced = defaultTitles
-            .filter((v) => parseFloat(v.price) !== ANCHOR_PRICE)
-            .map((v) => v.id);
-          if (mispriced.length) {
-            pricesGuarded += await setVariantPrices(admin, product.id, mispriced, ANCHOR_PRICE);
-          }
-          // Keep the Default Title as the product's representative variant: if a custom config has
-          // drifted into slot 1 (variantNodes come back in position order), pull the anchor to front.
           const anchor = defaultTitles[0];
+          const livePrice = toValidPrice(anchor.price);
+          if (livePrice != null && livePrice !== storedBasePrice) {
+            await syncBasePrice(admin, product.id, livePrice);
+            basePricesSynced++;
+          }
+          // If a custom config has drifted into slot 1 (variantNodes come back in position order),
+          // pull the anchor to front.
           if (variantNodes[0] && variantNodes[0].id !== anchor.id) {
             if (await moveVariantToFront(admin, product.id, anchor.id)) reorderedToFront++;
           }
         } else if (!hasKeeper) {
-          const ok = await createDefaultAnchor(admin, shop, product.id, ANCHOR_PRICE);
+          // No Default Title and no other real variant — recreate one at the stored base price
+          // (Shopify requires >= 1 variant per product).
+          const anchorPrice = storedBasePrice ?? FALLBACK_ANCHOR_PRICE;
+          const ok = await createDefaultAnchor(admin, shop, product.id, anchorPrice);
           if (ok) anchorsCreated++;
           else if (toDelete.length) toDelete.pop(); // anchor failed → keep one variant
         }
@@ -508,16 +563,16 @@ export async function cleanupExistingCustomVariants(admin, shop, { olderThanMs =
     cursor = conn.pageInfo.endCursor;
   }
 
-  return { scannedProducts, deletedCount, anchorsCreated, pricesGuarded, reorderedToFront };
+  return { scannedProducts, deletedCount, anchorsCreated, basePricesSynced, reorderedToFront };
 }
 
 /**
  * Read-only diagnostic: scan every product and report the state of each calculator product's
- * "Default Title" (its real catalog price). Performs NO mutations — used by api.variant-report.jsx
- * to inspect what the guard would do before any writes.
+ * "Default Title" (its real catalog price) and stored base price. Performs NO mutations — used by
+ * api.variant-report.jsx to inspect what the guard would do before any writes.
  *
  * @returns { scannedProducts, calculatorProducts, report: [{ productId, title, totalVariants,
- *            customCount, oldCustomCount, hasDefaultTitle, defaultTitlePrice, plannedAction }] }
+ *            customCount, oldCustomCount, hasDefaultTitle, defaultTitlePrice, basePrice, plannedAction }] }
  */
 export async function scanCalculatorProducts(admin, shop, { olderThanMs = RETENTION_WINDOW_MS } = {}) {
   const cutoff = Date.now() - olderThanMs;
@@ -548,6 +603,7 @@ export async function scanCalculatorProducts(admin, shop, { olderThanMs = RETENT
               id
               title
               ${CALC_METAFIELD}
+              ${BASE_PRICE_METAFIELD}
               variants(first: 100) {
                 pageInfo { hasNextPage }
                 edges { node { id title createdAt price } }
@@ -579,12 +635,15 @@ export async function scanCalculatorProducts(admin, shop, { olderThanMs = RETENT
       const nonCustoms = variantNodes.filter((v) => !isCustom(v));
       const defaultTitle = variantNodes.find((v) => v.title === "Default Title");
       const defaultTitlePrice = defaultTitle ? parseFloat(defaultTitle.price) : null;
+      const basePrice = toValidPrice(product.basePrice?.value);
 
       let plannedAction;
       if (defaultTitle) {
-        plannedAction = defaultTitlePrice === ANCHOR_PRICE ? "already-59" : "update-to-59";
+        // The Default Title price is kept as-is; if it differs from the stored base price we'd resync.
+        plannedAction =
+          toValidPrice(defaultTitlePrice) !== basePrice ? "resync-base-price" : "keep-price";
       } else if (nonCustoms.length === 0) {
-        plannedAction = "create-anchor-59";
+        plannedAction = "recreate-at-base";
       } else {
         plannedAction = "skip-real-options";
       }
@@ -597,6 +656,7 @@ export async function scanCalculatorProducts(admin, shop, { olderThanMs = RETENT
         oldCustomCount,
         hasDefaultTitle: Boolean(defaultTitle),
         defaultTitlePrice,
+        basePrice,
         plannedAction,
       });
     }
