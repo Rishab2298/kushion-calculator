@@ -74,7 +74,10 @@ CushionCalculator.prototype.calculatePrice = function() {
   if (visibility.showFabricTiesSection === false) effectiveFabricTies = hidden.fabricTies || null;
   if (visibility.showDrawstringSection === false) effectiveDrawstring = hidden.drawstring || null;
 
-  if (!this.selectedShape || !effectiveFabric) { this.updatePriceDisplay({}); return; }
+  // Fabric is only required when the Fabric section is visible. "Inserts only" profiles hide the
+  // Fabric section (Hidden Fabric Value = "None"), so effectiveFabric is null and fabric cost is 0.
+  var fabricRequired = visibility.showFabricSection !== false;
+  if (!this.selectedShape || (fabricRequired && !effectiveFabric)) { this.updatePriceDisplay({}); return; }
 
   var dimensions = this.dimensions;
   var allDimensionsSet = this.selectedShape.inputFields.filter(function(f) { return f.required; }).every(function(f) { return dimensions[f.key] && dimensions[f.key] > 0; });
@@ -89,7 +92,7 @@ CushionCalculator.prototype.calculatePrice = function() {
   var volume = this.evaluateFormula(this.selectedShape.volumeFormula, dimensions);
 
   var conversionMultiplier = 1 + ((this.config.settings && this.config.settings.conversionPercent != null ? this.config.settings.conversionPercent : 0) / 100);
-  var fabricCost = surfaceArea * (parseFloat(effectiveFabric.pricePerSqInch) || 0) * conversionMultiplier;
+  var fabricCost = effectiveFabric ? surfaceArea * (parseFloat(effectiveFabric.pricePerSqInch) || 0) * conversionMultiplier : 0;
   var fillCost = effectiveFill ? volume * (parseFloat(effectiveFill.pricePerCubicInch) || 0) * conversionMultiplier : 0;
   var tiesCost = effectiveTies ? (parseFloat(effectiveTies.price) || 0) * conversionMultiplier : 0;
   var fabricTiesCost = effectiveFabricTies ? (parseFloat(effectiveFabricTies.price) || 0) * conversionMultiplier : 0;
@@ -615,7 +618,9 @@ CushionCalculator.prototype.updatePriceDisplay = function(d) {
   }
   document.getElementById('bd-qty-' + blockId).textContent = d.qty || 1;
   document.getElementById('bd-total-' + blockId).textContent = f(d.total);
-  var canAdd = this.selectedShape && (this.selectedFill || (this.config.hiddenValues && this.config.hiddenValues.fillType)) && (this.selectedFabric || (this.config.hiddenValues && this.config.hiddenValues.fabric)) && (d.baseSubtotal || 0) > 0;
+  var vis = this.config.sectionVisibility || {};
+  var fabricOk = vis.showFabricSection === false || this.selectedFabric || (this.config.hiddenValues && this.config.hiddenValues.fabric);
+  var canAdd = this.selectedShape && (this.selectedFill || (this.config.hiddenValues && this.config.hiddenValues.fillType)) && fabricOk && (d.baseSubtotal || 0) > 0;
   document.getElementById('add-cart-btn-' + blockId).disabled = !canAdd;
 
   // Sync floating footer

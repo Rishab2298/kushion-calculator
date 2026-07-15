@@ -57,10 +57,11 @@ CushionCalculator.prototype.addToCart = async function() {
   // Start with base properties that are always shown
   var properties = {
     'Shape': this.selectedShape.name,
-    'Dimensions': dimStr,
-    'Fill Type': effectiveFill.name,
-    'Fabric': effectiveFabric.name
+    'Dimensions': dimStr
   };
+  // Fill/Fabric may be absent on "inserts only" profiles (Fabric section hidden with no fabric).
+  if (effectiveFill) properties['Fill Type'] = effectiveFill.name;
+  if (effectiveFabric) properties['Fabric'] = effectiveFabric.name;
   // Only show panels if more than 1
   if (effectivePanelCount > 1) {
     properties['Panels'] = effectivePanelCount + ' panels';
@@ -107,8 +108,6 @@ CushionCalculator.prototype.addToCart = async function() {
   // Build config data for server-side storage (keeps IDs out of admin order view)
   var configData = {
     shapeId: this.selectedShape.id,
-    fillId: effectiveFill.id,
-    fabricId: effectiveFabric.id,
     dimensions: dimUrlStr,
     productHandle: this.productHandle,
     profileId: this.profileId || '',
@@ -118,6 +117,8 @@ CushionCalculator.prototype.addToCart = async function() {
     totalDisplay: '$' + (unitPrice * qty).toFixed(2),
     calculatedPrice: unitPrice.toFixed(2)
   };
+  if (effectiveFill) configData.fillId = effectiveFill.id;
+  if (effectiveFabric) configData.fabricId = effectiveFabric.id;
   if (visibility.showDesignSection !== false) configData.designId = effectiveDesign ? effectiveDesign.id : 'none';
   if (visibility.showPipingSection !== false) configData.pipingId = effectivePiping ? effectivePiping.id : 'none';
   if (visibility.showButtonSection !== false) configData.buttonId = effectiveButton ? effectiveButton.id : 'none';
@@ -143,7 +144,7 @@ CushionCalculator.prototype.addToCart = async function() {
   if (floatingBtn) floatingBtn.textContent = 'Creating...';
 
   try {
-    var configHash = Math.abs(JSON.stringify({ shape: this.selectedShape.id, dimensions: dimensions, fill: effectiveFill.id, fabric: effectiveFabric.id, piping: effectivePiping ? effectivePiping.id : null, button: effectiveButton ? effectiveButton.id : null, antiSkid: effectiveAntiSkid ? effectiveAntiSkid.id : null, ties: effectiveTies ? effectiveTies.id : null, price: unitPrice }).split('').reduce(function(a, b) { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0)).toString(36);
+    var configHash = Math.abs(JSON.stringify({ shape: this.selectedShape.id, dimensions: dimensions, fill: effectiveFill ? effectiveFill.id : null, fabric: effectiveFabric ? effectiveFabric.id : null, piping: effectivePiping ? effectivePiping.id : null, button: effectiveButton ? effectiveButton.id : null, antiSkid: effectiveAntiSkid ? effectiveAntiSkid.id : null, ties: effectiveTies ? effectiveTies.id : null, price: unitPrice }).split('').reduce(function(a, b) { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0)).toString(36);
 
     var saveConfigPromise = fetch('/apps/cushion-api/save-config', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -180,7 +181,7 @@ CushionCalculator.prototype.addToCart = async function() {
 
     btn.textContent = 'Added to Cart!';
     if (floatingBtn) floatingBtn.textContent = 'Added!';
-    this.showSuccessPopup({ shape: this.selectedShape.name, dimensions: dimStr, fabric: effectiveFabric.name, fill: effectiveFill.name, quantity: qty, price: '$' + this.calculatedPrice.toFixed(2), hasAttachment: !!this.attachmentUrl });
+    this.showSuccessPopup({ shape: this.selectedShape.name, dimensions: dimStr, fabric: effectiveFabric ? effectiveFabric.name : '—', fill: effectiveFill ? effectiveFill.name : '—', quantity: qty, price: '$' + this.calculatedPrice.toFixed(2), hasAttachment: !!this.attachmentUrl });
 
     // Clear attachment for next order
     this.clearAttachment();
