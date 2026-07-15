@@ -15,6 +15,14 @@ CushionCalculator.prototype.initMultiPieceMode = function() {
   if (singlePieceBreakdown) singlePieceBreakdown.style.display = 'none';
   if (multiPieceBreakdownContainer) multiPieceBreakdownContainer.style.display = 'block';
 
+  // Special Instructions is a shared section (lives outside single-piece-container). applySectionVisibility()
+  // only runs in single-piece init, so honor the profile's showInstructions flag here for multi-piece mode.
+  var instructionsSection = this.container.querySelector('[data-section="instructions"]');
+  if (instructionsSection) {
+    var showInstr = !(this.config.sectionVisibility && this.config.sectionVisibility.showInstructions === false);
+    instructionsSection.style.display = showInstr ? 'block' : 'none';
+  }
+
   var self = this;
 
   // Initialize pieces array from profile config
