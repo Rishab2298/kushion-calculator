@@ -198,23 +198,25 @@ CushionCalculator.prototype.addToCart = async function() {
 
 CushionCalculator.prototype.addMultiPieceToCart = async function() {
   if (this.calculatedPrice <= 0) return;
-  if (!this.selectedFabric) { this.showError('Please select a fabric.'); return; }
+  var visibility = this.config.sectionVisibility || {};
+  // Fabric is only required when the Fabric section is visible ("inserts only" profiles hide it)
+  var fabricRequired = visibility.showFabricSection !== false;
+  var effectiveFabric = fabricRequired ? this.selectedFabric : ((this.config.hiddenValues || {}).fabric || null);
+  if (fabricRequired && !effectiveFabric) { this.showError('Please select a fabric.'); return; }
 
   var self = this;
   var blockId = this.blockId;
   var qty = parseInt(document.getElementById('quantity-' + blockId).value) || 1;
   var instructions = document.getElementById('instructions-text-' + blockId).value;
   var debugMode = this.config.settings && this.config.settings.debugPricing;
-  var visibility = this.config.sectionVisibility || {};
 
   // Build properties for each piece
-  var properties = {
-    'Fabric': this.selectedFabric.name
-  };
+  var properties = {};
+  if (effectiveFabric) properties['Fabric'] = effectiveFabric.name;
 
   // Config data for server-side storage
   var configData = {
-    fabricId: this.selectedFabric.id,
+    fabricId: effectiveFabric ? effectiveFabric.id : 'none',
     isMultiPiece: true,
     pieceCount: this.pieces.length
   };
@@ -229,7 +231,7 @@ CushionCalculator.prototype.addMultiPieceToCart = async function() {
     // Base properties always shown
     properties[prefix + ' - Shape'] = piece.shape.name;
     properties[prefix + ' - Dimensions'] = dimStr;
-    properties[prefix + ' - Fill'] = piece.fill.name;
+    if (piece.fill) properties[prefix + ' - Fill'] = piece.fill.name;
 
     // Conditionally add optional properties only if section is visible AND something is selected
     if (visibility.showDesignSection !== false && piece.design) {
@@ -260,7 +262,7 @@ CushionCalculator.prototype.addMultiPieceToCart = async function() {
     // Store per-piece IDs in configData (server-side)
     var pieceConfig = {
       shapeId: piece.shape.id,
-      fillId: piece.fill.id
+      fillId: piece.fill ? piece.fill.id : 'none'
     };
     if (visibility.showDesignSection !== false) pieceConfig.designId = piece.design ? piece.design.id : 'none';
     if (visibility.showPipingSection !== false) pieceConfig.pipingId = piece.piping ? piece.piping.id : 'none';
@@ -326,12 +328,12 @@ CushionCalculator.prototype.addMultiPieceToCart = async function() {
 
     // Create hash from all pieces
     var hashData = {
-      fabric: this.selectedFabric.id,
+      fabric: effectiveFabric ? effectiveFabric.id : null,
       pieces: this.pieces.map(function(p) {
         return {
           shape: p.shape.id,
           dimensions: p.dimensions,
-          fill: p.fill.id,
+          fill: p.fill ? p.fill.id : null,
           piping: p.piping ? p.piping.id : null,
           button: p.button ? p.button.id : null,
           antiSkid: p.antiSkid ? p.antiSkid.id : null,
@@ -405,8 +407,8 @@ CushionCalculator.prototype.addMultiPieceToCart = async function() {
     this.showSuccessPopup({
       shape: piecesSummary,
       dimensions: this.pieces.length + ' pieces',
-      fabric: this.selectedFabric.name,
-      fill: this.pieces.map(function(p) { return p.fill.name; }).filter(function(v, i, a) { return a.indexOf(v) === i; }).join(', '),
+      fabric: effectiveFabric ? effectiveFabric.name : 'None',
+      fill: this.pieces.map(function(p) { return p.fill ? p.fill.name : 'None'; }).filter(function(v, i, a) { return a.indexOf(v) === i; }).join(', '),
       quantity: qty,
       price: '$' + this.calculatedPrice.toFixed(2),
       hasAttachment: !!this.attachmentUrl,
