@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLoaderData, useFetcher } from "react-router";
-import { useAppBridge } from "@shopify/app-bridge-react";
+import { useAppBridge, SaveBar } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { invalidateConfigCache } from "./api.calculator-config";
+import { Badge, StatusBadge, Switch, TextField, SelectField, Checkbox, Modal, ConfirmModal, Chevron, BackButton, EmptyState } from "../components/admin-ui";
 
 export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
@@ -96,7 +97,7 @@ export const action = async ({ request }) => {
         hiddenRodPocketId: formData.get("hiddenRodPocketId") || null,
         hiddenDrawstringId: formData.get("hiddenDrawstringId") || null,
         isDefault: formData.get("isDefault") === "true",
-        isActive: true,
+        isActive: formData.get("isActive") !== "false",
         sortOrder: parseInt(formData.get("sortOrder")) || 0,
         pieces: {
           create: pieces.map((p, idx) => ({
@@ -261,12 +262,61 @@ export const action = async ({ request }) => {
     return { success: true };
   }
 
+  if (intent === "duplicate") {
+    const source = await prisma.calculatorProfile.findFirst({
+      where: { id: formData.get("id"), shop },
+      include: { pieces: { orderBy: { sortOrder: "asc" } } },
+    });
+    if (!source) return { success: false, intent, error: "This profile no longer exists. Refresh the page and try again." };
+
+    const name = (formData.get("name") || "").trim();
+    if (!name) return { success: false, intent, error: "Enter a name for the copy." };
+    const clash = await prisma.calculatorProfile.findFirst({ where: { shop, name } });
+    if (clash) return { success: false, intent, error: `A profile named "${name}" already exists. Choose another name.` };
+
+    // Copy every stored field except identity/timestamps; the copy is never the default.
+    // eslint-disable-next-line no-unused-vars
+    const { id: _id, shop: _shop, createdAt: _c, updatedAt: _u, pieces, ...fields } = source;
+    const created = await prisma.calculatorProfile.create({
+      data: {
+        ...fields,
+        shop,
+        name,
+        isDefault: false,
+        isActive: formData.get("isActive") === "true",
+        pieces: {
+          // eslint-disable-next-line no-unused-vars
+          create: pieces.map(({ id: _pid, profileId: _pp, createdAt: _pc, updatedAt: _pu, ...piece }) => piece),
+        },
+      },
+    });
+    invalidateConfigCache(shop);
+    return { success: true, intent, duplicatedId: created.id };
+  }
+
   return { success: false };
 };
+
+// Calculator sections in the order merchants think about them. Keys map to the
+// show/allowed/hidden fields on CalculatorProfile and ProfilePiece.
+const SECTION_GROUPS = [
+  { title: "Size and shape", keys: ["shape", "dimensions"] },
+  { title: "Materials", keys: ["fill", "fabric", "design"] },
+  { title: "Finishing", keys: ["piping", "button", "antiSkid", "ties", "fabricTies", "rodPocket", "drawstring"] },
+  { title: "Order notes", keys: ["instructions"] },
+];
+const ALL_SECTION_KEYS = SECTION_GROUPS.flatMap((g) => g.keys);
+// In multi-piece mode these are configured once for the whole profile; everything else is per piece.
+const SHARED_KEYS = ["fabric", "design", "instructions"];
+// Pieces have no fabric or instructions fields.
+const PIECE_KEYS = ALL_SECTION_KEYS.filter((k) => k !== "fabric" && k !== "instructions");
+
+const parseIds = (value) => (value ? JSON.parse(value) : []);
 
 export default function Profiles() {
   const { profiles, shapes, fillTypes, fabricCategories, fabrics, pipingOptions, buttonOptions, antiSkidOptions, tiesOptions, designOptions, fabricTiesOptions, rodPocketOptions, drawstringOptions } = useLoaderData();
   const fetcher = useFetcher();
+  const dupFetcher = useFetcher();
   const shopify = useAppBridge();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -358,113 +408,199 @@ export default function Profiles() {
     defaultFillId: "",
   };
 
-  const [editingPieceIndex, setEditingPieceIndex] = useState(null);
-
   const [form, setForm] = useState(defaultForm);
+  const [savedSnapshot, setSavedSnapshot] = useState(JSON.stringify(defaultForm));
+  const [activePiece, setActivePiece] = useState(0);
+  const [openRows, setOpenRows] = useState(() => new Set());
+  const [filter, setFilter] = useState("all");
+  const [query, setQuery] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const [dupSource, setDupSource] = useState(null);
+  const [dupName, setDupName] = useState("");
+  const [dupInactive, setDupInactive] = useState(false);
+  const [dupOpen, setDupOpen] = useState(true);
+  const [dupError, setDupError] = useState("");
+  const [pendingDuplicate, setPendingDuplicate] = useState(null);
+  const [flashId, setFlashId] = useState(null);
+
+  const isDirty = showForm && JSON.stringify(form) !== savedSnapshot;
+
+  // ---- section metadata (needs loader data for option lists) ----
+  const pct = (o) => `${o.name} (${o.percent}%)`;
+  const price = (o) => `${o.name} ($${o.price})`;
+  const SECTIONS = {
+    shape: { name: "Shape", show: "showShapeSection", allowed: "allowedShapeIds", hidden: "hiddenShapeId", options: shapes, noun: "shapes", none: "None (no shape)", label: (o) => o.name },
+    dimensions: { name: "Dimensions", show: "showDimensionsSection" },
+    fill: { name: "Fill type", show: "showFillSection", allowed: "allowedFillIds", hidden: "hiddenFillTypeId", options: fillTypes, noun: "fill types", none: "None (no fill cost)", label: (f) => `${f.name} ($${f.pricePerCubicInch}/cu.in.)` },
+    fabric: { name: "Fabric", show: "showFabricSection", allowed: "allowedCategoryIds", options: fabricCategories, hidden: "hiddenFabricId", hiddenOptions: fabrics, noun: "fabric categories", none: "None (no fabric cost)", label: (f) => f.name, hiddenLabel: (f) => `${f.name} ($${f.pricePerSqInch}/sq.in.)`, allowedHelp: "Customers only see fabrics in the selected categories." },
+    design: { name: "Design", show: "showDesignSection", allowed: "allowedDesignIds", hidden: "hiddenDesignId", options: designOptions, noun: "designs", none: "None (no design cost)", label: pct },
+    piping: { name: "Piping", show: "showPipingSection", allowed: "allowedPipingIds", hidden: "hiddenPipingId", options: pipingOptions, noun: "piping options", none: "None (no piping cost)", label: pct },
+    button: { name: "Button style", show: "showButtonSection", allowed: "allowedButtonIds", hidden: "hiddenButtonId", options: buttonOptions, noun: "button styles", none: "None (no button cost)", label: pct },
+    antiSkid: { name: "Anti-skid bottom", show: "showAntiSkidSection", allowed: "allowedAntiSkidIds", hidden: "hiddenAntiSkidId", options: antiSkidOptions, noun: "anti-skid options", none: "None (no anti-skid cost)", label: pct },
+    ties: { name: "Ties", show: "showTiesSection", allowed: "allowedTiesIds", hidden: "hiddenTiesId", options: tiesOptions, noun: "ties options", none: "None (no ties cost)", label: price },
+    fabricTies: { name: "Fabric ties", show: "showFabricTiesSection", allowed: "allowedFabricTiesIds", hidden: "hiddenFabricTiesId", options: fabricTiesOptions, noun: "fabric ties options", none: "None (no fabric ties cost)", label: price },
+    rodPocket: { name: "Bottom rod pocket", show: "showRodPocketSection", allowed: "allowedRodPocketIds", hidden: "hiddenRodPocketId", options: rodPocketOptions, noun: "rod pocket options", none: "None (no bottom rod pocket cost)", label: pct },
+    drawstring: { name: "Drawstring", show: "showDrawstringSection", allowed: "allowedDrawstringIds", hidden: "hiddenDrawstringId", options: drawstringOptions, noun: "drawstring options", none: "None (no drawstring cost)", label: pct },
+    instructions: { name: "Special instructions", show: "showInstructions" },
+  };
+
+  // Which sections a saved profile shows to customers (for the list view).
+  const shownKeys = (profile) => {
+    if (!profile.enableMultiPiece) return ALL_SECTION_KEYS.filter((k) => profile[SECTIONS[k].show]);
+    const on = new Set(SHARED_KEYS.filter((k) => profile[SECTIONS[k].show]));
+    (profile.pieces || []).forEach((p) => PIECE_KEYS.forEach((k) => { if (p[SECTIONS[k].show]) on.add(k); }));
+    return ALL_SECTION_KEYS.filter((k) => on.has(k));
+  };
 
   const reset = () => {
     setForm({ ...defaultForm, sortOrder: profiles.length });
     setEditing(null);
-    setEditingPieceIndex(null);
+    setActivePiece(0);
+    setOpenRows(new Set());
   };
 
+  const profileToForm = (profile) => ({
+    name: profile.name,
+    description: profile.description || "",
+    additionalPercent: profile.additionalPercent || 0,
+    enableMultiPiece: profile.enableMultiPiece || false,
+    piecesLabel: profile.piecesLabel || "",
+    enableWeatherproof: profile.enableWeatherproof || false,
+    pieces: (profile.pieces || []).map(p => ({
+      id: p.id,
+      name: p.name,
+      label: p.label || "",
+      showShapeSection: p.showShapeSection ?? true,
+      showDimensionsSection: p.showDimensionsSection ?? true,
+      showFillSection: p.showFillSection ?? true,
+      showPipingSection: p.showPipingSection ?? true,
+      showButtonSection: p.showButtonSection ?? true,
+      showAntiSkidSection: p.showAntiSkidSection ?? true,
+      showTiesSection: p.showTiesSection ?? true,
+      showDesignSection: p.showDesignSection ?? true,
+      showFabricTiesSection: p.showFabricTiesSection ?? true,
+      showRodPocketSection: p.showRodPocketSection ?? true,
+      showDrawstringSection: p.showDrawstringSection ?? true,
+      allowedShapeIds: parseIds(p.allowedShapeIds),
+      allowedFillIds: parseIds(p.allowedFillIds),
+      allowedPipingIds: parseIds(p.allowedPipingIds),
+      allowedButtonIds: parseIds(p.allowedButtonIds),
+      allowedAntiSkidIds: parseIds(p.allowedAntiSkidIds),
+      allowedTiesIds: parseIds(p.allowedTiesIds),
+      allowedDesignIds: parseIds(p.allowedDesignIds),
+      allowedFabricTiesIds: parseIds(p.allowedFabricTiesIds),
+      allowedRodPocketIds: parseIds(p.allowedRodPocketIds),
+      allowedDrawstringIds: parseIds(p.allowedDrawstringIds),
+      hiddenShapeId: p.hiddenShapeId || "",
+      hiddenFillTypeId: p.hiddenFillTypeId || "",
+      hiddenPipingId: p.hiddenPipingId || "",
+      hiddenButtonId: p.hiddenButtonId || "",
+      hiddenAntiSkidId: p.hiddenAntiSkidId || "",
+      hiddenTiesId: p.hiddenTiesId || "",
+      hiddenDesignId: p.hiddenDesignId || "",
+      hiddenFabricTiesId: p.hiddenFabricTiesId || "",
+      hiddenRodPocketId: p.hiddenRodPocketId || "",
+      hiddenDrawstringId: p.hiddenDrawstringId || "",
+      defaultShapeId: p.defaultShapeId || "",
+      defaultFillId: p.defaultFillId || "",
+    })),
+    showShapeSection: profile.showShapeSection,
+    showDimensionsSection: profile.showDimensionsSection,
+    showFillSection: profile.showFillSection,
+    showFabricSection: profile.showFabricSection,
+    showPipingSection: profile.showPipingSection,
+    showButtonSection: profile.showButtonSection,
+    showAntiSkidSection: profile.showAntiSkidSection ?? true,
+    showTiesSection: profile.showTiesSection ?? true,
+    showDesignSection: profile.showDesignSection ?? true,
+    showFabricTiesSection: profile.showFabricTiesSection ?? true,
+    showRodPocketSection: profile.showRodPocketSection ?? true,
+    showDrawstringSection: profile.showDrawstringSection ?? true,
+    showInstructions: profile.showInstructions,
+    allowedShapeIds: parseIds(profile.allowedShapeIds),
+    allowedFillIds: parseIds(profile.allowedFillIds),
+    allowedFabricIds: parseIds(profile.allowedFabricIds),
+    allowedCategoryIds: parseIds(profile.allowedCategoryIds),
+    allowedPipingIds: parseIds(profile.allowedPipingIds),
+    allowedButtonIds: parseIds(profile.allowedButtonIds),
+    allowedAntiSkidIds: parseIds(profile.allowedAntiSkidIds),
+    allowedTiesIds: parseIds(profile.allowedTiesIds),
+    allowedDesignIds: parseIds(profile.allowedDesignIds),
+    allowedFabricTiesIds: parseIds(profile.allowedFabricTiesIds),
+    allowedRodPocketIds: parseIds(profile.allowedRodPocketIds),
+    allowedDrawstringIds: parseIds(profile.allowedDrawstringIds),
+    hiddenShapeId: profile.hiddenShapeId || "",
+    hiddenFillTypeId: profile.hiddenFillTypeId || "",
+    hiddenFabricId: profile.hiddenFabricId || "",
+    hiddenPipingId: profile.hiddenPipingId || "",
+    hiddenButtonId: profile.hiddenButtonId || "",
+    hiddenAntiSkidId: profile.hiddenAntiSkidId || "",
+    hiddenTiesId: profile.hiddenTiesId || "",
+    hiddenDesignId: profile.hiddenDesignId || "",
+    hiddenFabricTiesId: profile.hiddenFabricTiesId || "",
+    hiddenRodPocketId: profile.hiddenRodPocketId || "",
+    hiddenDrawstringId: profile.hiddenDrawstringId || "",
+    isDefault: profile.isDefault,
+    isActive: profile.isActive,
+    sortOrder: profile.sortOrder,
+  });
+
   const handleEdit = (profile) => {
-    setForm({
-      name: profile.name,
-      description: profile.description || "",
-      additionalPercent: profile.additionalPercent || 0,
-      enableMultiPiece: profile.enableMultiPiece || false,
-      piecesLabel: profile.piecesLabel || "",
-      enableWeatherproof: profile.enableWeatherproof || false,
-      pieces: (profile.pieces || []).map(p => ({
-        id: p.id,
-        name: p.name,
-        label: p.label || "",
-        showShapeSection: p.showShapeSection ?? true,
-        showDimensionsSection: p.showDimensionsSection ?? true,
-        showFillSection: p.showFillSection ?? true,
-        showPipingSection: p.showPipingSection ?? true,
-        showButtonSection: p.showButtonSection ?? true,
-        showAntiSkidSection: p.showAntiSkidSection ?? true,
-        showTiesSection: p.showTiesSection ?? true,
-        showDesignSection: p.showDesignSection ?? true,
-        showFabricTiesSection: p.showFabricTiesSection ?? true,
-        showRodPocketSection: p.showRodPocketSection ?? true,
-        showDrawstringSection: p.showDrawstringSection ?? true,
-        allowedShapeIds: p.allowedShapeIds ? JSON.parse(p.allowedShapeIds) : [],
-        allowedFillIds: p.allowedFillIds ? JSON.parse(p.allowedFillIds) : [],
-        allowedPipingIds: p.allowedPipingIds ? JSON.parse(p.allowedPipingIds) : [],
-        allowedButtonIds: p.allowedButtonIds ? JSON.parse(p.allowedButtonIds) : [],
-        allowedAntiSkidIds: p.allowedAntiSkidIds ? JSON.parse(p.allowedAntiSkidIds) : [],
-        allowedTiesIds: p.allowedTiesIds ? JSON.parse(p.allowedTiesIds) : [],
-        allowedDesignIds: p.allowedDesignIds ? JSON.parse(p.allowedDesignIds) : [],
-        allowedFabricTiesIds: p.allowedFabricTiesIds ? JSON.parse(p.allowedFabricTiesIds) : [],
-        allowedRodPocketIds: p.allowedRodPocketIds ? JSON.parse(p.allowedRodPocketIds) : [],
-        allowedDrawstringIds: p.allowedDrawstringIds ? JSON.parse(p.allowedDrawstringIds) : [],
-        hiddenShapeId: p.hiddenShapeId || "",
-        hiddenFillTypeId: p.hiddenFillTypeId || "",
-        hiddenPipingId: p.hiddenPipingId || "",
-        hiddenButtonId: p.hiddenButtonId || "",
-        hiddenAntiSkidId: p.hiddenAntiSkidId || "",
-        hiddenTiesId: p.hiddenTiesId || "",
-        hiddenDesignId: p.hiddenDesignId || "",
-        hiddenFabricTiesId: p.hiddenFabricTiesId || "",
-        hiddenRodPocketId: p.hiddenRodPocketId || "",
-        hiddenDrawstringId: p.hiddenDrawstringId || "",
-        defaultShapeId: p.defaultShapeId || "",
-        defaultFillId: p.defaultFillId || "",
-      })),
-      showShapeSection: profile.showShapeSection,
-      showDimensionsSection: profile.showDimensionsSection,
-      showFillSection: profile.showFillSection,
-      showFabricSection: profile.showFabricSection,
-      showPipingSection: profile.showPipingSection,
-      showButtonSection: profile.showButtonSection,
-      showAntiSkidSection: profile.showAntiSkidSection ?? true,
-      showTiesSection: profile.showTiesSection ?? true,
-      showDesignSection: profile.showDesignSection ?? true,
-      showFabricTiesSection: profile.showFabricTiesSection ?? true,
-      showRodPocketSection: profile.showRodPocketSection ?? true,
-      showDrawstringSection: profile.showDrawstringSection ?? true,
-      showInstructions: profile.showInstructions,
-      allowedShapeIds: profile.allowedShapeIds ? JSON.parse(profile.allowedShapeIds) : [],
-      allowedFillIds: profile.allowedFillIds ? JSON.parse(profile.allowedFillIds) : [],
-      allowedFabricIds: profile.allowedFabricIds ? JSON.parse(profile.allowedFabricIds) : [],
-      allowedCategoryIds: profile.allowedCategoryIds ? JSON.parse(profile.allowedCategoryIds) : [],
-      allowedPipingIds: profile.allowedPipingIds ? JSON.parse(profile.allowedPipingIds) : [],
-      allowedButtonIds: profile.allowedButtonIds ? JSON.parse(profile.allowedButtonIds) : [],
-      allowedAntiSkidIds: profile.allowedAntiSkidIds ? JSON.parse(profile.allowedAntiSkidIds) : [],
-      allowedTiesIds: profile.allowedTiesIds ? JSON.parse(profile.allowedTiesIds) : [],
-      allowedDesignIds: profile.allowedDesignIds ? JSON.parse(profile.allowedDesignIds) : [],
-      allowedFabricTiesIds: profile.allowedFabricTiesIds ? JSON.parse(profile.allowedFabricTiesIds) : [],
-      allowedRodPocketIds: profile.allowedRodPocketIds ? JSON.parse(profile.allowedRodPocketIds) : [],
-      allowedDrawstringIds: profile.allowedDrawstringIds ? JSON.parse(profile.allowedDrawstringIds) : [],
-      hiddenShapeId: profile.hiddenShapeId || "",
-      hiddenFillTypeId: profile.hiddenFillTypeId || "",
-      hiddenFabricId: profile.hiddenFabricId || "",
-      hiddenPipingId: profile.hiddenPipingId || "",
-      hiddenButtonId: profile.hiddenButtonId || "",
-      hiddenAntiSkidId: profile.hiddenAntiSkidId || "",
-      hiddenTiesId: profile.hiddenTiesId || "",
-      hiddenDesignId: profile.hiddenDesignId || "",
-      hiddenFabricTiesId: profile.hiddenFabricTiesId || "",
-      hiddenRodPocketId: profile.hiddenRodPocketId || "",
-      hiddenDrawstringId: profile.hiddenDrawstringId || "",
-      isDefault: profile.isDefault,
-      isActive: profile.isActive,
-      sortOrder: profile.sortOrder,
-    });
+    const next = profileToForm(profile);
+    setForm(next);
+    setSavedSnapshot(JSON.stringify(next));
     setEditing(profile);
-    setEditingPieceIndex(null);
+    setActivePiece(0);
+    setOpenRows(new Set());
     setShowForm(true);
+    window.scrollTo(0, 0);
+  };
+
+  const handleAdd = () => {
+    const next = { ...defaultForm, sortOrder: profiles.length };
+    setForm(next);
+    setSavedSnapshot(JSON.stringify(next));
+    setEditing(null);
+    setActivePiece(0);
+    setOpenRows(new Set());
+    setShowForm(true);
+    window.scrollTo(0, 0);
+  };
+
+  const closeEditor = () => {
+    setShowForm(false);
+    setConfirmLeave(false);
+    reset();
+  };
+
+  const handleBack = () => {
+    if (isDirty) setConfirmLeave(true);
+    else closeEditor();
   };
 
   const submit = () => {
+    const trimmedName = form.name.trim();
+    if (!trimmedName) {
+      shopify.toast.show("Add a profile name before saving", { isError: true });
+      document.getElementById("profile-name")?.focus();
+      return;
+    }
+    if (profiles.some((p) => p.name === trimmedName && p.id !== editing?.id)) {
+      shopify.toast.show(`A profile named "${trimmedName}" already exists`, { isError: true });
+      document.getElementById("profile-name")?.focus();
+      return;
+    }
+    if (form.enableMultiPiece && form.pieces.some((p) => !p.name.trim())) {
+      shopify.toast.show("Give every piece a name before saving", { isError: true });
+      return;
+    }
+
     const data = new FormData();
     data.append("intent", editing ? "update" : "create");
     if (editing) data.append("id", editing.id);
 
-    data.append("name", form.name);
+    data.append("name", trimmedName);
     data.append("description", form.description);
     data.append("additionalPercent", form.additionalPercent.toString());
     data.append("enableMultiPiece", form.enableMultiPiece.toString());
@@ -526,25 +662,23 @@ export default function Profiles() {
     data.append("sortOrder", form.sortOrder.toString());
 
     fetcher.submit(data, { method: "POST" });
-    shopify.toast.show(editing ? "Profile updated" : "Profile created");
-    setShowForm(false);
-    reset();
+    shopify.toast.show(editing ? "Profile saved" : "Profile created");
+    closeEditor();
   };
 
+  // ---- pieces ----
   const addPiece = () => {
     if (form.pieces.length >= 5) {
       shopify.toast.show("Maximum 5 pieces allowed", { isError: true });
       return;
     }
-    setForm({ ...form, pieces: [...form.pieces, { ...defaultPiece }] });
-    setEditingPieceIndex(form.pieces.length);
+    setForm({ ...form, pieces: [...form.pieces, { ...defaultPiece, name: `Piece ${form.pieces.length + 1}` }] });
+    setActivePiece(form.pieces.length);
   };
 
   const removePiece = (index) => {
-    const newPieces = form.pieces.filter((_, i) => i !== index);
-    setForm({ ...form, pieces: newPieces });
-    if (editingPieceIndex === index) setEditingPieceIndex(null);
-    else if (editingPieceIndex > index) setEditingPieceIndex(editingPieceIndex - 1);
+    setForm({ ...form, pieces: form.pieces.filter((_, i) => i !== index) });
+    setActivePiece(Math.max(0, index - 1));
   };
 
   const updatePiece = (index, field, value) => {
@@ -553,985 +687,571 @@ export default function Profiles() {
     setForm({ ...form, pieces: newPieces });
   };
 
-  const togglePieceArrayItem = (pieceIndex, field, item) => {
-    const arr = form.pieces[pieceIndex][field] || [];
-    const newArr = arr.includes(item) ? arr.filter(i => i !== item) : [...arr, item];
-    updatePiece(pieceIndex, field, newArr);
-  };
-
   const movePiece = (index, direction) => {
     const newPieces = [...form.pieces];
     const newIndex = index + direction;
     if (newIndex < 0 || newIndex >= newPieces.length) return;
     [newPieces[index], newPieces[newIndex]] = [newPieces[newIndex], newPieces[index]];
     setForm({ ...form, pieces: newPieces });
-    if (editingPieceIndex === index) setEditingPieceIndex(newIndex);
-    else if (editingPieceIndex === newIndex) setEditingPieceIndex(index);
+    setActivePiece(newIndex);
   };
 
-  const handleDelete = (id) => {
-    if (confirm("Delete this profile?")) {
-      const data = new FormData();
-      data.append("intent", "delete");
-      data.append("id", id);
-      fetcher.submit(data, { method: "POST" });
+  const setMultiPiece = (enabled) => {
+    // Start a new multi-piece profile with one piece so there is something to configure.
+    const pieces = enabled && form.pieces.length === 0 ? [{ ...defaultPiece, name: "Piece 1" }] : form.pieces;
+    setForm({ ...form, enableMultiPiece: enabled, pieces });
+    setActivePiece(0);
+  };
+
+  // ---- delete ----
+  const confirmDelete = () => {
+    const data = new FormData();
+    data.append("intent", "delete");
+    data.append("id", deleteTarget.id);
+    fetcher.submit(data, { method: "POST" });
+    shopify.toast.show("Profile deleted");
+    const wasEditing = editing?.id === deleteTarget.id;
+    setDeleteTarget(null);
+    if (wasEditing) closeEditor();
+  };
+
+  // ---- duplicate ----
+  const openDuplicate = (profile) => {
+    let base = `${profile.name} (copy)`;
+    let n = 2;
+    while (profiles.some((p) => p.name === base)) base = `${profile.name} (copy ${n++})`;
+    setDupSource(profile);
+    setDupName(base);
+    setDupInactive(false);
+    setDupOpen(true);
+    setDupError("");
+  };
+
+  const submitDuplicate = () => {
+    const name = dupName.trim();
+    if (!name) { setDupError("Enter a name for the copy."); return; }
+    if (profiles.some((p) => p.name === name)) { setDupError(`A profile named "${name}" already exists. Choose another name.`); return; }
+    const data = new FormData();
+    data.append("intent", "duplicate");
+    data.append("id", dupSource.id);
+    data.append("name", name);
+    data.append("isActive", (!dupInactive).toString());
+    dupFetcher.submit(data, { method: "POST" });
+  };
+
+  useEffect(() => {
+    const result = dupFetcher.data;
+    if (!result || result.intent !== "duplicate" || dupFetcher.state !== "idle") return;
+    if (!result.success) { setDupError(result.error || "The profile couldn't be duplicated. Try again."); return; }
+    shopify.toast.show("Profile duplicated");
+    setPendingDuplicate({ id: result.duplicatedId, open: dupOpen });
+    setDupSource(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dupFetcher.data, dupFetcher.state]);
+
+  // Once the loader has revalidated and the copy is in the list, open it or highlight its row.
+  useEffect(() => {
+    if (!pendingDuplicate) return;
+    const copy = profiles.find((p) => p.id === pendingDuplicate.id);
+    if (!copy) return;
+    if (pendingDuplicate.open) {
+      handleEdit(copy);
+    } else {
+      setShowForm(false);
+      reset();
+      setFlashId(copy.id);
+      setTimeout(() => setFlashId(null), 2200);
+    }
+    setPendingDuplicate(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profiles, pendingDuplicate]);
+
+  const copyId = async (id) => {
+    try {
+      await navigator.clipboard.writeText(id);
+      shopify.toast.show("Profile ID copied");
+    } catch {
+      shopify.toast.show("Couldn't copy. Open the profile and select the ID instead.", { isError: true });
     }
   };
 
-  const toggleArrayItem = (arr, item) => {
-    return arr.includes(item) ? arr.filter((i) => i !== item) : [...arr, item];
+  // ---- list filtering ----
+  const visibleProfiles = useMemo(() => profiles.filter((p) => {
+    if (filter === "single" && p.enableMultiPiece) return false;
+    if (filter === "multi" && !p.enableMultiPiece) return false;
+    if (filter === "inactive" && p.isActive) return false;
+    return p.name.toLowerCase().includes(query.trim().toLowerCase());
+  }), [profiles, filter, query]);
+
+  // ---- section rows ----
+  const toggleRow = (rowId) => {
+    const next = new Set(openRows);
+    next.has(rowId) ? next.delete(rowId) : next.add(rowId);
+    setOpenRows(next);
   };
 
-  const getSectionSummary = (profile) => {
-    const sections = [];
-    if (profile.showShapeSection) sections.push("Shape");
-    if (profile.showFillSection) sections.push("Fill");
-    if (profile.showFabricSection) sections.push("Fabric");
-    if (profile.showDesignSection) sections.push("Design");
-    if (profile.showPipingSection) sections.push("Piping");
-    if (profile.showButtonSection) sections.push("Button");
-    if (profile.showAntiSkidSection) sections.push("Anti-Skid");
-    if (profile.showRodPocketSection) sections.push("Bottom Rod Pocket");
-    if (profile.showDrawstringSection) sections.push("Drawstring");
-    if (profile.showTiesSection) sections.push("Ties");
-    if (profile.showFabricTiesSection) sections.push("Fabric Ties");
-    return sections.join(", ") || "None";
+  const sectionSummary = (meta, values) => {
+    const shown = values[meta.show];
+    if (!meta.allowed) return shown ? "Shown to customers" : "Hidden";
+    if (!shown) {
+      const presetId = values[meta.hidden];
+      if (!presetId) return `Hidden · ${meta.none}`;
+      const preset = (meta.hiddenOptions || meta.options).find((o) => o.id === presetId);
+      return preset ? `Hidden · always priced as ${(meta.hiddenLabel || meta.label)(preset)}` : "Hidden · preset value set";
+    }
+    const allowed = values[meta.allowed] || [];
+    if (meta.options.length === 0) return `No ${meta.noun} set up yet`;
+    if (allowed.length === 0) return `All ${meta.options.length} ${meta.noun}`;
+    const names = meta.options.filter((o) => allowed.includes(o.id)).map((o) => o.name);
+    return `${names.length} of ${meta.options.length}: ${names.join(", ")}`;
   };
+
+  const renderSectionRow = (key, values, onChange, scope) => {
+    const meta = SECTIONS[key];
+    const rowId = `${scope}.${key}`;
+    const expandable = !!meta.allowed;
+    const open = expandable && openRows.has(rowId);
+    const shown = values[meta.show];
+    const allowed = values[meta.allowed] || [];
+    const hiddenOptions = meta.hiddenOptions || meta.options || [];
+    const hiddenLabel = meta.hiddenLabel || meta.label;
+    return (
+      <div key={rowId} className={`cc-srow${open ? " cc-srow--open" : ""}`}>
+        <div
+          className="cc-srow__head"
+          {...(expandable ? {
+            role: "button",
+            tabIndex: 0,
+            "aria-expanded": open,
+            onClick: () => toggleRow(rowId),
+            onKeyDown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleRow(rowId); } },
+          } : {})}
+        >
+          <span className="cc-srow__name">{meta.name}</span>
+          <span className={`cc-srow__sum${expandable && !shown ? " cc-srow__sum--hidden" : ""}`}>{sectionSummary(meta, values)}</span>
+          {expandable ? <Chevron /> : <span style={{ width: 16 }} />}
+          <Switch checked={!!shown} label={`Show ${meta.name} to customers`} onChange={(v) => onChange(meta.show, v)} />
+        </div>
+        {open && (
+          <div className="cc-srow__body">
+            {shown ? (
+              meta.options.length === 0 ? (
+                <span className="cc-label cc-muted">No {meta.noun} set up yet. Add them on the {meta.name} page first.</span>
+              ) : (
+                <>
+                  <span className="cc-label">Customers can choose from</span>
+                  <div className="cc-chips">
+                    <button type="button" className="cc-chip cc-chip--all" aria-pressed={allowed.length === 0} onClick={() => onChange(meta.allowed, [])}>
+                      All {meta.noun}
+                    </button>
+                    {meta.options.map((o) => {
+                      const on = allowed.includes(o.id);
+                      return (
+                        <button
+                          key={o.id}
+                          type="button"
+                          className="cc-chip"
+                          aria-pressed={on}
+                          onClick={() => onChange(meta.allowed, on ? allowed.filter((i) => i !== o.id) : [...allowed, o.id])}
+                        >
+                          {o.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <span className="cc-help">{meta.allowedHelp || `Pick specific ${meta.noun} to limit the choice, or keep "All".`}</span>
+                </>
+              )
+            ) : hiddenOptions.length === 0 ? (
+              <span className="cc-label cc-muted">This section is hidden and adds no cost.</span>
+            ) : (
+              <>
+                <span className="cc-label">This section is hidden. Price it as</span>
+                <select
+                  className="cc-select"
+                  style={{ maxWidth: 420 }}
+                  value={values[meta.hidden] || ""}
+                  onChange={(e) => onChange(meta.hidden, e.target.value)}
+                  aria-label={`Preset ${meta.name} value`}
+                >
+                  <option value="">{meta.none}</option>
+                  {hiddenOptions.map((o) => <option key={o.id} value={o.id}>{hiddenLabel(o)}</option>)}
+                </select>
+                <span className="cc-help">Customers won’t see this choice, but its price is still added.</span>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderSectionList = (keys, values, onChange, scope) =>
+    SECTION_GROUPS.map((g) => {
+      const groupKeys = g.keys.filter((k) => keys.includes(k));
+      if (groupKeys.length === 0) return null;
+      return (
+        <div key={g.title}>
+          <div className="cc-group-title">{g.title}</div>
+          {groupKeys.map((k) => renderSectionRow(k, values, onChange, scope))}
+        </div>
+      );
+    });
+
+  const setField = (field, value) => setForm((f) => ({ ...f, [field]: value }));
+
+  // ---------------------------------------------------------------- render
+  const duplicateModal = dupSource && (() => {
+    const on = shownKeys(dupSource).length;
+    return (
+      <Modal
+        open
+        title={`Duplicate “${dupSource.name}”`}
+        onClose={() => setDupSource(null)}
+        footer={
+          <>
+            <button type="button" className="cc-btn" onClick={() => setDupSource(null)}>Cancel</button>
+            <button type="button" className="cc-btn cc-btn--primary" disabled={dupFetcher.state !== "idle"} onClick={submitDuplicate}>
+              {dupFetcher.state !== "idle" ? "Duplicating…" : "Duplicate profile"}
+            </button>
+          </>
+        }
+      >
+        <TextField
+          id="dup-name"
+          label="Name for the copy"
+          value={dupName}
+          onChange={(v) => { setDupName(v); setDupError(""); }}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submitDuplicate(); } }}
+          error={dupError}
+        />
+        <div>
+          <div className="cc-label" style={{ marginBottom: 4 }}>The copy includes</div>
+          <ul className="cc-muted cc-small" style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 2 }}>
+            <li>{on} of {ALL_SECTION_KEYS.length} sections shown to customers{dupSource.enableMultiPiece ? `, across ${dupSource.pieces?.length || 0} pieces` : ""}</li>
+            <li>Every limited choice and hidden-section price</li>
+            <li>{dupSource.additionalPercent ? `+${dupSource.additionalPercent}% markup` : "No markup"}{dupSource.enableWeatherproof ? ", weatherproof mode" : ""}</li>
+          </ul>
+        </div>
+        <span className="cc-help">
+          The copy gets a new profile ID, so no products use it until you assign it. It is never the default profile.
+          {isDirty && editing?.id === dupSource.id ? " Unsaved changes in the editor are not copied." : ""}
+        </span>
+        <Checkbox id="dup-inactive" checked={dupInactive} onChange={setDupInactive} label="Start as inactive" />
+        <Checkbox id="dup-open" checked={dupOpen} onChange={setDupOpen} label="Open the copy for editing" />
+      </Modal>
+    );
+  })();
+
+  const deleteModal = (
+    <ConfirmModal
+      open={!!deleteTarget}
+      title={`Delete “${deleteTarget?.name}”?`}
+      confirmLabel="Delete profile"
+      onCancel={() => setDeleteTarget(null)}
+      onConfirm={confirmDelete}
+    >
+      <p className="cc-p">Products that use this profile will fall back to the default profile. This can’t be undone.</p>
+    </ConfirmModal>
+  );
+
+  if (!showForm) {
+    const tab = (key, label) => (
+      <button type="button" className="cc-tab" aria-pressed={filter === key} onClick={() => setFilter(key)}>{label}</button>
+    );
+    return (
+      <s-page heading="Calculator Profiles" inlineSize="large">
+        <s-button slot="primary-action" variant="primary" onClick={handleAdd}>Add profile</s-button>
+        <div className="cc-page">
+          <div className="cc-card">
+            <div className="cc-toolbar">
+              <div className="cc-tabs">
+                {tab("all", "All")}
+                {tab("single", "Single piece")}
+                {tab("multi", "Multi-piece")}
+                {tab("inactive", "Inactive")}
+              </div>
+              <input className="cc-search" placeholder="Search profiles" aria-label="Search profiles" value={query} onChange={(e) => setQuery(e.target.value)} />
+            </div>
+            {profiles.length === 0 ? (
+              <EmptyState
+                title="No profiles yet"
+                action={<button type="button" className="cc-btn cc-btn--primary" onClick={handleAdd}>Add profile</button>}
+              >
+                Create a profile to choose which calculator options each product shows.
+              </EmptyState>
+            ) : (
+              <div className="cc-table-wrap">
+                <table className="cc-table">
+                  <thead>
+                    <tr><th>Profile</th><th>Type</th><th>Options shown to customers</th><th>Markup</th><th>Status</th><th><span className="cc-visually-hidden">Actions</span></th></tr>
+                  </thead>
+                  <tbody>
+                    {visibleProfiles.length === 0 && (
+                      <tr><td colSpan={6} className="cc-muted">No profiles match your search.</td></tr>
+                    )}
+                    {visibleProfiles.map((profile) => {
+                      const on = shownKeys(profile);
+                      return (
+                        <tr
+                          key={profile.id}
+                          className={`cc-clickable${profile.isActive ? "" : " cc-row--inactive"}${flashId === profile.id ? " cc-row--flash" : ""}`}
+                          tabIndex={0}
+                          onClick={() => handleEdit(profile)}
+                          onKeyDown={(e) => { if (e.key === "Enter" && e.target === e.currentTarget) handleEdit(profile); }}
+                        >
+                          <td>
+                            <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                              <span className="cc-name">{profile.name}</span>
+                              {profile.isDefault && <Badge tone="info">Default</Badge>}
+                            </div>
+                            {profile.description && <div className="cc-muted cc-small">{profile.description}</div>}
+                          </td>
+                          <td>
+                            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                              {profile.enableMultiPiece
+                                ? <Badge tone="warning">{profile.pieces?.length || 0}-piece set</Badge>
+                                : <span className="cc-muted">Single piece</span>}
+                              {profile.enableWeatherproof && <Badge tone="info">Weatherproof</Badge>}
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }} title={on.map((k) => SECTIONS[k].name).join(", ") || "None"}>
+                              <span style={{ display: "flex", gap: 2 }} aria-hidden="true">
+                                {ALL_SECTION_KEYS.map((k) => (
+                                  <i key={k} style={{ width: 8, height: 14, borderRadius: 2, background: on.includes(k) ? "var(--cc-on)" : "var(--cc-surface-3)" }} />
+                                ))}
+                              </span>
+                              <span className="cc-num cc-muted">{on.length} of {ALL_SECTION_KEYS.length}</span>
+                            </div>
+                          </td>
+                          <td className="cc-num">{profile.additionalPercent > 0 ? `+${profile.additionalPercent}%` : <span className="cc-muted">—</span>}</td>
+                          <td><StatusBadge active={profile.isActive} /></td>
+                          <td onClick={(e) => e.stopPropagation()}>
+                            <div className="cc-rowact">
+                              <button type="button" className="cc-btn cc-btn--plain" onClick={() => copyId(profile.id)}>Copy ID</button>
+                              <button type="button" className="cc-btn cc-btn--plain" onClick={() => openDuplicate(profile)}>Duplicate</button>
+                              <button type="button" className="cc-btn" onClick={() => handleEdit(profile)}>Edit</button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+          <p className="cc-p cc-muted cc-small">
+            Assign a profile to a product by setting its <strong>cushion_calculator.profile_id</strong> metafield to the profile ID.
+          </p>
+        </div>
+        {duplicateModal}
+        {deleteModal}
+      </s-page>
+    );
+  }
+
+  // ---- editor ----
+  const piece = form.enableMultiPiece ? form.pieces[activePiece] : null;
+  const onCount = shownKeys(form).length;
+  const markup = Number(form.additionalPercent) || 0;
+  const exampleSubtotal = 100;
 
   return (
-    <s-page heading="Calculator Profiles" fullWidth>
-      <s-button slot="primary-action" onClick={() => { reset(); setShowForm(true); }}>Add Profile</s-button>
+    <s-page heading={editing ? editing.name : "New profile"} inlineSize="large">
+      <SaveBar id="profile-save-bar" open={isDirty}>
+        <button variant="primary" onClick={submit}>Save</button>
+        <button onClick={closeEditor}>Discard</button>
+      </SaveBar>
 
-      <s-section>
-        <s-box padding="base" background="subdued" borderRadius="base">
-          <s-text>Profiles control which calculator sections and options appear for each product. Assign a profile to products using the metafield <strong>cushion_calculator.profile_id</strong></s-text>
-        </s-box>
-      </s-section>
+      <div className="cc-page">
+        <div className="cc-header">
+          <BackButton onClick={handleBack} label="Back to profiles" />
+          <h1>{form.name || "New profile"}</h1>
+          <StatusBadge active={form.isActive} />
+          {form.isDefault && <Badge tone="info">Default</Badge>}
+          <span className="cc-spacer" />
+          {editing && <button type="button" className="cc-btn" onClick={() => openDuplicate(editing)}>Duplicate</button>}
+        </div>
 
-      {showForm && (
-        <s-section heading={editing ? "Edit Profile" : "Add Profile"}>
-          <s-box padding="base" borderWidth="base" borderRadius="base">
-            <s-stack direction="block" gap="loose">
-              {/* Basic Info */}
-              <s-stack direction="block" gap="base">
-                <s-text fontWeight="semibold">Basic Information</s-text>
-                <s-text-field
-                  label="Profile Name"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="e.g., Standard Cushion, Simple Cushion"
-                  required
+        <div className="cc-layout">
+          <div className="cc-main">
+            <div className="cc-card">
+              <div className="cc-card__head"><h2>Details</h2></div>
+              <div className="cc-card__body">
+                <TextField id="profile-name" label="Profile name" value={form.name} onChange={(v) => setField("name", v)} placeholder="e.g. Tufted Cushion" />
+                <TextField id="profile-description" label="Description" value={form.description} onChange={(v) => setField("description", v)} placeholder="Only you see this" />
+              </div>
+            </div>
+
+            <div className="cc-card">
+              <div className="cc-card__head"><h2>Product type</h2></div>
+              <div className="cc-card__body">
+                <div className="cc-seg">
+                  <button type="button" aria-pressed={!form.enableMultiPiece} onClick={() => setMultiPiece(false)}>
+                    <strong>Single piece</strong><span>One cushion, one set of options</span>
+                  </button>
+                  <button type="button" aria-pressed={form.enableMultiPiece} onClick={() => setMultiPiece(true)}>
+                    <strong>Multi-piece set</strong><span>e.g. Seat + Backrest, up to 5 pieces</span>
+                  </button>
+                </div>
+                <Checkbox
+                  id="profile-weatherproof"
+                  checked={form.enableWeatherproof}
+                  onChange={(v) => setField("enableWeatherproof", v)}
+                  label="Weatherproof cover"
+                  help="The cover leaves the base open, so fabric is priced on surface area without the base."
                 />
-                <s-text-field
-                  label="Description"
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  placeholder="Optional description for this profile"
-                />
-                <s-text-field
-                  label="Additional Percentage (%)"
+              </div>
+            </div>
+
+            {form.enableMultiPiece && (
+              <div className="cc-card">
+                <div className="cc-card__head"><h2>Pieces</h2><span className="cc-card__meta">{form.pieces.length} of 5</span></div>
+                <div className="cc-card__body" style={{ paddingBottom: 0 }}>
+                  <TextField
+                    id="profile-pieces-label"
+                    label="Heading above the pieces"
+                    value={form.piecesLabel}
+                    onChange={(v) => setField("piecesLabel", v)}
+                    placeholder="e.g. Cushion Components"
+                    help="Shown to customers above the list of pieces in the calculator."
+                  />
+                </div>
+                <div className="cc-ptabs">
+                  {form.pieces.map((p, i) => (
+                    <button key={i} type="button" className="cc-ptab" aria-pressed={activePiece === i} onClick={() => setActivePiece(i)}>
+                      {p.name || `Piece ${i + 1}`}
+                    </button>
+                  ))}
+                  {form.pieces.length < 5 && <button type="button" className="cc-btn cc-btn--plain" onClick={addPiece}>+ Add piece</button>}
+                </div>
+                {piece ? (
+                  <>
+                    <div className="cc-card__body">
+                      <div className="cc-row2">
+                        <TextField id="piece-name" label="Piece name" value={piece.name} onChange={(v) => updatePiece(activePiece, "name", v)} placeholder="e.g. Seat Base, Backrest" />
+                        <TextField id="piece-label" label="Display label (optional)" value={piece.label} onChange={(v) => updatePiece(activePiece, "label", v)} placeholder="Overrides the name for customers" />
+                      </div>
+                      <div className="cc-row2">
+                        {piece.showShapeSection && shapes.length > 0 ? (
+                          <SelectField id="piece-default-shape" label="Pre-selected shape" value={piece.defaultShapeId} onChange={(v) => updatePiece(activePiece, "defaultShapeId", v)} placeholder="None" options={shapes.map((s) => ({ value: s.id, label: s.name }))} />
+                        ) : <span />}
+                        {piece.showFillSection && fillTypes.length > 0 ? (
+                          <SelectField id="piece-default-fill" label="Pre-selected fill" value={piece.defaultFillId} onChange={(v) => updatePiece(activePiece, "defaultFillId", v)} placeholder="None" options={fillTypes.map((f) => ({ value: f.id, label: f.name }))} />
+                        ) : <span />}
+                      </div>
+                      <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                        <button type="button" className="cc-btn cc-btn--plain" disabled={activePiece === 0} onClick={() => movePiece(activePiece, -1)}>Move left</button>
+                        <button type="button" className="cc-btn cc-btn--plain" disabled={activePiece === form.pieces.length - 1} onClick={() => movePiece(activePiece, 1)}>Move right</button>
+                        <button type="button" className="cc-btn cc-btn--critical" onClick={() => removePiece(activePiece)}>Remove piece</button>
+                      </div>
+                    </div>
+                    <div className="cc-card__head" style={{ paddingTop: 0 }}><h2>Options for {piece.name || `Piece ${activePiece + 1}`}</h2></div>
+                    <div className="cc-card__flush">
+                      {renderSectionList(PIECE_KEYS, piece, (field, value) => updatePiece(activePiece, field, value), `piece${activePiece}`)}
+                    </div>
+                  </>
+                ) : (
+                  <div className="cc-card__body cc-muted">Add the first piece to set up its options.</div>
+                )}
+              </div>
+            )}
+
+            <div className="cc-card">
+              <div className="cc-card__head">
+                <h2>{form.enableMultiPiece ? "Options shared by all pieces" : "Options shown to customers"}</h2>
+                <span className="cc-card__meta">{onCount} of {ALL_SECTION_KEYS.length} on</span>
+              </div>
+              <div className="cc-card__body" style={{ paddingBottom: 0 }}>
+                <p className="cc-p cc-muted">Turn a section off to hide it. Click a section to limit its choices, or to set the price used while it’s hidden.</p>
+              </div>
+              <div className="cc-card__flush">
+                {renderSectionList(form.enableMultiPiece ? SHARED_KEYS : ALL_SECTION_KEYS, form, setField, "profile")}
+              </div>
+            </div>
+          </div>
+
+          <div className="cc-side">
+            <div className="cc-card">
+              <div className="cc-card__head"><h2>Status</h2></div>
+              <div className="cc-card__body">
+                <Checkbox id="profile-active" checked={form.isActive} onChange={(v) => setField("isActive", v)} label="Active" help="Inactive profiles are ignored on the storefront." />
+                <Checkbox id="profile-default" checked={form.isDefault} onChange={(v) => setField("isDefault", v)} label="Default profile" help="Used for products with no profile assigned. Only one profile can be the default." />
+              </div>
+            </div>
+
+            <div className="cc-card">
+              <div className="cc-card__head"><h2>Pricing</h2></div>
+              <div className="cc-card__body">
+                <TextField
+                  id="profile-markup"
+                  label="Markup on subtotal (%)"
                   type="number"
                   value={form.additionalPercent}
-                  onChange={(e) => setForm({ ...form, additionalPercent: parseFloat(e.target.value) || 0 })}
-                  helpText="This percentage markup will be added to the subtotal for products using this profile"
+                  onChange={(v) => setField("additionalPercent", parseFloat(v) || 0)}
                 />
-              </s-stack>
-
-              {/* Multi-Piece Configuration */}
-              <s-stack direction="block" gap="base">
-                <s-text fontWeight="semibold">Multi-Piece Configuration</s-text>
-                <s-text tone="subdued">Enable this to create cushion sets with multiple pieces (e.g., Seat + Backrest)</s-text>
-                <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <input type="checkbox" checked={form.enableMultiPiece} onChange={(e) => setForm({ ...form, enableMultiPiece: e.target.checked })} />
-                  Enable Multi-Piece Mode
-                </label>
-
-                {form.enableMultiPiece && (
-                  <s-stack direction="block" gap="base">
-                    <s-text-field
-                      label="Pieces Section Label"
-                      value={form.piecesLabel}
-                      onChange={(e) => setForm({ ...form, piecesLabel: e.target.value })}
-                      placeholder="e.g., Cushion Components"
-                      helpText="Label shown above the pieces in the calculator"
-                    />
-
-                    <s-stack direction="block" gap="tight">
-                      <s-stack direction="inline" gap="base" align="center">
-                        <s-text fontWeight="semibold">Pieces ({form.pieces.length}/5)</s-text>
-                        <s-button variant="tertiary" onClick={addPiece} disabled={form.pieces.length >= 5}>+ Add Piece</s-button>
-                      </s-stack>
-
-                      {form.pieces.length === 0 && (
-                        <s-box padding="base" background="subdued" borderRadius="base">
-                          <s-text tone="subdued">No pieces defined. Add at least one piece to use multi-piece mode.</s-text>
-                        </s-box>
-                      )}
-
-                      {form.pieces.map((piece, idx) => (
-                        <s-box key={idx} padding="base" borderWidth="base" borderRadius="base" background={editingPieceIndex === idx ? "default" : "subdued"}>
-                          <s-stack direction="block" gap="tight">
-                            <s-stack direction="inline" gap="base" align="center" wrap>
-                              <s-stack direction="inline" gap="tight" align="center">
-                                <s-button variant="tertiary" onClick={() => movePiece(idx, -1)} disabled={idx === 0}>↑</s-button>
-                                <s-button variant="tertiary" onClick={() => movePiece(idx, 1)} disabled={idx === form.pieces.length - 1}>↓</s-button>
-                              </s-stack>
-                              <s-text fontWeight="semibold">{piece.name || `Piece ${idx + 1}`}</s-text>
-                              {piece.label && <s-text tone="subdued">({piece.label})</s-text>}
-                              <div style={{ flex: 1 }} />
-                              <s-button variant="tertiary" onClick={() => setEditingPieceIndex(editingPieceIndex === idx ? null : idx)}>
-                                {editingPieceIndex === idx ? "Collapse" : "Edit"}
-                              </s-button>
-                              <s-button variant="tertiary" tone="critical" onClick={() => removePiece(idx)}>Remove</s-button>
-                            </s-stack>
-
-                            {editingPieceIndex === idx && (
-                              <s-stack direction="block" gap="base" style={{ marginTop: "12px" }}>
-                                <s-stack direction="inline" gap="base">
-                                  <s-text-field
-                                    label="Piece Name"
-                                    value={piece.name}
-                                    onChange={(e) => updatePiece(idx, "name", e.target.value)}
-                                    placeholder="e.g., Seat Base, Backrest"
-                                    required
-                                  />
-                                  <s-text-field
-                                    label="Display Label (optional)"
-                                    value={piece.label}
-                                    onChange={(e) => updatePiece(idx, "label", e.target.value)}
-                                    placeholder="Override display name"
-                                  />
-                                </s-stack>
-
-                                <s-text fontWeight="medium">Section Visibility</s-text>
-                                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "8px" }}>
-                                  <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                    <input type="checkbox" checked={piece.showShapeSection} onChange={(e) => updatePiece(idx, "showShapeSection", e.target.checked)} />
-                                    Shape
-                                  </label>
-                                  <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                    <input type="checkbox" checked={piece.showDimensionsSection} onChange={(e) => updatePiece(idx, "showDimensionsSection", e.target.checked)} />
-                                    Dimensions
-                                  </label>
-                                  <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                    <input type="checkbox" checked={piece.showFillSection} onChange={(e) => updatePiece(idx, "showFillSection", e.target.checked)} />
-                                    Fill Type
-                                  </label>
-                                  <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                    <input type="checkbox" checked={piece.showPipingSection} onChange={(e) => updatePiece(idx, "showPipingSection", e.target.checked)} />
-                                    Piping
-                                  </label>
-                                  <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                    <input type="checkbox" checked={piece.showButtonSection} onChange={(e) => updatePiece(idx, "showButtonSection", e.target.checked)} />
-                                    Button Style
-                                  </label>
-                                  <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                    <input type="checkbox" checked={piece.showAntiSkidSection} onChange={(e) => updatePiece(idx, "showAntiSkidSection", e.target.checked)} />
-                                    Anti-Skid Bottom
-                                  </label>
-                                  <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                    <input type="checkbox" checked={piece.showTiesSection} onChange={(e) => updatePiece(idx, "showTiesSection", e.target.checked)} />
-                                    Ties
-                                  </label>
-                                  <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                    <input type="checkbox" checked={piece.showDesignSection} onChange={(e) => updatePiece(idx, "showDesignSection", e.target.checked)} />
-                                    Design
-                                  </label>
-                                  <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                    <input type="checkbox" checked={piece.showFabricTiesSection} onChange={(e) => updatePiece(idx, "showFabricTiesSection", e.target.checked)} />
-                                    Fabric Ties
-                                  </label>
-                                  <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                    <input type="checkbox" checked={piece.showRodPocketSection} onChange={(e) => updatePiece(idx, "showRodPocketSection", e.target.checked)} />
-                                    Bottom Rod Pocket
-                                  </label>
-                                  <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                    <input type="checkbox" checked={piece.showDrawstringSection} onChange={(e) => updatePiece(idx, "showDrawstringSection", e.target.checked)} />
-                                    Drawstring
-                                  </label>
-                                </div>
-
-                                {/* Defaults for this piece */}
-                                <s-text fontWeight="medium">Defaults</s-text>
-                                <s-stack direction="inline" gap="base">
-                                  {piece.showShapeSection && shapes.length > 0 && (
-                                    <div style={{ flex: 1 }}>
-                                      <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", fontSize: "13px" }}>Default Shape</label>
-                                      <select
-                                        value={piece.defaultShapeId}
-                                        onChange={(e) => updatePiece(idx, "defaultShapeId", e.target.value)}
-                                        style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
-                                      >
-                                        <option value="">None</option>
-                                        {shapes.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                      </select>
-                                    </div>
-                                  )}
-                                  {piece.showFillSection && fillTypes.length > 0 && (
-                                    <div style={{ flex: 1 }}>
-                                      <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", fontSize: "13px" }}>Default Fill</label>
-                                      <select
-                                        value={piece.defaultFillId}
-                                        onChange={(e) => updatePiece(idx, "defaultFillId", e.target.value)}
-                                        style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
-                                      >
-                                        <option value="">None</option>
-                                        {fillTypes.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-                                      </select>
-                                    </div>
-                                  )}
-                                </s-stack>
-
-                                {/* Allowed options for this piece */}
-                                {piece.showShapeSection && shapes.length > 0 && (
-                                  <s-stack direction="block" gap="tight">
-                                    <s-text fontWeight="medium" fontSize="small">Allowed Shapes (leave empty for all)</s-text>
-                                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                                      {shapes.map((s) => (
-                                        <label key={s.id} style={{ display: "flex", alignItems: "center", gap: "4px", padding: "4px 8px", background: (piece.allowedShapeIds || []).includes(s.id) ? "#e0f0e0" : "#f5f5f5", borderRadius: "4px", cursor: "pointer", fontSize: "12px" }}>
-                                          <input type="checkbox" checked={(piece.allowedShapeIds || []).includes(s.id)} onChange={() => togglePieceArrayItem(idx, "allowedShapeIds", s.id)} />
-                                          {s.name}
-                                        </label>
-                                      ))}
-                                    </div>
-                                  </s-stack>
-                                )}
-
-                                {piece.showFillSection && fillTypes.length > 0 && (
-                                  <s-stack direction="block" gap="tight">
-                                    <s-text fontWeight="medium" fontSize="small">Allowed Fill Types (leave empty for all)</s-text>
-                                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                                      {fillTypes.map((f) => (
-                                        <label key={f.id} style={{ display: "flex", alignItems: "center", gap: "4px", padding: "4px 8px", background: (piece.allowedFillIds || []).includes(f.id) ? "#e0f0e0" : "#f5f5f5", borderRadius: "4px", cursor: "pointer", fontSize: "12px" }}>
-                                          <input type="checkbox" checked={(piece.allowedFillIds || []).includes(f.id)} onChange={() => togglePieceArrayItem(idx, "allowedFillIds", f.id)} />
-                                          {f.name}
-                                        </label>
-                                      ))}
-                                    </div>
-                                  </s-stack>
-                                )}
-
-                                {piece.showPipingSection && pipingOptions.length > 0 && (
-                                  <s-stack direction="block" gap="tight">
-                                    <s-text fontWeight="medium" fontSize="small">Allowed Piping Options (leave empty for all)</s-text>
-                                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                                      {pipingOptions.map((o) => (
-                                        <label key={o.id} style={{ display: "flex", alignItems: "center", gap: "4px", padding: "4px 8px", background: (piece.allowedPipingIds || []).includes(o.id) ? "#e0f0e0" : "#f5f5f5", borderRadius: "4px", cursor: "pointer", fontSize: "12px" }}>
-                                          <input type="checkbox" checked={(piece.allowedPipingIds || []).includes(o.id)} onChange={() => togglePieceArrayItem(idx, "allowedPipingIds", o.id)} />
-                                          {o.name}
-                                        </label>
-                                      ))}
-                                    </div>
-                                  </s-stack>
-                                )}
-
-                                {piece.showButtonSection && buttonOptions.length > 0 && (
-                                  <s-stack direction="block" gap="tight">
-                                    <s-text fontWeight="medium" fontSize="small">Allowed Button Styles (leave empty for all)</s-text>
-                                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                                      {buttonOptions.map((o) => (
-                                        <label key={o.id} style={{ display: "flex", alignItems: "center", gap: "4px", padding: "4px 8px", background: (piece.allowedButtonIds || []).includes(o.id) ? "#e0f0e0" : "#f5f5f5", borderRadius: "4px", cursor: "pointer", fontSize: "12px" }}>
-                                          <input type="checkbox" checked={(piece.allowedButtonIds || []).includes(o.id)} onChange={() => togglePieceArrayItem(idx, "allowedButtonIds", o.id)} />
-                                          {o.name}
-                                        </label>
-                                      ))}
-                                    </div>
-                                  </s-stack>
-                                )}
-
-                                {piece.showAntiSkidSection && antiSkidOptions.length > 0 && (
-                                  <s-stack direction="block" gap="tight">
-                                    <s-text fontWeight="medium" fontSize="small">Allowed Anti-Skid Options (leave empty for all)</s-text>
-                                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                                      {antiSkidOptions.map((o) => (
-                                        <label key={o.id} style={{ display: "flex", alignItems: "center", gap: "4px", padding: "4px 8px", background: (piece.allowedAntiSkidIds || []).includes(o.id) ? "#e0f0e0" : "#f5f5f5", borderRadius: "4px", cursor: "pointer", fontSize: "12px" }}>
-                                          <input type="checkbox" checked={(piece.allowedAntiSkidIds || []).includes(o.id)} onChange={() => togglePieceArrayItem(idx, "allowedAntiSkidIds", o.id)} />
-                                          {o.name}
-                                        </label>
-                                      ))}
-                                    </div>
-                                  </s-stack>
-                                )}
-
-                                {piece.showTiesSection && tiesOptions.length > 0 && (
-                                  <s-stack direction="block" gap="tight">
-                                    <s-text fontWeight="medium" fontSize="small">Allowed Ties Options (leave empty for all)</s-text>
-                                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                                      {tiesOptions.map((o) => (
-                                        <label key={o.id} style={{ display: "flex", alignItems: "center", gap: "4px", padding: "4px 8px", background: (piece.allowedTiesIds || []).includes(o.id) ? "#e0f0e0" : "#f5f5f5", borderRadius: "4px", cursor: "pointer", fontSize: "12px" }}>
-                                          <input type="checkbox" checked={(piece.allowedTiesIds || []).includes(o.id)} onChange={() => togglePieceArrayItem(idx, "allowedTiesIds", o.id)} />
-                                          {o.name}
-                                        </label>
-                                      ))}
-                                    </div>
-                                  </s-stack>
-                                )}
-
-                                {piece.showDesignSection && designOptions.length > 0 && (
-                                  <s-stack direction="block" gap="tight">
-                                    <s-text fontWeight="medium" fontSize="small">Allowed Design Options (leave empty for all)</s-text>
-                                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                                      {designOptions.map((o) => (
-                                        <label key={o.id} style={{ display: "flex", alignItems: "center", gap: "4px", padding: "4px 8px", background: (piece.allowedDesignIds || []).includes(o.id) ? "#e0f0e0" : "#f5f5f5", borderRadius: "4px", cursor: "pointer", fontSize: "12px" }}>
-                                          <input type="checkbox" checked={(piece.allowedDesignIds || []).includes(o.id)} onChange={() => togglePieceArrayItem(idx, "allowedDesignIds", o.id)} />
-                                          {o.name}
-                                        </label>
-                                      ))}
-                                    </div>
-                                  </s-stack>
-                                )}
-
-                                {piece.showFabricTiesSection && fabricTiesOptions.length > 0 && (
-                                  <s-stack direction="block" gap="tight">
-                                    <s-text fontWeight="medium" fontSize="small">Allowed Fabric Ties Options (leave empty for all)</s-text>
-                                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                                      {fabricTiesOptions.map((o) => (
-                                        <label key={o.id} style={{ display: "flex", alignItems: "center", gap: "4px", padding: "4px 8px", background: (piece.allowedFabricTiesIds || []).includes(o.id) ? "#e0f0e0" : "#f5f5f5", borderRadius: "4px", cursor: "pointer", fontSize: "12px" }}>
-                                          <input type="checkbox" checked={(piece.allowedFabricTiesIds || []).includes(o.id)} onChange={() => togglePieceArrayItem(idx, "allowedFabricTiesIds", o.id)} />
-                                          {o.name}
-                                        </label>
-                                      ))}
-                                    </div>
-                                  </s-stack>
-                                )}
-
-                                {piece.showRodPocketSection && rodPocketOptions.length > 0 && (
-                                  <s-stack direction="block" gap="tight">
-                                    <s-text fontWeight="medium" fontSize="small">Allowed Bottom Rod Pocket Options (leave empty for all)</s-text>
-                                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                                      {rodPocketOptions.map((o) => (
-                                        <label key={o.id} style={{ display: "flex", alignItems: "center", gap: "4px", padding: "4px 8px", background: (piece.allowedRodPocketIds || []).includes(o.id) ? "#e0f0e0" : "#f5f5f5", borderRadius: "4px", cursor: "pointer", fontSize: "12px" }}>
-                                          <input type="checkbox" checked={(piece.allowedRodPocketIds || []).includes(o.id)} onChange={() => togglePieceArrayItem(idx, "allowedRodPocketIds", o.id)} />
-                                          {o.name}
-                                        </label>
-                                      ))}
-                                    </div>
-                                  </s-stack>
-                                )}
-
-                                {piece.showDrawstringSection && drawstringOptions.length > 0 && (
-                                  <s-stack direction="block" gap="tight">
-                                    <s-text fontWeight="medium" fontSize="small">Allowed Drawstring Options (leave empty for all)</s-text>
-                                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                                      {drawstringOptions.map((o) => (
-                                        <label key={o.id} style={{ display: "flex", alignItems: "center", gap: "4px", padding: "4px 8px", background: (piece.allowedDrawstringIds || []).includes(o.id) ? "#e0f0e0" : "#f5f5f5", borderRadius: "4px", cursor: "pointer", fontSize: "12px" }}>
-                                          <input type="checkbox" checked={(piece.allowedDrawstringIds || []).includes(o.id)} onChange={() => togglePieceArrayItem(idx, "allowedDrawstringIds", o.id)} />
-                                          {o.name}
-                                        </label>
-                                      ))}
-                                    </div>
-                                  </s-stack>
-                                )}
-
-                                {/* Hidden values for this piece */}
-                                <s-text fontWeight="medium">Hidden Values (when section is hidden)</s-text>
-                                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "8px" }}>
-                                  {!piece.showShapeSection && shapes.length > 0 && (
-                                    <div>
-                                      <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", fontSize: "12px" }}>Hidden Shape</label>
-                                      <select value={piece.hiddenShapeId} onChange={(e) => updatePiece(idx, "hiddenShapeId", e.target.value)} style={{ width: "100%", padding: "6px", borderRadius: "4px", border: "1px solid #ccc", fontSize: "12px" }}>
-                                        <option value="">None</option>
-                                        {shapes.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                      </select>
-                                    </div>
-                                  )}
-                                  {!piece.showFillSection && fillTypes.length > 0 && (
-                                    <div>
-                                      <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", fontSize: "12px" }}>Hidden Fill</label>
-                                      <select value={piece.hiddenFillTypeId} onChange={(e) => updatePiece(idx, "hiddenFillTypeId", e.target.value)} style={{ width: "100%", padding: "6px", borderRadius: "4px", border: "1px solid #ccc", fontSize: "12px" }}>
-                                        <option value="">None</option>
-                                        {fillTypes.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-                                      </select>
-                                    </div>
-                                  )}
-                                  {!piece.showPipingSection && pipingOptions.length > 0 && (
-                                    <div>
-                                      <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", fontSize: "12px" }}>Hidden Piping</label>
-                                      <select value={piece.hiddenPipingId} onChange={(e) => updatePiece(idx, "hiddenPipingId", e.target.value)} style={{ width: "100%", padding: "6px", borderRadius: "4px", border: "1px solid #ccc", fontSize: "12px" }}>
-                                        <option value="">None</option>
-                                        {pipingOptions.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-                                      </select>
-                                    </div>
-                                  )}
-                                  {!piece.showButtonSection && buttonOptions.length > 0 && (
-                                    <div>
-                                      <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", fontSize: "12px" }}>Hidden Button</label>
-                                      <select value={piece.hiddenButtonId} onChange={(e) => updatePiece(idx, "hiddenButtonId", e.target.value)} style={{ width: "100%", padding: "6px", borderRadius: "4px", border: "1px solid #ccc", fontSize: "12px" }}>
-                                        <option value="">None</option>
-                                        {buttonOptions.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-                                      </select>
-                                    </div>
-                                  )}
-                                  {!piece.showAntiSkidSection && antiSkidOptions.length > 0 && (
-                                    <div>
-                                      <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", fontSize: "12px" }}>Hidden Anti-Skid</label>
-                                      <select value={piece.hiddenAntiSkidId} onChange={(e) => updatePiece(idx, "hiddenAntiSkidId", e.target.value)} style={{ width: "100%", padding: "6px", borderRadius: "4px", border: "1px solid #ccc", fontSize: "12px" }}>
-                                        <option value="">None</option>
-                                        {antiSkidOptions.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-                                      </select>
-                                    </div>
-                                  )}
-                                  {!piece.showTiesSection && tiesOptions.length > 0 && (
-                                    <div>
-                                      <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", fontSize: "12px" }}>Hidden Ties</label>
-                                      <select value={piece.hiddenTiesId} onChange={(e) => updatePiece(idx, "hiddenTiesId", e.target.value)} style={{ width: "100%", padding: "6px", borderRadius: "4px", border: "1px solid #ccc", fontSize: "12px" }}>
-                                        <option value="">None</option>
-                                        {tiesOptions.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-                                      </select>
-                                    </div>
-                                  )}
-                                  {!piece.showDesignSection && designOptions.length > 0 && (
-                                    <div>
-                                      <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", fontSize: "12px" }}>Hidden Design</label>
-                                      <select value={piece.hiddenDesignId} onChange={(e) => updatePiece(idx, "hiddenDesignId", e.target.value)} style={{ width: "100%", padding: "6px", borderRadius: "4px", border: "1px solid #ccc", fontSize: "12px" }}>
-                                        <option value="">None</option>
-                                        {designOptions.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-                                      </select>
-                                    </div>
-                                  )}
-                                  {!piece.showFabricTiesSection && fabricTiesOptions.length > 0 && (
-                                    <div>
-                                      <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", fontSize: "12px" }}>Hidden Fabric Ties</label>
-                                      <select value={piece.hiddenFabricTiesId} onChange={(e) => updatePiece(idx, "hiddenFabricTiesId", e.target.value)} style={{ width: "100%", padding: "6px", borderRadius: "4px", border: "1px solid #ccc", fontSize: "12px" }}>
-                                        <option value="">None</option>
-                                        {fabricTiesOptions.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-                                      </select>
-                                    </div>
-                                  )}
-                                  {!piece.showRodPocketSection && rodPocketOptions.length > 0 && (
-                                    <div>
-                                      <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", fontSize: "12px" }}>Hidden Bottom Rod Pocket</label>
-                                      <select value={piece.hiddenRodPocketId} onChange={(e) => updatePiece(idx, "hiddenRodPocketId", e.target.value)} style={{ width: "100%", padding: "6px", borderRadius: "4px", border: "1px solid #ccc", fontSize: "12px" }}>
-                                        <option value="">None</option>
-                                        {rodPocketOptions.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-                                      </select>
-                                    </div>
-                                  )}
-                                  {!piece.showDrawstringSection && drawstringOptions.length > 0 && (
-                                    <div>
-                                      <label style={{ display: "block", marginBottom: "4px", fontWeight: "500", fontSize: "12px" }}>Hidden Drawstring</label>
-                                      <select value={piece.hiddenDrawstringId} onChange={(e) => updatePiece(idx, "hiddenDrawstringId", e.target.value)} style={{ width: "100%", padding: "6px", borderRadius: "4px", border: "1px solid #ccc", fontSize: "12px" }}>
-                                        <option value="">None</option>
-                                        {drawstringOptions.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-                                      </select>
-                                    </div>
-                                  )}
-                                </div>
-                              </s-stack>
-                            )}
-                          </s-stack>
-                        </s-box>
-                      ))}
-                    </s-stack>
-                  </s-stack>
-                )}
-              </s-stack>
-
-              {/* Weatherproof Configuration */}
-              <s-stack direction="block" gap="base">
-                <s-text fontWeight="semibold">Weatherproof Configuration</s-text>
-                <s-text tone="subdued">Enable this for weatherproof covers that don't cover the base (uses "Surface Area Without Base" formula)</s-text>
-                <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <input type="checkbox" checked={form.enableWeatherproof} onChange={(e) => setForm({ ...form, enableWeatherproof: e.target.checked })} />
-                  Enable Weatherproof Mode
-                </label>
-              </s-stack>
-
-              {/* Section Visibility */}
-              <s-stack direction="block" gap="base">
-                <s-text fontWeight="semibold">Section Visibility</s-text>
-                <s-text tone="subdued">{form.enableMultiPiece ? "Fabric and Instructions are configured here. Other sections are configured per-piece above." : "Toggle which calculator sections are shown"}</s-text>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "12px" }}>
-                  {!form.enableMultiPiece && (
-                    <>
-                      <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <input type="checkbox" checked={form.showShapeSection} onChange={(e) => setForm({ ...form, showShapeSection: e.target.checked })} />
-                        Shape Selection
-                      </label>
-                      <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <input type="checkbox" checked={form.showDimensionsSection} onChange={(e) => setForm({ ...form, showDimensionsSection: e.target.checked })} />
-                        Dimensions
-                      </label>
-                      <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <input type="checkbox" checked={form.showFillSection} onChange={(e) => setForm({ ...form, showFillSection: e.target.checked })} />
-                        Fill Type
-                      </label>
-                    </>
-                  )}
-                  <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <input type="checkbox" checked={form.showFabricSection} onChange={(e) => setForm({ ...form, showFabricSection: e.target.checked })} />
-                    Fabric
-                  </label>
-                  {!form.enableMultiPiece && (
-                    <>
-                      <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <input type="checkbox" checked={form.showPipingSection} onChange={(e) => setForm({ ...form, showPipingSection: e.target.checked })} />
-                        Piping Options
-                      </label>
-                      <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <input type="checkbox" checked={form.showButtonSection} onChange={(e) => setForm({ ...form, showButtonSection: e.target.checked })} />
-                        Button Style
-                      </label>
-                      <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <input type="checkbox" checked={form.showAntiSkidSection} onChange={(e) => setForm({ ...form, showAntiSkidSection: e.target.checked })} />
-                        Anti-Skid
-                      </label>
-                      <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <input type="checkbox" checked={form.showTiesSection} onChange={(e) => setForm({ ...form, showTiesSection: e.target.checked })} />
-                        Ties
-                      </label>
-                    </>
-                  )}
-                  <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <input type="checkbox" checked={form.showDesignSection} onChange={(e) => setForm({ ...form, showDesignSection: e.target.checked })} />
-                    Design
-                  </label>
-                  {!form.enableMultiPiece && (
-                    <>
-                      <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <input type="checkbox" checked={form.showRodPocketSection} onChange={(e) => setForm({ ...form, showRodPocketSection: e.target.checked })} />
-                        Bottom Rod Pocket
-                      </label>
-                      <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <input type="checkbox" checked={form.showDrawstringSection} onChange={(e) => setForm({ ...form, showDrawstringSection: e.target.checked })} />
-                        Drawstring
-                      </label>
-                      <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <input type="checkbox" checked={form.showFabricTiesSection} onChange={(e) => setForm({ ...form, showFabricTiesSection: e.target.checked })} />
-                        Fabric Ties
-                      </label>
-                    </>
-                  )}
-                  <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <input type="checkbox" checked={form.showInstructions} onChange={(e) => setForm({ ...form, showInstructions: e.target.checked })} />
-                    Special Instructions
-                  </label>
+                <div className="cc-calc">
+                  <div><span>Example subtotal</span><span>${exampleSubtotal.toFixed(2)}</span></div>
+                  <div><span>Markup {markup}%</span><span>+${(exampleSubtotal * markup / 100).toFixed(2)}</span></div>
+                  <div className="cc-calc__total"><span>Customer pays</span><span>${(exampleSubtotal * (1 + markup / 100)).toFixed(2)}</span></div>
                 </div>
-              </s-stack>
+              </div>
+            </div>
 
-              {/* Hidden Values - When sections are hidden but need values */}
-              <s-stack direction="block" gap="base">
-                <s-text fontWeight="semibold">Hidden Section Values</s-text>
-                <s-text tone="subdued">When a section is hidden, you can still apply a preset value to the calculation</s-text>
-
-                {!form.enableMultiPiece && !form.showShapeSection && shapes.length > 0 && (
-                  <div>
-                    <label style={{ display: "block", marginBottom: "4px", fontWeight: "500" }}>Hidden Shape Value</label>
-                    <select
-                      value={form.hiddenShapeId}
-                      onChange={(e) => setForm({ ...form, hiddenShapeId: e.target.value })}
-                      style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
-                    >
-                      <option value="">None (no shape)</option>
-                      {shapes.map((s) => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
-                      ))}
-                    </select>
+            {editing && (
+              <div className="cc-card">
+                <div className="cc-card__head"><h2>Assign to products</h2></div>
+                <div className="cc-card__body">
+                  <span className="cc-help">Set the product metafield <strong>cushion_calculator.profile_id</strong> to:</span>
+                  <div className="cc-idbox">
+                    <code>{editing.id}</code>
+                    <button type="button" className="cc-btn cc-btn--plain" onClick={() => copyId(editing.id)}>Copy</button>
                   </div>
-                )}
+                </div>
+              </div>
+            )}
 
-                {!form.enableMultiPiece && !form.showFillSection && fillTypes.length > 0 && (
-                  <div>
-                    <label style={{ display: "block", marginBottom: "4px", fontWeight: "500" }}>Hidden Fill Type Value</label>
-                    <select
-                      value={form.hiddenFillTypeId}
-                      onChange={(e) => setForm({ ...form, hiddenFillTypeId: e.target.value })}
-                      style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
-                    >
-                      <option value="">None (no fill cost)</option>
-                      {fillTypes.map((f) => (
-                        <option key={f.id} value={f.id}>{f.name} (${f.pricePerCubicInch}/cu.in.)</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {!form.showFabricSection && fabrics.length > 0 && (
-                  <div>
-                    <label style={{ display: "block", marginBottom: "4px", fontWeight: "500" }}>Hidden Fabric Value</label>
-                    <select
-                      value={form.hiddenFabricId}
-                      onChange={(e) => setForm({ ...form, hiddenFabricId: e.target.value })}
-                      style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
-                    >
-                      <option value="">None (no fabric cost)</option>
-                      {fabrics.map((f) => (
-                        <option key={f.id} value={f.id}>{f.name} (${f.pricePerSqInch}/sq.in.)</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {!form.enableMultiPiece && !form.showPipingSection && pipingOptions.length > 0 && (
-                  <div>
-                    <label style={{ display: "block", marginBottom: "4px", fontWeight: "500" }}>Hidden Piping Value</label>
-                    <select
-                      value={form.hiddenPipingId}
-                      onChange={(e) => setForm({ ...form, hiddenPipingId: e.target.value })}
-                      style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
-                    >
-                      <option value="">None (no piping cost)</option>
-                      {pipingOptions.map((p) => (
-                        <option key={p.id} value={p.id}>{p.name} ({p.percent}%)</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {!form.enableMultiPiece && !form.showButtonSection && buttonOptions.length > 0 && (
-                  <div>
-                    <label style={{ display: "block", marginBottom: "4px", fontWeight: "500" }}>Hidden Button Style Value</label>
-                    <select
-                      value={form.hiddenButtonId}
-                      onChange={(e) => setForm({ ...form, hiddenButtonId: e.target.value })}
-                      style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
-                    >
-                      <option value="">None (no button cost)</option>
-                      {buttonOptions.map((b) => (
-                        <option key={b.id} value={b.id}>{b.name} ({b.percent}%)</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {!form.enableMultiPiece && !form.showAntiSkidSection && antiSkidOptions.length > 0 && (
-                  <div>
-                    <label style={{ display: "block", marginBottom: "4px", fontWeight: "500" }}>Hidden Anti-Skid Value</label>
-                    <select
-                      value={form.hiddenAntiSkidId}
-                      onChange={(e) => setForm({ ...form, hiddenAntiSkidId: e.target.value })}
-                      style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
-                    >
-                      <option value="">None (no anti-skid cost)</option>
-                      {antiSkidOptions.map((a) => (
-                        <option key={a.id} value={a.id}>{a.name} ({a.percent}%)</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {!form.enableMultiPiece && !form.showTiesSection && tiesOptions.length > 0 && (
-                  <div>
-                    <label style={{ display: "block", marginBottom: "4px", fontWeight: "500" }}>Hidden Ties Value</label>
-                    <select
-                      value={form.hiddenTiesId}
-                      onChange={(e) => setForm({ ...form, hiddenTiesId: e.target.value })}
-                      style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
-                    >
-                      <option value="">None (no ties cost)</option>
-                      {tiesOptions.map((t) => (
-                        <option key={t.id} value={t.id}>{t.name} (${t.price})</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {!form.showDesignSection && designOptions.length > 0 && (
-                  <div>
-                    <label style={{ display: "block", marginBottom: "4px", fontWeight: "500" }}>Hidden Design Value</label>
-                    <select
-                      value={form.hiddenDesignId}
-                      onChange={(e) => setForm({ ...form, hiddenDesignId: e.target.value })}
-                      style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
-                    >
-                      <option value="">None (no design cost)</option>
-                      {designOptions.map((d) => (
-                        <option key={d.id} value={d.id}>{d.name} ({d.percent}%)</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {!form.enableMultiPiece && !form.showFabricTiesSection && fabricTiesOptions.length > 0 && (
-                  <div>
-                    <label style={{ display: "block", marginBottom: "4px", fontWeight: "500" }}>Hidden Fabric Ties Value</label>
-                    <select
-                      value={form.hiddenFabricTiesId}
-                      onChange={(e) => setForm({ ...form, hiddenFabricTiesId: e.target.value })}
-                      style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
-                    >
-                      <option value="">None (no fabric ties cost)</option>
-                      {fabricTiesOptions.map((ft) => (
-                        <option key={ft.id} value={ft.id}>{ft.name} (${ft.price})</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {!form.enableMultiPiece && !form.showRodPocketSection && rodPocketOptions.length > 0 && (
-                  <div>
-                    <label style={{ display: "block", marginBottom: "4px", fontWeight: "500" }}>Hidden Bottom Rod Pocket Value</label>
-                    <select
-                      value={form.hiddenRodPocketId}
-                      onChange={(e) => setForm({ ...form, hiddenRodPocketId: e.target.value })}
-                      style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
-                    >
-                      <option value="">None (no bottom rod pocket cost)</option>
-                      {rodPocketOptions.map((rp) => (
-                        <option key={rp.id} value={rp.id}>{rp.name} ({rp.percent}%)</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {!form.enableMultiPiece && !form.showDrawstringSection && drawstringOptions.length > 0 && (
-                  <div>
-                    <label style={{ display: "block", marginBottom: "4px", fontWeight: "500" }}>Hidden Drawstring Value</label>
-                    <select
-                      value={form.hiddenDrawstringId}
-                      onChange={(e) => setForm({ ...form, hiddenDrawstringId: e.target.value })}
-                      style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
-                    >
-                      <option value="">None (no drawstring cost)</option>
-                      {drawstringOptions.map((ds) => (
-                        <option key={ds.id} value={ds.id}>{ds.name} ({ds.percent}%)</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-              </s-stack>
-
-              {/* Allowed Shapes */}
-              {!form.enableMultiPiece && form.showShapeSection && shapes.length > 0 && (
-                <s-stack direction="block" gap="base">
-                  <s-text fontWeight="semibold">Allowed Shapes</s-text>
-                  <s-text tone="subdued">Leave all unchecked to show all shapes</s-text>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                    {shapes.map((shape) => (
-                      <label key={shape.id} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", background: form.allowedShapeIds.includes(shape.id) ? "#e0f0e0" : "#f5f5f5", borderRadius: "4px", cursor: "pointer" }}>
-                        <input type="checkbox" checked={form.allowedShapeIds.includes(shape.id)} onChange={() => setForm({ ...form, allowedShapeIds: toggleArrayItem(form.allowedShapeIds, shape.id) })} />
-                        {shape.name}
-                      </label>
-                    ))}
-                  </div>
-                </s-stack>
-              )}
-
-              {/* Allowed Fill Types */}
-              {!form.enableMultiPiece && form.showFillSection && fillTypes.length > 0 && (
-                <s-stack direction="block" gap="base">
-                  <s-text fontWeight="semibold">Allowed Fill Types</s-text>
-                  <s-text tone="subdued">Leave all unchecked to show all fill types</s-text>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                    {fillTypes.map((fill) => (
-                      <label key={fill.id} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", background: form.allowedFillIds.includes(fill.id) ? "#e0f0e0" : "#f5f5f5", borderRadius: "4px", cursor: "pointer" }}>
-                        <input type="checkbox" checked={form.allowedFillIds.includes(fill.id)} onChange={() => setForm({ ...form, allowedFillIds: toggleArrayItem(form.allowedFillIds, fill.id) })} />
-                        {fill.name}
-                      </label>
-                    ))}
-                  </div>
-                </s-stack>
-              )}
-
-              {/* Allowed Fabric Categories */}
-              {form.showFabricSection && fabricCategories.length > 0 && (
-                <s-stack direction="block" gap="base">
-                  <s-text fontWeight="semibold">Allowed Fabric Categories</s-text>
-                  <s-text tone="subdued">Leave all unchecked to show all fabric categories. Checking a category will restrict fabric selection to only fabrics within those categories.</s-text>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                    {fabricCategories.map((category) => (
-                      <label key={category.id} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", background: form.allowedCategoryIds.includes(category.id) ? "#e0f0e0" : "#f5f5f5", borderRadius: "4px", cursor: "pointer" }}>
-                        <input type="checkbox" checked={form.allowedCategoryIds.includes(category.id)} onChange={() => setForm({ ...form, allowedCategoryIds: toggleArrayItem(form.allowedCategoryIds, category.id) })} />
-                        {category.name}
-                      </label>
-                    ))}
-                  </div>
-                </s-stack>
-              )}
-
-              {/* Allowed Piping Options */}
-              {!form.enableMultiPiece && form.showPipingSection && pipingOptions.length > 0 && (
-                <s-stack direction="block" gap="base">
-                  <s-text fontWeight="semibold">Allowed Piping Options</s-text>
-                  <s-text tone="subdued">Leave all unchecked to show all piping options</s-text>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                    {pipingOptions.map((opt) => (
-                      <label key={opt.id} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", background: form.allowedPipingIds.includes(opt.id) ? "#e0f0e0" : "#f5f5f5", borderRadius: "4px", cursor: "pointer" }}>
-                        <input type="checkbox" checked={form.allowedPipingIds.includes(opt.id)} onChange={() => setForm({ ...form, allowedPipingIds: toggleArrayItem(form.allowedPipingIds, opt.id) })} />
-                        {opt.name}
-                      </label>
-                    ))}
-                  </div>
-                </s-stack>
-              )}
-
-              {/* Allowed Button Options */}
-              {!form.enableMultiPiece && form.showButtonSection && buttonOptions.length > 0 && (
-                <s-stack direction="block" gap="base">
-                  <s-text fontWeight="semibold">Allowed Button Style Options</s-text>
-                  <s-text tone="subdued">Leave all unchecked to show all button style options</s-text>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                    {buttonOptions.map((opt) => (
-                      <label key={opt.id} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", background: form.allowedButtonIds.includes(opt.id) ? "#e0f0e0" : "#f5f5f5", borderRadius: "4px", cursor: "pointer" }}>
-                        <input type="checkbox" checked={form.allowedButtonIds.includes(opt.id)} onChange={() => setForm({ ...form, allowedButtonIds: toggleArrayItem(form.allowedButtonIds, opt.id) })} />
-                        {opt.name}
-                      </label>
-                    ))}
-                  </div>
-                </s-stack>
-              )}
-
-              {/* Allowed Anti-Skid Options */}
-              {!form.enableMultiPiece && form.showAntiSkidSection && antiSkidOptions.length > 0 && (
-                <s-stack direction="block" gap="base">
-                  <s-text fontWeight="semibold">Allowed Anti-Skid Options</s-text>
-                  <s-text tone="subdued">Leave all unchecked to show all anti-skid options</s-text>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                    {antiSkidOptions.map((opt) => (
-                      <label key={opt.id} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", background: form.allowedAntiSkidIds.includes(opt.id) ? "#e0f0e0" : "#f5f5f5", borderRadius: "4px", cursor: "pointer" }}>
-                        <input type="checkbox" checked={form.allowedAntiSkidIds.includes(opt.id)} onChange={() => setForm({ ...form, allowedAntiSkidIds: toggleArrayItem(form.allowedAntiSkidIds, opt.id) })} />
-                        {opt.name}
-                      </label>
-                    ))}
-                  </div>
-                </s-stack>
-              )}
-
-              {/* Allowed Ties Options */}
-              {!form.enableMultiPiece && form.showTiesSection && tiesOptions.length > 0 && (
-                <s-stack direction="block" gap="base">
-                  <s-text fontWeight="semibold">Allowed Ties Options</s-text>
-                  <s-text tone="subdued">Leave all unchecked to show all ties options</s-text>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                    {tiesOptions.map((opt) => (
-                      <label key={opt.id} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", background: form.allowedTiesIds.includes(opt.id) ? "#e0f0e0" : "#f5f5f5", borderRadius: "4px", cursor: "pointer" }}>
-                        <input type="checkbox" checked={form.allowedTiesIds.includes(opt.id)} onChange={() => setForm({ ...form, allowedTiesIds: toggleArrayItem(form.allowedTiesIds, opt.id) })} />
-                        {opt.name}
-                      </label>
-                    ))}
-                  </div>
-                </s-stack>
-              )}
-
-              {/* Allowed Design Options */}
-              {form.showDesignSection && designOptions.length > 0 && (
-                <s-stack direction="block" gap="base">
-                  <s-text fontWeight="semibold">Allowed Design Options</s-text>
-                  <s-text tone="subdued">Leave all unchecked to show all design options</s-text>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                    {designOptions.map((opt) => (
-                      <label key={opt.id} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", background: form.allowedDesignIds.includes(opt.id) ? "#e0f0e0" : "#f5f5f5", borderRadius: "4px", cursor: "pointer" }}>
-                        <input type="checkbox" checked={form.allowedDesignIds.includes(opt.id)} onChange={() => setForm({ ...form, allowedDesignIds: toggleArrayItem(form.allowedDesignIds, opt.id) })} />
-                        {opt.name}
-                      </label>
-                    ))}
-                  </div>
-                </s-stack>
-              )}
-
-              {/* Allowed Fabric Ties Options */}
-              {!form.enableMultiPiece && form.showFabricTiesSection && fabricTiesOptions.length > 0 && (
-                <s-stack direction="block" gap="base">
-                  <s-text fontWeight="semibold">Allowed Fabric Ties Options</s-text>
-                  <s-text tone="subdued">Leave all unchecked to show all fabric ties options</s-text>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                    {fabricTiesOptions.map((opt) => (
-                      <label key={opt.id} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", background: form.allowedFabricTiesIds.includes(opt.id) ? "#e0f0e0" : "#f5f5f5", borderRadius: "4px", cursor: "pointer" }}>
-                        <input type="checkbox" checked={form.allowedFabricTiesIds.includes(opt.id)} onChange={() => setForm({ ...form, allowedFabricTiesIds: toggleArrayItem(form.allowedFabricTiesIds, opt.id) })} />
-                        {opt.name}
-                      </label>
-                    ))}
-                  </div>
-                </s-stack>
-              )}
-
-              {/* Allowed Bottom Rod Pocket Options */}
-              {!form.enableMultiPiece && form.showRodPocketSection && rodPocketOptions.length > 0 && (
-                <s-stack direction="block" gap="base">
-                  <s-text fontWeight="semibold">Allowed Bottom Rod Pocket Options</s-text>
-                  <s-text tone="subdued">Leave all unchecked to show all bottom rod pocket options</s-text>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                    {rodPocketOptions.map((opt) => (
-                      <label key={opt.id} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", background: form.allowedRodPocketIds.includes(opt.id) ? "#e0f0e0" : "#f5f5f5", borderRadius: "4px", cursor: "pointer" }}>
-                        <input type="checkbox" checked={form.allowedRodPocketIds.includes(opt.id)} onChange={() => setForm({ ...form, allowedRodPocketIds: toggleArrayItem(form.allowedRodPocketIds, opt.id) })} />
-                        {opt.name}
-                      </label>
-                    ))}
-                  </div>
-                </s-stack>
-              )}
-
-              {/* Allowed Drawstring Options */}
-              {!form.enableMultiPiece && form.showDrawstringSection && drawstringOptions.length > 0 && (
-                <s-stack direction="block" gap="base">
-                  <s-text fontWeight="semibold">Allowed Drawstring Options</s-text>
-                  <s-text tone="subdued">Leave all unchecked to show all drawstring options</s-text>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                    {drawstringOptions.map((opt) => (
-                      <label key={opt.id} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", background: form.allowedDrawstringIds.includes(opt.id) ? "#e0f0e0" : "#f5f5f5", borderRadius: "4px", cursor: "pointer" }}>
-                        <input type="checkbox" checked={form.allowedDrawstringIds.includes(opt.id)} onChange={() => setForm({ ...form, allowedDrawstringIds: toggleArrayItem(form.allowedDrawstringIds, opt.id) })} />
-                        {opt.name}
-                      </label>
-                    ))}
-                  </div>
-                </s-stack>
-              )}
-
-              {/* Settings */}
-              <s-stack direction="block" gap="base">
-                <s-text fontWeight="semibold">Profile Settings</s-text>
-                <s-text-field
-                  label="Sort Order"
+            <div className="cc-card">
+              <div className="cc-card__head"><h2>List position</h2></div>
+              <div className="cc-card__body">
+                <TextField
+                  id="profile-sort"
+                  label="Sort order"
                   type="number"
                   value={form.sortOrder}
-                  onChange={(e) => setForm({ ...form, sortOrder: parseInt(e.target.value) || 0 })}
+                  onChange={(v) => setField("sortOrder", parseInt(v) || 0)}
+                  help="Lower numbers appear first."
                 />
-                <div style={{ display: "flex", gap: "20px" }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
-                    Active
-                  </label>
-                  <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <input type="checkbox" checked={form.isDefault} onChange={(e) => setForm({ ...form, isDefault: e.target.checked })} />
-                    Default Profile (used when no profile is assigned)
-                  </label>
-                </div>
-              </s-stack>
+              </div>
+            </div>
 
-              {/* Actions */}
-              <s-stack direction="inline" gap="base">
-                <s-button onClick={submit}>{editing ? "Update Profile" : "Create Profile"}</s-button>
-                <s-button variant="tertiary" onClick={() => { setShowForm(false); reset(); }}>Cancel</s-button>
-              </s-stack>
-            </s-stack>
-          </s-box>
-        </s-section>
-      )}
+            {editing && (
+              <button type="button" className="cc-btn cc-btn--critical" style={{ justifySelf: "start" }} onClick={() => setDeleteTarget(editing)}>
+                Delete profile
+              </button>
+            )}
+          </div>
+        </div>
 
-      <s-section heading={`Profiles (${profiles.length})`}>
-        {profiles.length === 0 ? (
-          <s-box padding="base">
-            <s-paragraph>No profiles yet. Create your first profile to customize calculator options per product.</s-paragraph>
-          </s-box>
-        ) : (
-          <s-stack direction="block" gap="base">
-            {profiles.map((profile) => (
-              <s-box key={profile.id} padding="base" borderWidth="base" borderRadius="base" background={profile.isActive ? "default" : "subdued"}>
-                <s-stack direction="block" gap="tight">
-                  <s-stack direction="inline" gap="base" align="center" wrap>
-                    <s-stack direction="block" gap="tight" style={{ flex: 1 }}>
-                      <s-stack direction="inline" gap="tight" align="center">
-                        <s-text fontWeight="semibold">{profile.name}</s-text>
-                        {profile.isDefault && <span style={{ background: "#5c6ac4", color: "white", padding: "2px 8px", borderRadius: "4px", fontSize: "12px" }}>Default</span>}
-                        {!profile.isActive && <span style={{ background: "#999", color: "white", padding: "2px 8px", borderRadius: "4px", fontSize: "12px" }}>Inactive</span>}
-                        {profile.additionalPercent > 0 && <span style={{ background: "#e0f0e0", color: "#2e7d32", padding: "2px 8px", borderRadius: "4px", fontSize: "12px" }}>+{profile.additionalPercent}%</span>}
-                        {profile.enableMultiPiece && <span style={{ background: "#fff3e0", color: "#e65100", padding: "2px 8px", borderRadius: "4px", fontSize: "12px" }}>{profile.pieces?.length || 0} pieces</span>}
-                      </s-stack>
-                      {profile.description && <s-text tone="subdued">{profile.description}</s-text>}
-                      <s-text tone="subdued" fontSize="small">Sections: {getSectionSummary(profile)}</s-text>
-                      <s-text tone="subdued" fontSize="small">Profile ID: <code style={{ background: "#f0f0f0", padding: "2px 6px", borderRadius: "3px" }}>{profile.id}</code></s-text>
-                    </s-stack>
-                    <s-stack direction="inline" gap="tight">
-                      <s-button variant="tertiary" onClick={() => handleEdit(profile)}>Edit</s-button>
-                      <s-button variant="tertiary" tone="critical" onClick={() => handleDelete(profile.id)}>Delete</s-button>
-                    </s-stack>
-                  </s-stack>
-                </s-stack>
-              </s-box>
-            ))}
-          </s-stack>
-        )}
-      </s-section>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, borderTop: "1px solid var(--cc-border)", paddingTop: 16 }}>
+          <button type="button" className="cc-btn" onClick={handleBack}>Cancel</button>
+          <button type="button" className="cc-btn cc-btn--primary" onClick={submit}>{editing ? "Save" : "Create profile"}</button>
+        </div>
+      </div>
+
+      <ConfirmModal
+        open={confirmLeave}
+        title="Leave without saving?"
+        confirmLabel="Discard changes"
+        onCancel={() => setConfirmLeave(false)}
+        onConfirm={closeEditor}
+      >
+        <p className="cc-p">Your changes to this profile will be lost.</p>
+      </ConfirmModal>
+      {duplicateModal}
+      {deleteModal}
     </s-page>
   );
 }
