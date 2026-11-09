@@ -176,8 +176,16 @@ CushionCalculator.prototype.calculatePrice = function() {
     drawstringPct: drawstringPct, drawstringCost: drawstringCost,
     profilePct: profilePct, profileCost: profileCost,
     shippingPct: shippingPct, shippingCost: shippingCost, labourPct: labourPct, labourCost: labourCost,
-    flatRateApplied: flatRateApplied,
+    flatRateApplied: flatRateApplied, flatThreshold: flatThreshold, shippingLabourBase: shippingLabourBase,
     preTotalUnit: preTotalUnit, marginPct: marginPct, marginAmt: marginAmt,
+    fabricDiscountPct: fabricDiscountPct, fillDiscountPct: fillDiscountPct,
+    // Inputs shown next to each breakdown line (debug pricing)
+    detail: {
+      shape: this.selectedShape, dimensions: dimensions, isWeatherproof: !!(isWeatherproof && this.selectedShape.surfaceAreaWithoutBaseFormula),
+      surfaceArea: surfaceArea, volume: volume, conversionMultiplier: conversionMultiplier,
+      fabric: effectiveFabric, fill: effectiveFill, design: effectiveDesign, piping: effectivePiping, button: effectiveButton,
+      antiSkid: effectiveAntiSkid, rodPocket: effectiveRodPocket, drawstring: effectiveDrawstring, ties: effectiveTies, fabricTies: effectiveFabricTies
+    },
     discountPct: totalDiscountPct, discountAmt: discountAmt,
     isCoversOnly: isCoversOnly, coversOnlyDeduction: coversOnlyDeduction,
     panelCount: effectivePanelCount,
@@ -345,6 +353,19 @@ CushionCalculator.prototype.calculateMultiPiecePrice = function() {
       shippingCost: pieceShippingCost,
       labourCost: pieceLabourCost,
       flatRateApplied: pieceFlatRateApplied,
+      // Inputs shown next to each breakdown line (debug pricing)
+      pieceBase: pieceBase,
+      shippingLabourBase: pieceShippingLabourBase,
+      surfaceArea: surfaceArea,
+      volume: volume,
+      isWeatherproof: !!(isWeatherproof && piece.shape.surfaceAreaWithoutBaseFormula),
+      dimensionsText: (piece.shape.inputFields || []).filter(function(fl) { return piece.dimensions[fl.key]; })
+        .map(function(fl) { return (fl.label || fl.key) + ' ' + piece.dimensions[fl.key] + '"'; }).join(' × '),
+      fabricName: effectiveFabric ? effectiveFabric.name : '',
+      fabricRate: effectiveFabric ? effectiveFabric.pricePerSqInch : 0,
+      fillRate: (fillVisible && piece.fill) ? piece.fill.pricePerCubicInch : 0,
+      tiesPrice: (tiesVisible && piece.ties) ? piece.ties.price : 0,
+      fabricTiesPrice: (fabricTiesVisible && piece.fabricTies) ? piece.fabricTies.price : 0,
       preMargin: piecePreMargin,
       marginPct: pieceMarginPct,
       marginAmt: pieceMarginAmt,
@@ -377,6 +398,8 @@ CushionCalculator.prototype.calculateMultiPiecePrice = function() {
   this.updateMultiPiecePriceDisplay({
     pieceBreakdowns: pieceBreakdowns,
     piecesSubtotal: totalPiecesSubtotal,
+    conversionMultiplier: conversionMultiplier,
+    flatThreshold: flatThreshold,
     profilePct: profilePct,
     shippingPct: shippingPct,
     labourPct: labourPct,
@@ -389,6 +412,15 @@ CushionCalculator.prototype.calculateMultiPiecePrice = function() {
 CushionCalculator.prototype.updateMultiPiecePriceDisplay = function(d) {
   var blockId = this.blockId;
   var f = function(v) { return '$' + (parseFloat(v) || 0).toFixed(2); };
+  var num = function(v, dp) { return (parseFloat(v) || 0).toLocaleString('en-US', { maximumFractionDigits: dp }); };
+  var rate = function(v) { return '$' + num(v, 4); };
+  var conv = num(d.conversionMultiplier || 1, 4);
+  // Muted second line under a breakdown label showing the configuration and inputs behind it
+  var det = function(text) {
+    if (!text) return '';
+    var safe = String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return '<span class="kraft2026zion-bd-detail">' + safe + '</span>';
+  };
 
   // Update main price displays
   document.getElementById('live-price-' + blockId).textContent = f(d.total || 0);
@@ -410,39 +442,55 @@ CushionCalculator.prototype.updateMultiPiecePriceDisplay = function(d) {
 
         // Raw costs section
         html += '<div class="kraft2026zion-mp-detail-section">Raw Costs</div>';
-        html += '<div class="kraft2026zion-mp-detail-row"><span>Fabric Cost</span><span>' + f(pb.fabricCost) + '</span></div>';
-        html += '<div class="kraft2026zion-mp-detail-row"><span>Fill Cost' + (pb.fillName ? ' (' + pb.fillName + ')' : '') + '</span><span>' + f(pb.fillCost) + '</span></div>';
+        var pieceBaseText = f(pb.pieceBase);
+        html += '<div class="kraft2026zion-mp-detail-row"><span>Shape' + det(pb.shapeName + (pb.dimensionsText ? ' · ' + pb.dimensionsText : '')) + '</span><span></span></div>';
+        html += '<div class="kraft2026zion-mp-detail-row"><span>Fabric Cost' + det(pb.fabricName
+          ? pb.fabricName + ' · ' + num(pb.surfaceArea, 2) + ' sq in' + (pb.isWeatherproof ? ' (no base)' : '') + ' × ' + rate(pb.fabricRate) + '/sq in × ' + conv
+          : 'No fabric') + '</span><span>' + f(pb.fabricCost) + '</span></div>';
+        html += '<div class="kraft2026zion-mp-detail-row"><span>Fill Cost' + (pb.fillName ? ' (' + pb.fillName + ')' : '') + det(pb.fillCost > 0
+          ? num(pb.volume, 2) + ' cu in × ' + rate(pb.fillRate) + '/cu in × ' + conv
+          : '') + '</span><span>' + f(pb.fillCost) + '</span></div>';
+        if (pb.designCost > 0) {
+          html += '<div class="kraft2026zion-mp-detail-row"><span>Design' + (pb.designName ? ' (' + pb.designName + ')' : '') + ' ' + pb.designPct + '%' + det(pb.designPct + '% of fabric ' + f(pb.fabricCost)) + '</span><span>' + f(pb.designCost) + '</span></div>';
+        }
         if (pb.pipingCost > 0) {
-          html += '<div class="kraft2026zion-mp-detail-row"><span>Piping' + (pb.pipingName ? ' (' + pb.pipingName + ')' : '') + ' ' + pb.pipingPct + '%</span><span>' + f(pb.pipingCost) + '</span></div>';
+          html += '<div class="kraft2026zion-mp-detail-row"><span>Piping' + (pb.pipingName ? ' (' + pb.pipingName + ')' : '') + ' ' + pb.pipingPct + '%' + det(pb.pipingPct + '% of ' + pieceBaseText) + '</span><span>' + f(pb.pipingCost) + '</span></div>';
         }
         if (pb.buttonCost > 0) {
-          html += '<div class="kraft2026zion-mp-detail-row"><span>Button' + (pb.buttonName ? ' (' + pb.buttonName + ')' : '') + ' ' + pb.buttonPct + '%</span><span>' + f(pb.buttonCost) + '</span></div>';
+          html += '<div class="kraft2026zion-mp-detail-row"><span>Button' + (pb.buttonName ? ' (' + pb.buttonName + ')' : '') + ' ' + pb.buttonPct + '%' + det(pb.buttonPct + '% of ' + pieceBaseText) + '</span><span>' + f(pb.buttonCost) + '</span></div>';
         }
         if (pb.antiSkidCost > 0) {
-          html += '<div class="kraft2026zion-mp-detail-row"><span>Anti-Skid' + (pb.antiSkidName ? ' (' + pb.antiSkidName + ')' : '') + ' ' + pb.antiSkidPct + '%</span><span>' + f(pb.antiSkidCost) + '</span></div>';
+          html += '<div class="kraft2026zion-mp-detail-row"><span>Anti-Skid' + (pb.antiSkidName ? ' (' + pb.antiSkidName + ')' : '') + ' ' + pb.antiSkidPct + '%' + det(pb.antiSkidPct + '% of ' + pieceBaseText) + '</span><span>' + f(pb.antiSkidCost) + '</span></div>';
         }
         if (pb.tiesCost > 0) {
-          html += '<div class="kraft2026zion-mp-detail-row"><span>Ties' + (pb.tiesName ? ' (' + pb.tiesName + ')' : '') + '</span><span>' + f(pb.tiesCost) + '</span></div>';
+          html += '<div class="kraft2026zion-mp-detail-row"><span>Ties' + (pb.tiesName ? ' (' + pb.tiesName + ')' : '') + det(f(pb.tiesPrice) + ' × ' + conv) + '</span><span>' + f(pb.tiesCost) + '</span></div>';
+        }
+        if (pb.fabricTiesCost > 0) {
+          html += '<div class="kraft2026zion-mp-detail-row"><span>Fabric Ties' + (pb.fabricTiesName ? ' (' + pb.fabricTiesName + ')' : '') + det(f(pb.fabricTiesPrice) + ' × ' + conv) + '</span><span>' + f(pb.fabricTiesCost) + '</span></div>';
+        }
+        if (pb.rodPocketCost > 0) {
+          html += '<div class="kraft2026zion-mp-detail-row"><span>Rod Pocket' + (pb.rodPocketName ? ' (' + pb.rodPocketName + ')' : '') + ' ' + pb.rodPocketPct + '%' + det(pb.rodPocketPct + '% of ' + pieceBaseText) + '</span><span>' + f(pb.rodPocketCost) + '</span></div>';
         }
         if (pb.drawstringCost > 0) {
-          html += '<div class="kraft2026zion-mp-detail-row"><span>Drawstring' + (pb.drawstringName ? ' (' + pb.drawstringName + ')' : '') + ' ' + pb.drawstringPct + '%</span><span>' + f(pb.drawstringCost) + '</span></div>';
+          html += '<div class="kraft2026zion-mp-detail-row"><span>Drawstring' + (pb.drawstringName ? ' (' + pb.drawstringName + ')' : '') + ' ' + pb.drawstringPct + '%' + det(pb.drawstringPct + '% of ' + pieceBaseText) + '</span><span>' + f(pb.drawstringCost) + '</span></div>';
         }
         html += '<div class="kraft2026zion-mp-detail-row mp-detail-subtotal"><span>Piece Subtotal</span><span>' + f(pb.subtotal) + '</span></div>';
 
         // Markups section
         html += '<div class="kraft2026zion-mp-detail-section">Markups</div>';
         if ((d.profilePct || 0) > 0) {
-          html += '<div class="kraft2026zion-mp-detail-row"><span>Profile (' + d.profilePct + '%)</span><span>+' + f(pb.profileCost) + '</span></div>';
+          html += '<div class="kraft2026zion-mp-detail-row"><span>Profile (' + d.profilePct + '%)' + det(d.profilePct + '% of ' + pieceBaseText + ' (fabric + fill)') + '</span><span>+' + f(pb.profileCost) + '</span></div>';
         }
         var shipLabel = pb.flatRateApplied ? 'flat' : (d.shippingPct || 0) + '%';
         var labourLabel = pb.flatRateApplied ? 'flat' : (d.labourPct || 0) + '%';
-        html += '<div class="kraft2026zion-mp-detail-row"><span>Shipping (' + shipLabel + ')</span><span>+' + f(pb.shippingCost) + '</span></div>';
-        html += '<div class="kraft2026zion-mp-detail-row"><span>Labour (' + labourLabel + ')</span><span>+' + f(pb.labourCost) + '</span></div>';
+        var flatText = pb.flatRateApplied ? 'fabric + fill ' + pieceBaseText + ' is under ' + f(d.flatThreshold) + ', so flat rate' : '';
+        html += '<div class="kraft2026zion-mp-detail-row"><span>Shipping (' + shipLabel + ')' + det(flatText || ((d.shippingPct || 0) + '% of ' + f(pb.shippingLabourBase))) + '</span><span>+' + f(pb.shippingCost) + '</span></div>';
+        html += '<div class="kraft2026zion-mp-detail-row"><span>Labour (' + labourLabel + ')' + det(flatText || ((d.labourPct || 0) + '% of ' + f(pb.shippingLabourBase))) + '</span><span>+' + f(pb.labourCost) + '</span></div>';
         html += '<div class="kraft2026zion-mp-detail-row mp-detail-subtotal"><span>Pre-Margin</span><span>' + f(pb.preMargin) + '</span></div>';
 
         if ((pb.marginPct || 0) !== 0) {
           var sign = pb.marginPct > 0 ? '+' : '';
-          html += '<div class="kraft2026zion-mp-detail-row"><span>Margin (' + sign + pb.marginPct.toFixed(1) + '%)</span><span>' + (pb.marginAmt >= 0 ? '+' : '') + f(pb.marginAmt) + '</span></div>';
+          html += '<div class="kraft2026zion-mp-detail-row"><span>Margin (' + sign + pb.marginPct.toFixed(2) + '%)' + det('of ' + f(pb.preMargin)) + '</span><span>' + (pb.marginAmt >= 0 ? '+' : '') + f(pb.marginAmt) + '</span></div>';
         }
 
         // Deductions section (if any)
@@ -450,7 +498,7 @@ CushionCalculator.prototype.updateMultiPiecePriceDisplay = function(d) {
         if (hasDeductions) {
           html += '<div class="kraft2026zion-mp-detail-section">Deductions</div>';
           if (pb.isCoversOnly) {
-            html += '<div class="kraft2026zion-mp-detail-row mp-detail-discount"><span>Covers Only (-30%)</span><span>-' + f(pb.coversOnlyDeduction) + '</span></div>';
+            html += '<div class="kraft2026zion-mp-detail-row mp-detail-discount"><span>Covers Only (-30%)' + det('30% of ' + pieceBaseText + ' (fabric + fill)') + '</span><span>-' + f(pb.coversOnlyDeduction) + '</span></div>';
           }
           if ((pb.fabricDiscountAmt || 0) > 0) {
             html += '<div class="kraft2026zion-mp-detail-row mp-detail-discount"><span>Fabric Discount (' + pb.fabricDiscountPct + '%)</span><span>-' + f(pb.fabricDiscountAmt) + '</span></div>';
@@ -614,6 +662,7 @@ CushionCalculator.prototype.updatePriceDisplay = function(d) {
   }
   document.getElementById('bd-qty-' + blockId).textContent = d.qty || 1;
   document.getElementById('bd-total-' + blockId).textContent = f(d.total);
+  this.updateBreakdownDetails(d);
   var vis = this.config.sectionVisibility || {};
   var fabricOk = vis.showFabricSection === false || this.selectedFabric || (this.config.hiddenValues && this.config.hiddenValues.fabric);
   var canAdd = this.selectedShape && (this.selectedFill || (this.config.hiddenValues && this.config.hiddenValues.fillType)) && fabricOk && (d.baseSubtotal || 0) > 0;
@@ -625,4 +674,73 @@ CushionCalculator.prototype.updatePriceDisplay = function(d) {
   if (floatingPrice) floatingPrice.textContent = f(d.total || 0);
   if (floatingAddBtn) floatingAddBtn.disabled = !canAdd;
   this.syncFloatingFooter();
+};
+
+// Writes the exact configuration and inputs next to each single-piece breakdown line
+// (e.g. "Fabric Cost — Brown Leather · 412.5 sq in × $0.0241 × 1.325"), so the price
+// can be checked without scrolling back up to the selections.
+CushionCalculator.prototype.updateBreakdownDetails = function(d) {
+  var blockId = this.blockId;
+  var x = d.detail;
+  var f = function(v) { return '$' + (parseFloat(v) || 0).toFixed(2); };
+  var num = function(v, dp) { return (parseFloat(v) || 0).toLocaleString('en-US', { maximumFractionDigits: dp }); };
+  var rate = function(v) { return '$' + num(v, 4); };
+  var name = function(o) { return o && o.name ? o.name : ''; };
+
+  // Put the detail on its own muted line under the label of the row holding valueId
+  var setDetail = function(valueId, text) {
+    var valueEl = document.getElementById(valueId + '-' + blockId);
+    var label = valueEl && valueEl.parentNode ? valueEl.parentNode.firstElementChild : null;
+    if (!label || label === valueEl) return;
+    var el = label.querySelector('.kraft2026zion-bd-detail');
+    if (!el) {
+      el = document.createElement('span');
+      el.className = 'kraft2026zion-bd-detail';
+      label.appendChild(el);
+    }
+    el.textContent = text || '';
+    el.style.display = text ? 'block' : 'none';
+  };
+
+  if (!x) {
+    ['bd-fabric', 'bd-fill', 'bd-subtotal', 'bd-design', 'bd-piping', 'bd-button', 'bd-antiskid', 'bd-rodpocket',
+     'bd-drawstring', 'bd-ties', 'bd-fabricties', 'bd-profile', 'bd-shipping', 'bd-labour', 'bd-margin',
+     'bd-discount', 'bd-coversonly', 'bd-total'].forEach(function(id) { setDetail(id, ''); });
+    return;
+  }
+
+  var conv = num(x.conversionMultiplier, 4);
+  var base = d.baseSubtotal || 0;
+  var dimStr = (x.shape.inputFields || []).filter(function(fl) { return x.dimensions[fl.key]; })
+    .map(function(fl) { return (fl.label || fl.key) + ' ' + x.dimensions[fl.key] + '"'; }).join(' × ');
+
+  setDetail('bd-fabric', x.fabric
+    ? name(x.fabric) + ' · ' + num(x.surfaceArea, 2) + ' sq in' + (x.isWeatherproof ? ' (no base)' : '') + ' × ' + rate(x.fabric.pricePerSqInch) + '/sq in × ' + conv
+    : 'No fabric');
+  setDetail('bd-fill', x.fill
+    ? name(x.fill) + ' · ' + num(x.volume, 2) + ' cu in × ' + rate(x.fill.pricePerCubicInch) + '/cu in × ' + conv
+    : 'No fill');
+  setDetail('bd-subtotal', name(x.shape) + (dimStr ? ' · ' + dimStr : ''));
+  setDetail('bd-design', name(x.design) + ' · ' + (d.designPct || 0) + '% of fabric ' + f(d.fabricCost));
+  setDetail('bd-piping', name(x.piping) + ' · ' + (d.pipingPct || 0) + '% of ' + f(base));
+  setDetail('bd-button', name(x.button) + ' · ' + (d.buttonPct || 0) + '% of ' + f(base));
+  setDetail('bd-antiskid', name(x.antiSkid) + ' · ' + (d.antiSkidPct || 0) + '% of ' + f(base));
+  setDetail('bd-rodpocket', name(x.rodPocket) + ' · ' + (d.rodPocketPct || 0) + '% of ' + f(base));
+  setDetail('bd-drawstring', name(x.drawstring) + ' · ' + (d.drawstringPct || 0) + '% of ' + f(base));
+  setDetail('bd-ties', x.ties ? name(x.ties) + ' · ' + f(x.ties.price) + ' × ' + conv : '');
+  setDetail('bd-fabricties', x.fabricTies ? name(x.fabricTies) + ' · ' + f(x.fabricTies.price) + ' × ' + conv : '');
+  setDetail('bd-profile', (d.profilePct || 0) + '% of ' + f(base) + ' (fabric + fill)');
+  var shipLabourText = d.flatRateApplied
+    ? 'fabric + fill ' + f(base) + ' is under ' + f(d.flatThreshold) + ', so flat rate'
+    : null;
+  setDetail('bd-shipping', shipLabourText || ((d.shippingPct || 0) + '% of ' + f(d.shippingLabourBase)));
+  setDetail('bd-labour', shipLabourText || ((d.labourPct || 0) + '% of ' + f(d.shippingLabourBase)));
+  setDetail('bd-margin', 'of ' + f(d.preTotalUnit));
+  var discountParts = [];
+  if (d.fabricDiscountPct) discountParts.push('fabric ' + d.fabricDiscountPct + '%');
+  if (d.fillDiscountPct) discountParts.push('fill ' + d.fillDiscountPct + '%');
+  setDetail('bd-discount', discountParts.length ? discountParts.join(' + ') + ' of ' + f(d.preTotalUnit + (d.marginAmt || 0)) : '');
+  setDetail('bd-coversonly', d.isCoversOnly ? '30% of ' + f(base) + ' (fabric + fill)' : '');
+  var panels = d.panelCount || 1;
+  setDetail('bd-total', f((d.unitTotal || 0) / panels) + (panels > 1 ? ' × ' + panels + ' panels' : '') + ' × ' + (d.qty || 1));
 };
