@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { SaveBar } from "@shopify/app-bridge-react";
 
 // Shared building blocks for admin pages. Styles live in app/styles/admin-ui.css.
 
@@ -168,5 +169,46 @@ export function EmptyState({ title, children, action }) {
       {children && <span>{children}</span>}
       {action}
     </div>
+  );
+}
+
+// Tracks unsaved edits in an editor: snapshots `value` when the editor opens and reports
+// whether it has changed since. Pass the editor's open flag and everything it submits.
+export function useUnsavedChanges(open, value) {
+  const current = JSON.stringify(value);
+  const [snapshot, setSnapshot] = useState(null);
+  useEffect(() => {
+    if (open && snapshot === null) setSnapshot(current);
+    else if (!open && snapshot !== null) setSnapshot(null);
+  }, [open, current, snapshot]);
+  return open && snapshot !== null && snapshot !== current;
+}
+
+// Shopify's contextual save bar for an editor. While `dirty` is true:
+// - the admin blocks navigation away (sidebar, title-bar back) and asks before leaving,
+// - Discard asks for confirmation before throwing changes away,
+// - refreshing or closing the tab shows the browser's "leave site?" warning.
+// Keep it mounted in every view of the page (list and editor) so it can close itself;
+// an open save bar that is unmounted stays stuck on screen.
+export function UnsavedChangesBar({ id, dirty, onSave, onDiscard }) {
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+  return (
+    <SaveBar id={id} open={!!dirty} discardConfirmation>
+      <button variant="primary" onClick={onSave}>Save</button>
+      <button onClick={onDiscard}>Discard</button>
+    </SaveBar>
+  );
+}
+
+export function LeaveConfirmModal({ open, onStay, onLeave }) {
+  return (
+    <ConfirmModal open={open} title="Leave without saving?" confirmLabel="Discard changes" onCancel={onStay} onConfirm={onLeave}>
+      <p className="cc-p">You have unsaved changes. If you leave now, they will be discarded.</p>
+    </ConfirmModal>
   );
 }

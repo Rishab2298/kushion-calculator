@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { useLoaderData, useFetcher, useSearchParams } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
-import { Badge, StatusBadge, TextField, SelectField, Checkbox, Modal, ConfirmModal, BackButton, Thumb, EmptyState } from "../components/admin-ui";
+import { Badge, StatusBadge, TextField, SelectField, Checkbox, Modal, ConfirmModal, BackButton, Thumb, EmptyState, useUnsavedChanges, UnsavedChangesBar, LeaveConfirmModal } from "../components/admin-ui";
 import prisma from "../db.server";
 import { invalidateConfigCache } from "./api.calculator-config";
 
@@ -649,6 +649,14 @@ export default function Fabrics() {
     setShowFabricModal(false);
   };
 
+  const fabricDirty = useUnsavedChanges(showFabricModal, fabricData);
+  const [confirmLeaveFabric, setConfirmLeaveFabric] = useState(false);
+  const closeFabricEditor = () => { setConfirmLeaveFabric(false); setShowFabricModal(false); };
+  // Back/Cancel ask before discarding unsaved edits.
+  const handleFabricBack = () => { if (fabricDirty) setConfirmLeaveFabric(true); else closeFabricEditor(); };
+  // Kept as the first child of <s-page> in both views so the save bar stays mounted and can close.
+  const fabricSaveBar = <UnsavedChangesBar id="fabric-save-bar" dirty={fabricDirty} onSave={submitFabric} onDiscard={closeFabricEditor} />;
+
   const deleteFabric = (id, afterDelete) => {
     askConfirm({
       title: "Delete this fabric?",
@@ -1001,9 +1009,10 @@ export default function Fabrics() {
     const price = parseFloat(fabricData.pricePerSqInch);
     return (
       <s-page heading={editingFabric ? editingFabric.name : "New fabric"} inlineSize="large">
+        {fabricSaveBar}
         <div className="cc-page">
           <div className="cc-header">
-            <BackButton onClick={() => setShowFabricModal(false)} label="Back to fabrics" />
+            <BackButton onClick={handleFabricBack} label="Back to fabrics" />
             <h1>{fabricData.name || (editingFabric ? "Untitled fabric" : "New fabric")}</h1>
             <StatusBadge active={fabricData.isActive} />
             {fabricData.isDefault && <Badge tone="info">Default</Badge>}
@@ -1174,11 +1183,12 @@ export default function Fabrics() {
           </div>
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, borderTop: "1px solid var(--cc-border)", paddingTop: 16 }}>
-            <button type="button" className="cc-btn" onClick={() => setShowFabricModal(false)}>Cancel</button>
+            <button type="button" className="cc-btn" onClick={handleFabricBack}>Cancel</button>
             <button type="button" className="cc-btn cc-btn--primary" onClick={submitFabric}>{editingFabric ? "Save" : "Create fabric"}</button>
           </div>
         </div>
         {confirmModal}
+        <LeaveConfirmModal open={confirmLeaveFabric} onStay={() => setConfirmLeaveFabric(false)} onLeave={closeFabricEditor} />
       </s-page>
     );
   }
@@ -1247,6 +1257,7 @@ export default function Fabrics() {
 
   return (
     <s-page heading="Fabrics" inlineSize="large">
+      {fabricSaveBar}
       {primaryAction && (
         <s-button slot="primary-action" variant="primary" onClick={primaryAction[1]}>{primaryAction[0]}</s-button>
       )}

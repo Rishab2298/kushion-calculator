@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useLoaderData, useFetcher } from "react-router";
-import { useAppBridge, SaveBar } from "@shopify/app-bridge-react";
+import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { invalidateConfigCache } from "./api.calculator-config";
 import { cleanupExistingCustomVariants } from "../lib/variant-cleanup.server";
-import { Badge, Checkbox, TextField, ConfirmModal } from "../components/admin-ui";
+import { Badge, Checkbox, TextField, ConfirmModal, UnsavedChangesBar } from "../components/admin-ui";
 
 export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
@@ -306,10 +306,7 @@ export default function Settings() {
 
   return (
     <s-page heading="Settings" inlineSize="large">
-      <SaveBar id="settings-save-bar" open={isDirty}>
-        <button variant="primary" onClick={handleSave}>Save</button>
-        <button onClick={handleDiscard}>Discard</button>
-      </SaveBar>
+      <UnsavedChangesBar id="settings-save-bar" dirty={isDirty} onSave={handleSave} onDiscard={handleDiscard} />
       <s-button slot="primary-action" variant="primary" onClick={handleSave}>
         Save
       </s-button>

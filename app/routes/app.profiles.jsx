@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLoaderData, useFetcher } from "react-router";
-import { useAppBridge, SaveBar } from "@shopify/app-bridge-react";
+import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { invalidateConfigCache } from "./api.calculator-config";
-import { Badge, StatusBadge, Switch, TextField, SelectField, Checkbox, Modal, ConfirmModal, Chevron, BackButton, EmptyState } from "../components/admin-ui";
+import { Badge, StatusBadge, Switch, TextField, SelectField, Checkbox, Modal, ConfirmModal, Chevron, BackButton, EmptyState, UnsavedChangesBar, LeaveConfirmModal } from "../components/admin-ui";
 
 export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
@@ -569,6 +569,8 @@ export default function Profiles() {
   };
 
   const closeEditor = () => {
+    // Belt and braces: make sure the App Bridge save bar is closed whenever the editor closes.
+    Promise.resolve(shopify.saveBar?.hide?.("profile-save-bar")).catch(() => {});
     setShowForm(false);
     setConfirmLeave(false);
     reset();
@@ -723,7 +725,8 @@ export default function Profiles() {
     setDupSource(profile);
     setDupName(base);
     setDupInactive(false);
-    setDupOpen(true);
+    // Opening the copy replaces the editor, so don't default to it while there are unsaved edits.
+    setDupOpen(!isDirty);
     setDupError("");
   };
 
@@ -757,8 +760,7 @@ export default function Profiles() {
     if (pendingDuplicate.open) {
       handleEdit(copy);
     } else {
-      setShowForm(false);
-      reset();
+      // Stay where the merchant is; if they're in the editor, their unsaved edits are kept.
       setFlashId(copy.id);
       setTimeout(() => setFlashId(null), 2200);
     }
@@ -935,7 +937,7 @@ export default function Profiles() {
         </div>
         <span className="cc-help">
           The copy gets a new profile ID, so no products use it until you assign it. It is never the default profile.
-          {isDirty && editing?.id === dupSource.id ? " Unsaved changes in the editor are not copied." : ""}
+          {isDirty ? " Your unsaved changes in the editor are not copied, and opening the copy discards them." : ""}
         </span>
         <Checkbox id="dup-inactive" checked={dupInactive} onChange={setDupInactive} label="Start as inactive" />
         <Checkbox id="dup-open" checked={dupOpen} onChange={setDupOpen} label="Open the copy for editing" />
@@ -955,12 +957,17 @@ export default function Profiles() {
     </ConfirmModal>
   );
 
+  // Rendered as the first child of <s-page> in both the list and the editor so it stays mounted:
+  // unmounting an open App Bridge save bar leaves it stuck on screen after saving.
+  const saveBar = <UnsavedChangesBar id="profile-save-bar" dirty={isDirty} onSave={submit} onDiscard={closeEditor} />;
+
   if (!showForm) {
     const tab = (key, label) => (
       <button type="button" className="cc-tab" aria-pressed={filter === key} onClick={() => setFilter(key)}>{label}</button>
     );
     return (
       <s-page heading="Calculator Profiles" inlineSize="large">
+        {saveBar}
         <s-button slot="primary-action" variant="primary" onClick={handleAdd}>Add profile</s-button>
         <div className="cc-page">
           <div className="cc-card">
@@ -1060,10 +1067,7 @@ export default function Profiles() {
 
   return (
     <s-page heading={editing ? editing.name : "New profile"} inlineSize="large">
-      <SaveBar id="profile-save-bar" open={isDirty}>
-        <button variant="primary" onClick={submit}>Save</button>
-        <button onClick={closeEditor}>Discard</button>
-      </SaveBar>
+      {saveBar}
 
       <div className="cc-page">
         <div className="cc-header">
@@ -1241,15 +1245,7 @@ export default function Profiles() {
         </div>
       </div>
 
-      <ConfirmModal
-        open={confirmLeave}
-        title="Leave without saving?"
-        confirmLabel="Discard changes"
-        onCancel={() => setConfirmLeave(false)}
-        onConfirm={closeEditor}
-      >
-        <p className="cc-p">Your changes to this profile will be lost.</p>
-      </ConfirmModal>
+      <LeaveConfirmModal open={confirmLeave} onStay={() => setConfirmLeave(false)} onLeave={closeEditor} />
       {duplicateModal}
       {deleteModal}
     </s-page>

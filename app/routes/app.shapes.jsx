@@ -3,7 +3,7 @@ import { useLoaderData, useFetcher } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
-import { Badge, StatusBadge, TextField, Checkbox, ConfirmModal, BackButton, Thumb, EmptyState } from "../components/admin-ui";
+import { Badge, StatusBadge, TextField, Checkbox, ConfirmModal, BackButton, Thumb, EmptyState, useUnsavedChanges, UnsavedChangesBar, LeaveConfirmModal } from "../components/admin-ui";
 
 export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
@@ -241,7 +241,13 @@ export default function Shapes() {
   };
 
   const handleAdd = () => { resetForm(); setShowForm(true); };
-  const handleBack = () => { setShowForm(false); resetForm(); };
+  const isDirty = useUnsavedChanges(showForm, { formData, inputFields });
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const closeEditor = () => { setConfirmLeave(false); setShowForm(false); resetForm(); };
+  // Back/Cancel ask before discarding unsaved edits.
+  const handleBack = () => { if (isDirty) setConfirmLeave(true); else closeEditor(); };
+  // Kept as the first child of <s-page> in both views so the save bar stays mounted and can close.
+  const saveBar = <UnsavedChangesBar id="shape-save-bar" dirty={isDirty} onSave={handleSubmit} onDiscard={closeEditor} />;
 
   const deleteModal = (
     <ConfirmModal
@@ -260,6 +266,7 @@ export default function Shapes() {
   if (!showForm) {
     return (
       <s-page heading="Shape Builder" inlineSize="large">
+        {saveBar}
         <s-button slot="primary-action" variant="primary" onClick={handleAdd}>
           Add shape
         </s-button>
@@ -351,6 +358,7 @@ export default function Shapes() {
   // ---- editor ----
   return (
     <s-page heading={editingShape ? editingShape.name : "New shape"} inlineSize="large">
+      {saveBar}
       <div className="cc-page">
         <div className="cc-header">
           <BackButton onClick={handleBack} label="Back to shapes" />
@@ -612,6 +620,7 @@ export default function Shapes() {
           <button type="button" className="cc-btn cc-btn--primary" onClick={handleSubmit}>{editingShape ? "Save" : "Create shape"}</button>
         </div>
       </div>
+      <LeaveConfirmModal open={confirmLeave} onStay={() => setConfirmLeave(false)} onLeave={closeEditor} />
       {deleteModal}
     </s-page>
   );
