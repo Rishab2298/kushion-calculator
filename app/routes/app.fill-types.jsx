@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useLoaderData, useFetcher } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
+import { Badge, StatusBadge, TextField, Checkbox, Modal, ConfirmModal, Thumb, EmptyState } from "../components/admin-ui";
 
 export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
@@ -143,176 +144,224 @@ export default function FillTypes() {
     resetForm();
   };
 
+  const [deleteTarget, setDeleteTarget] = useState(null);
+
   const handleDelete = (id) => {
-    if (confirm("Delete this fill type?")) {
-      const data = new FormData();
-      data.append("intent", "delete");
-      data.append("id", id);
-      fetcher.submit(data, { method: "POST" });
-      shopify.toast.show("Fill type deleted");
-    }
+    const data = new FormData();
+    data.append("intent", "delete");
+    data.append("id", id);
+    fetcher.submit(data, { method: "POST" });
+    shopify.toast.show("Fill type deleted");
   };
 
+  const confirmDelete = () => {
+    if (deleteTarget) handleDelete(deleteTarget.id);
+    setDeleteTarget(null);
+  };
+
+  // Stable so the modal doesn't re-focus its first field on every keystroke.
+  const closeForm = useCallback(() => {
+    setShowForm(false);
+    setEditing(null);
+  }, []);
+
+  const handleAdd = () => { resetForm(); setShowForm(true); };
+
   return (
-    <s-page heading="Fill Types" fullWidth>
-      <s-button slot="primary-action" onClick={() => { resetForm(); setShowForm(true); }}>
-        Add Fill Type
+    <s-page heading="Fill Types" inlineSize="large">
+      <s-button slot="primary-action" variant="primary" onClick={handleAdd}>
+        Add fill type
       </s-button>
 
-      {showForm && (
-        <s-section heading={editing ? "Edit Fill Type" : "Add Fill Type"}>
-          <s-box padding="base" borderWidth="base" borderRadius="base">
-            <s-stack direction="block" gap="base">
-              <s-text-field
-                label="Fill Name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., Polyfill, Memory Foam, Microfiber"
-                required
-              />
+      <div className="cc-page">
+        <div className="cc-card">
+          <div className="cc-card__head">
+            <h2>Fill types</h2>
+            <span className="cc-card__meta">{fillTypes.length}</span>
+          </div>
+          <div className="cc-card__flush" style={{ paddingTop: 10 }}>
+            {fillTypes.length === 0 ? (
+              <EmptyState
+                title="No fill types yet"
+                action={<button type="button" className="cc-btn cc-btn--primary" onClick={handleAdd}>Add fill type</button>}
+              >
+                Add the fill materials customers can choose, such as polyfill or foam.
+              </EmptyState>
+            ) : (
+              <div className="cc-table-wrap">
+                <table className="cc-table">
+                  <thead>
+                    <tr>
+                      <th>Fill type</th>
+                      <th>Price per cubic inch</th>
+                      <th>Discount</th>
+                      <th>Sort order</th>
+                      <th>Status</th>
+                      <th><span className="cc-visually-hidden">Actions</span></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fillTypes.map((item) => (
+                      <tr
+                        key={item.id}
+                        className={`cc-clickable${item.isActive ? "" : " cc-row--inactive"}`}
+                        tabIndex={0}
+                        onClick={() => handleEdit(item)}
+                        onKeyDown={(e) => { if (e.key === "Enter" && e.target === e.currentTarget) handleEdit(item); }}
+                      >
+                        <td>
+                          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                            <Thumb src={item.imageUrl} alt={item.name} />
+                            <div style={{ minWidth: 0 }}>
+                              <div className="cc-name">{item.name}</div>
+                              {item.description && <div className="cc-muted cc-small">{item.description}</div>}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="cc-num">${item.pricePerCubicInch.toFixed(4)}</td>
+                        <td className="cc-num">
+                          {item.discountEnabled && item.discountPercent > 0
+                            ? <Badge tone="success">−{item.discountPercent}%</Badge>
+                            : <span className="cc-muted">—</span>}
+                        </td>
+                        <td className="cc-num">{item.sortOrder}</td>
+                        <td>
+                          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                            <StatusBadge active={item.isActive} />
+                            {item.isDefault && <Badge tone="info">Default</Badge>}
+                          </div>
+                        </td>
+                        <td onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                          <div className="cc-rowact">
+                            <button type="button" className="cc-btn cc-btn--plain cc-btn--critical" onClick={() => setDeleteTarget(item)}>Delete</button>
+                            <button type="button" className="cc-btn" onClick={() => handleEdit(item)}>Edit</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
 
-              <s-text-field
-                label="Image URL"
-                value={formData.imageUrl}
-                onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                placeholder="https://example.com/fill-image.jpg"
-              />
+        <p className="cc-p cc-muted cc-small">
+          Fill cost is the cushion’s volume × the price per cubic inch. For example, 200 cubic inches × $0.02 = $4.00.
+        </p>
+      </div>
 
-              <s-text-field
-                label="Price per Cubic Inch (USD)"
-                type="number"
-                value={formData.pricePerCubicInch}
-                onChange={(e) => setFormData({ ...formData, pricePerCubicInch: e.target.value })}
-                placeholder="0.02"
-                step="0.001"
-                prefix="$"
-                required
-              />
+      <Modal
+        open={showForm}
+        title={editing ? `Edit ${editing.name}` : "Add fill type"}
+        onClose={closeForm}
+        footer={
+          <>
+            <button type="button" className="cc-btn" onClick={closeForm}>Cancel</button>
+            <button type="button" className="cc-btn cc-btn--primary" onClick={handleSubmit}>{editing ? "Save" : "Create fill type"}</button>
+          </>
+        }
+      >
+        <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
+          <Thumb src={formData.imageUrl} alt={formData.name} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <TextField
+              id="fill-name"
+              label="Fill name"
+              value={formData.name}
+              onChange={(v) => setFormData({ ...formData, name: v })}
+              placeholder="e.g. Polyfill, Memory foam, Microfiber"
+              required
+            />
+          </div>
+        </div>
 
-              <s-text-field
-                label="Description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Soft and comfortable fill material"
-              />
+        <TextField
+          id="fill-image"
+          label="Image URL"
+          value={formData.imageUrl}
+          onChange={(v) => setFormData({ ...formData, imageUrl: v })}
+          placeholder="https://example.com/fill-image.jpg"
+        />
 
-              <s-text-field
-                label="Sort Order"
-                type="number"
-                value={formData.sortOrder}
-                onChange={(e) => setFormData({ ...formData, sortOrder: parseInt(e.target.value) || 0 })}
-              />
+        <TextField
+          id="fill-description"
+          label="Description"
+          value={formData.description}
+          onChange={(v) => setFormData({ ...formData, description: v })}
+          placeholder="Soft and comfortable fill material"
+        />
 
-              <s-box padding="base" borderWidth="base" borderRadius="base" background="subdued">
-                <s-stack direction="block" gap="tight">
-                  <s-stack direction="inline" gap="base">
-                    <input
-                      type="checkbox"
-                      id="discountEnabled"
-                      checked={formData.discountEnabled}
-                      onChange={(e) => setFormData({ ...formData, discountEnabled: e.target.checked })}
-                    />
-                    <label htmlFor="discountEnabled" style={{ fontWeight: 500 }}>Enable Discount from Total</label>
-                  </s-stack>
-                  {formData.discountEnabled && (
-                    <s-text-field
-                      label="Discount Percentage"
-                      type="number"
-                      value={formData.discountPercent}
-                      onChange={(e) => setFormData({ ...formData, discountPercent: parseFloat(e.target.value) || 0 })}
-                      placeholder="e.g., 10"
-                      step="0.1"
-                      min="0"
-                      max="100"
-                      suffix="%"
-                    />
-                  )}
-                  <s-text fontSize="small" tone="subdued">
-                    When enabled, this percentage is deducted from the final total price.
-                  </s-text>
-                </s-stack>
-              </s-box>
+        <div className="cc-row2">
+          <TextField
+            id="fill-price"
+            label="Price per cubic inch ($)"
+            type="number"
+            value={formData.pricePerCubicInch}
+            onChange={(v) => setFormData({ ...formData, pricePerCubicInch: v })}
+            placeholder="0.02"
+            step="0.001"
+            help="Fill cost = volume × this price."
+            required
+          />
+          <TextField
+            id="fill-sort"
+            label="Sort order"
+            type="number"
+            value={formData.sortOrder}
+            onChange={(v) => setFormData({ ...formData, sortOrder: parseInt(v) || 0 })}
+            help="Lower numbers appear first."
+          />
+        </div>
 
-              <s-stack direction="inline" gap="loose">
-                <s-stack direction="inline" gap="base">
-                  <input
-                    type="checkbox"
-                    id="fillActive"
-                    checked={formData.isActive}
-                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                  />
-                  <label htmlFor="fillActive">Active</label>
-                </s-stack>
-                <s-stack direction="inline" gap="base">
-                  <input
-                    type="checkbox"
-                    id="fillDefault"
-                    checked={formData.isDefault}
-                    onChange={(e) => setFormData({ ...formData, isDefault: e.target.checked })}
-                  />
-                  <label htmlFor="fillDefault">Set as Default (pre-selected for customers)</label>
-                </s-stack>
-              </s-stack>
+        <div style={{ display: "grid", gap: 8, background: "var(--cc-surface-2)", border: "1px solid var(--cc-border)", borderRadius: 10, padding: 12 }}>
+          <Checkbox
+            id="discountEnabled"
+            checked={formData.discountEnabled}
+            onChange={(v) => setFormData({ ...formData, discountEnabled: v })}
+            label="Discount the total"
+            help="When on, this percentage is taken off the final total price."
+          />
+          {formData.discountEnabled && (
+            <TextField
+              id="fill-discount"
+              label="Discount (%)"
+              type="number"
+              value={formData.discountPercent}
+              onChange={(v) => setFormData({ ...formData, discountPercent: parseFloat(v) || 0 })}
+              placeholder="e.g. 10"
+              step="0.1"
+              min="0"
+              max="100"
+            />
+          )}
+        </div>
 
-              <s-stack direction="inline" gap="base">
-                <s-button onClick={handleSubmit}>{editing ? "Update" : "Create"}</s-button>
-                <s-button variant="tertiary" onClick={() => { setShowForm(false); resetForm(); }}>Cancel</s-button>
-              </s-stack>
-            </s-stack>
-          </s-box>
-        </s-section>
-      )}
+        <Checkbox
+          id="fillActive"
+          checked={formData.isActive}
+          onChange={(v) => setFormData({ ...formData, isActive: v })}
+          label="Active"
+          help="Inactive fill types are hidden from customers."
+        />
+        <Checkbox
+          id="fillDefault"
+          checked={formData.isDefault}
+          onChange={(v) => setFormData({ ...formData, isDefault: v })}
+          label="Default"
+          help="Pre-selected for customers. Only one fill type can be the default."
+        />
+      </Modal>
 
-      <s-section heading={`Fill Types (${fillTypes.length})`}>
-        {fillTypes.length === 0 ? (
-          <s-box padding="base">
-            <s-paragraph>No fill types created yet.</s-paragraph>
-          </s-box>
-        ) : (
-          <s-stack direction="block" gap="base">
-            {fillTypes.map((item) => (
-              <s-box key={item.id} padding="base" borderWidth="base" borderRadius="base" background={item.isActive ? "default" : "subdued"}>
-                <s-stack direction="inline" gap="base" align="center" wrap>
-                  {item.imageUrl ? (
-                    <img src={item.imageUrl} alt={item.name} style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 6 }} />
-                  ) : (
-                    <div style={{ width: 60, height: 60, background: "#f0f0f0", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#999" }}>No image</div>
-                  )}
-
-                  <s-stack direction="block" gap="tight" style={{ flex: 1 }}>
-                    <s-stack direction="inline" gap="tight" align="center">
-                      <s-text fontWeight="semibold">{item.name}</s-text>
-                      {item.isDefault && <s-badge tone="info">Default</s-badge>}
-                      {item.discountEnabled && item.discountPercent > 0 && (
-                        <s-badge tone="success">-{item.discountPercent}%</s-badge>
-                      )}
-                    </s-stack>
-                    <s-text tone="subdued">${item.pricePerCubicInch.toFixed(4)} / cubic inch</s-text>
-                    {item.description && <s-text fontSize="small" tone="subdued">{item.description}</s-text>}
-                  </s-stack>
-
-                  <s-stack direction="inline" gap="tight">
-                    <s-button variant="tertiary" onClick={() => handleEdit(item)}>Edit</s-button>
-                    <s-button variant="tertiary" tone="critical" onClick={() => handleDelete(item.id)}>Delete</s-button>
-                  </s-stack>
-                </s-stack>
-              </s-box>
-            ))}
-          </s-stack>
-        )}
-      </s-section>
-
-      <s-section slot="aside" heading="Pricing Info">
-        <s-box padding="base">
-          <s-paragraph>
-            Fill cost is calculated as:<br/>
-            <s-text fontWeight="semibold">Volume × Price per Cubic Inch</s-text>
-          </s-paragraph>
-          <s-paragraph style={{ marginTop: 12 }}>
-            Example: 200 cubic inches × $0.02 = $4.00
-          </s-paragraph>
-        </s-box>
-      </s-section>
+      <ConfirmModal
+        open={!!deleteTarget}
+        title={`Delete “${deleteTarget?.name}”?`}
+        confirmLabel="Delete fill type"
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+      >
+        <p className="cc-p">Customers will no longer be able to choose this fill. This can’t be undone.</p>
+      </ConfirmModal>
     </s-page>
   );
 }

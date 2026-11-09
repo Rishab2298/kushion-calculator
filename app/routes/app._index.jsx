@@ -2,6 +2,7 @@ import { useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
+import { Badge } from "../components/admin-ui";
 
 export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
@@ -59,187 +60,236 @@ export default function Index() {
 
   const isConfigured = (count) => count > 0;
 
+  // Required for the calculator to work; missing ones are flagged.
+  const coreItems = [
+    { key: "shapes", name: "Shapes", href: "/app/shapes", noun: "shapes", desc: "Cushion shapes with area and volume formulas" },
+    { key: "fillTypes", name: "Fill types", href: "/app/fill-types", noun: "fill types", desc: "Fill options priced per cubic inch" },
+    { key: "fabrics", name: "Fabrics", href: "/app/fabrics", noun: "fabrics", desc: "Fabric categories and swatches priced per square inch" },
+  ];
+  const pricingItems = [
+    { key: "profiles", name: "Profiles", href: "/app/profiles", noun: "profiles", desc: "Choose which options each product shows" },
+    { key: "priceTiers", name: "Price margins", href: "/app/margins", noun: "tiers", desc: "Margin adjustments by price range" },
+  ];
+  const addOnItems = [
+    { key: "piping", name: "Piping", href: "/app/piping", noun: "options" },
+    { key: "buttonStyle", name: "Button style", href: "/app/button-style", noun: "options" },
+    { key: "antiSkid", name: "Anti-skid bottom", href: "/app/anti-skid", noun: "options" },
+    { key: "ties", name: "Ties", href: "/app/ties", noun: "options" },
+    { key: null, name: "Design", href: "/app/design" },
+    { key: null, name: "Bottom rod pocket", href: "/app/rod-pocket" },
+    { key: null, name: "Drawstring", href: "/app/drawstring" },
+    { key: null, name: "Fabric ties", href: "/app/fabric-ties" },
+  ];
+
+  const coreDone = coreItems.filter((i) => isConfigured(counts[i.key])).length;
+  const coreReady = coreDone === coreItems.length;
+
+  const statusFor = (item, required) => {
+    if (!item.key) return <span className="cc-muted">—</span>;
+    if (isConfigured(counts[item.key])) return <Badge tone="success">Set up</Badge>;
+    return required ? <Badge tone="critical">Not set up</Badge> : <Badge>None yet</Badge>;
+  };
+
+  const renderRows = (items, required) => (
+    <div className="cc-table-wrap">
+      <table className="cc-table" style={{ minWidth: 0 }}>
+        <tbody>
+          {items.map((item) => (
+            <tr key={item.href}>
+              <td>
+                <div className="cc-name">{item.name}</div>
+                {item.desc && <div className="cc-muted cc-small">{item.desc}</div>}
+              </td>
+              <td className="cc-num cc-muted" style={{ whiteSpace: "nowrap" }}>
+                {item.key ? `${counts[item.key]} ${item.noun}` : ""}
+              </td>
+              <td style={{ width: 1, whiteSpace: "nowrap" }}>{statusFor(item, required)}</td>
+              <td style={{ width: 1, whiteSpace: "nowrap", textAlign: "right" }}>
+                <s-link href={item.href}>Manage</s-link>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const steps = [
+    {
+      title: "Create shapes",
+      body: "Define cushion shapes (rectangle, circle, etc.) with formulas for surface area and volume. Each shape can have its own input fields (length, width, radius, etc.).",
+      href: "/app/shapes",
+    },
+    {
+      title: "Add fill types",
+      body: "Create fill options (polyfill, memory foam, etc.) priced per cubic inch. Customers pick their preferred fill.",
+      href: "/app/fill-types",
+    },
+    {
+      title: "Configure fabrics",
+      body: "Add fabric categories and individual fabrics priced per square inch. Upload swatch images for visual selection.",
+      href: "/app/fabrics",
+    },
+    {
+      title: "Add optional features",
+      body: "Set up piping and button/tufting styles with fixed prices. These are optional add-ons customers can select.",
+      href: "/app/piping",
+    },
+  ];
+
   return (
-    <s-page heading="Cushion Calculator" fullWidth>
-      <s-button slot="primary-action" href="/app/shapes">
-        Get Started
+    <s-page heading="Cushion Calculator" inlineSize="large">
+      <s-button slot="primary-action" variant="primary" href="/app/shapes">
+        Get started
       </s-button>
 
-      <s-section heading="Welcome">
-        <s-paragraph>
-          Create a fully customizable cushion price calculator for your store.
-          Customers can select shapes, dimensions, fabrics, fill types, and more
-          to get instant pricing.
-        </s-paragraph>
-      </s-section>
+      <div className="cc-page">
+        <div className="cc-card">
+          <div className="cc-card__body" style={{ paddingTop: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <strong style={{ fontSize: 16 }}>Welcome</strong>
+              {coreReady ? <Badge tone="success">Ready to use</Badge> : <Badge tone="warning">Setup incomplete</Badge>}
+              <span className="cc-spacer" />
+              <span className="cc-muted cc-small cc-num">{coreDone} of {coreItems.length} required steps done</span>
+            </div>
+            <p className="cc-p cc-muted">
+              Create a fully customizable cushion price calculator for your store. Customers select shapes,
+              dimensions, fabrics, fill types and more to get instant pricing.
+            </p>
+            <div
+              aria-hidden="true"
+              style={{ height: 6, borderRadius: 999, background: "var(--cc-surface-3)", overflow: "hidden" }}
+            >
+              <div
+                style={{
+                  width: `${(coreDone / coreItems.length) * 100}%`,
+                  height: "100%",
+                  background: "var(--cc-on)",
+                  borderRadius: 999,
+                }}
+              />
+            </div>
+          </div>
+        </div>
 
-      <s-section heading="Configuration Status">
-        <s-box padding="base">
-          <s-stack direction="block" gap="base">
-            <s-stack direction="inline" gap="tight" align="center">
-              <s-text tone={isConfigured(counts.shapes) ? "success" : "critical"}>
-                {isConfigured(counts.shapes) ? "✓" : "○"}
-              </s-text>
-              <s-text>
-                Shapes: {counts.shapes} configured
-              </s-text>
-              <s-link href="/app/shapes">Manage</s-link>
-            </s-stack>
+        <div className="cc-layout">
+          <div className="cc-main">
+            <div className="cc-card">
+              <div className="cc-card__head">
+                <h2>Required setup</h2>
+                <span className="cc-card__meta">Needed for the calculator to price cushions</span>
+              </div>
+              <div className="cc-card__flush">{renderRows(coreItems, true)}</div>
+            </div>
 
-            <s-stack direction="inline" gap="tight" align="center">
-              <s-text tone={isConfigured(counts.fillTypes) ? "success" : "critical"}>
-                {isConfigured(counts.fillTypes) ? "✓" : "○"}
-              </s-text>
-              <s-text>
-                Fill Types: {counts.fillTypes} configured
-              </s-text>
-              <s-link href="/app/fill-types">Manage</s-link>
-            </s-stack>
+            <div className="cc-card">
+              <div className="cc-card__head"><h2>Profiles and pricing</h2></div>
+              <div className="cc-card__flush">{renderRows(pricingItems, false)}</div>
+            </div>
 
-            <s-stack direction="inline" gap="tight" align="center">
-              <s-text tone={isConfigured(counts.fabrics) ? "success" : "critical"}>
-                {isConfigured(counts.fabrics) ? "✓" : "○"}
-              </s-text>
-              <s-text>
-                Fabrics: {counts.fabrics} configured
-              </s-text>
-              <s-link href="/app/fabrics">Manage</s-link>
-            </s-stack>
+            <div className="cc-card">
+              <div className="cc-card__head">
+                <h2>Optional add-ons</h2>
+                <span className="cc-card__meta">Extras customers can choose</span>
+              </div>
+              <div className="cc-card__flush">{renderRows(addOnItems, false)}</div>
+            </div>
 
-            <s-stack direction="inline" gap="tight" align="center">
-              <s-text tone={isConfigured(counts.piping) ? "success" : "subdued"}>
-                {isConfigured(counts.piping) ? "✓" : "○"}
-              </s-text>
-              <s-text>
-                Piping Options: {counts.piping} configured
-              </s-text>
-              <s-link href="/app/piping">Manage</s-link>
-            </s-stack>
+            <div className="cc-card">
+              <div className="cc-card__head"><h2>Quick setup guide</h2></div>
+              <div className="cc-card__body">
+                <ol style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 14 }}>
+                  {steps.map((step, i) => (
+                    <li key={step.title} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                      <span
+                        aria-hidden="true"
+                        className="cc-num"
+                        style={{
+                          flex: "none", width: 24, height: 24, borderRadius: 999, display: "grid", placeItems: "center",
+                          background: "var(--cc-surface-3)", fontWeight: 650, fontSize: 12,
+                        }}
+                      >
+                        {i + 1}
+                      </span>
+                      <div style={{ display: "grid", gap: 2 }}>
+                        <span>
+                          <strong>{step.title}</strong>{" "}
+                          <s-link href={step.href}>Open</s-link>
+                        </span>
+                        <span className="cc-muted">{step.body}</span>
+                      </div>
+                    </li>
+                  ))}
+                  <li style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                    <span
+                      aria-hidden="true"
+                      className="cc-num"
+                      style={{
+                        flex: "none", width: 24, height: 24, borderRadius: 999, display: "grid", placeItems: "center",
+                        background: "var(--cc-surface-3)", fontWeight: 650, fontSize: 12,
+                      }}
+                    >
+                      {steps.length + 1}
+                    </span>
+                    <div style={{ display: "grid", gap: 2 }}>
+                      <strong>Add to your theme</strong>
+                      <span className="cc-muted">
+                        Go to <strong>Online Store → Themes → Customize</strong>. On a product page, click{" "}
+                        <strong>Add block</strong> and select <strong>Cushion Calculator</strong>.
+                      </span>
+                    </div>
+                  </li>
+                </ol>
+              </div>
+            </div>
+          </div>
 
-            <s-stack direction="inline" gap="tight" align="center">
-              <s-text tone={isConfigured(counts.buttonStyle) ? "success" : "subdued"}>
-                {isConfigured(counts.buttonStyle) ? "✓" : "○"}
-              </s-text>
-              <s-text>
-                Button Style: {counts.buttonStyle} configured
-              </s-text>
-              <s-link href="/app/button-style">Manage</s-link>
-            </s-stack>
+          <div className="cc-side">
+            <div className="cc-card">
+              <div className="cc-card__head"><h2>Shortcuts</h2></div>
+              <div className="cc-card__body" style={{ gap: 8 }}>
+                <s-link href="/app/settings">Settings</s-link>
+                <s-link href="/app/profiles">Profiles</s-link>
+                <s-link href="/app/margins">Price margins</s-link>
+                <s-link href="/app/documentation">Documentation</s-link>
+              </div>
+            </div>
 
-            <s-stack direction="inline" gap="tight" align="center">
-              <s-text tone={isConfigured(counts.antiSkid) ? "success" : "subdued"}>
-                {isConfigured(counts.antiSkid) ? "✓" : "○"}
-              </s-text>
-              <s-text>
-                Anti-Skid Bottom: {counts.antiSkid} configured
-              </s-text>
-              <s-link href="/app/anti-skid">Manage</s-link>
-            </s-stack>
+            <div className="cc-card">
+              <div className="cc-card__head"><h2>Pricing formula</h2></div>
+              <div className="cc-card__body">
+                <div className="cc-calc" style={{ gap: 6 }}>
+                  <div style={{ display: "grid" }}><strong>Fabric cost</strong><span className="cc-muted">= surface area × $/sq inch</span></div>
+                  <div style={{ display: "grid" }}><strong>Fill cost</strong><span className="cc-muted">= volume × $/cubic inch</span></div>
+                  <div style={{ display: "grid" }}><strong>Add-ons</strong><span className="cc-muted">+ piping + button options</span></div>
+                  <div className="cc-calc__total" style={{ display: "grid" }}><strong>Final price</strong><span className="cc-muted" style={{ fontWeight: 400 }}>= subtotal × tier adjustment</span></div>
+                </div>
+              </div>
+            </div>
 
-            <s-stack direction="inline" gap="tight" align="center">
-              <s-text tone={isConfigured(counts.ties) ? "success" : "subdued"}>
-                {isConfigured(counts.ties) ? "✓" : "○"}
-              </s-text>
-              <s-text>
-                Ties: {counts.ties} configured
-              </s-text>
-              <s-link href="/app/ties">Manage</s-link>
-            </s-stack>
-
-            <s-stack direction="inline" gap="tight" align="center">
-              <s-text tone={isConfigured(counts.profiles) ? "success" : "subdued"}>
-                {isConfigured(counts.profiles) ? "✓" : "○"}
-              </s-text>
-              <s-text>
-                Profiles: {counts.profiles} configured
-              </s-text>
-              <s-link href="/app/profiles">Manage</s-link>
-            </s-stack>
-
-            <s-stack direction="inline" gap="tight" align="center">
-              <s-text tone={isConfigured(counts.priceTiers) ? "success" : "subdued"}>
-                {isConfigured(counts.priceTiers) ? "✓" : "○"}
-              </s-text>
-              <s-text>
-                Price Margins: {counts.priceTiers} tiers configured
-              </s-text>
-              <s-link href="/app/margins">Manage</s-link>
-            </s-stack>
-          </s-stack>
-        </s-box>
-      </s-section>
-
-      <s-section heading="Quick Setup Guide">
-        <s-box padding="base">
-          <s-stack direction="block" gap="base">
-            <s-heading level="4">1. Create Shapes</s-heading>
-            <s-paragraph>
-              Define cushion shapes (Rectangle, Circle, etc.) with custom formulas
-              for surface area and volume calculations. Each shape can have custom
-              input fields (Length, Width, Radius, etc.).
-            </s-paragraph>
-
-            <s-heading level="4">2. Add Fill Types</s-heading>
-            <s-paragraph>
-              Create fill options (Polyfill, Memory Foam, etc.) with pricing per
-              cubic inch. Customers will select their preferred fill type.
-            </s-paragraph>
-
-            <s-heading level="4">3. Configure Fabrics</s-heading>
-            <s-paragraph>
-              Add fabric categories and individual fabrics with pricing per square
-              inch. Upload swatch images for visual selection.
-            </s-paragraph>
-
-            <s-heading level="4">4. Add Optional Features</s-heading>
-            <s-paragraph>
-              Set up piping options and button/tufting styles with fixed prices.
-              These are optional add-ons customers can select.
-            </s-paragraph>
-
-            <s-heading level="4">5. Add to Theme</s-heading>
-            <s-paragraph>
-              Go to <s-text fontWeight="semibold">Online Store → Themes → Customize</s-text>.
-              On a product page, click <s-text fontWeight="semibold">Add block</s-text> and
-              select <s-text fontWeight="semibold">Cushion Calculator</s-text>.
-            </s-paragraph>
-          </s-stack>
-        </s-box>
-      </s-section>
-
-      <s-section slot="aside" heading="Calculator Features">
-        <s-box padding="base">
-          <s-unordered-list>
-            <s-list-item>7-step accordion interface</s-list-item>
-            <s-list-item>Custom shape builder with formulas</s-list-item>
-            <s-list-item>Dynamic dimension inputs</s-list-item>
-            <s-list-item>Fabric categories with swatches</s-list-item>
-            <s-list-item>Multiple fill type options</s-list-item>
-            <s-list-item>Piping and button add-ons</s-list-item>
-            <s-list-item>Live price calculations</s-list-item>
-            <s-list-item>Price tier adjustments</s-list-item>
-            <s-list-item>Add to cart with line item properties</s-list-item>
-          </s-unordered-list>
-        </s-box>
-      </s-section>
-
-      <s-section slot="aside" heading="Pricing Formula">
-        <s-box padding="base">
-          <s-stack direction="block" gap="tight">
-            <s-text fontWeight="semibold">Fabric Cost</s-text>
-            <s-text fontSize="small">= Surface Area × $/sq inch</s-text>
-            <s-text fontWeight="semibold" style={{ marginTop: 8 }}>Fill Cost</s-text>
-            <s-text fontSize="small">= Volume × $/cubic inch</s-text>
-            <s-text fontWeight="semibold" style={{ marginTop: 8 }}>Add-ons</s-text>
-            <s-text fontSize="small">+ Piping + Button options</s-text>
-            <s-text fontWeight="semibold" style={{ marginTop: 8 }}>Final Price</s-text>
-            <s-text fontSize="small">= Subtotal × Tier Adjustment</s-text>
-          </s-stack>
-        </s-box>
-      </s-section>
+            <div className="cc-card">
+              <div className="cc-card__head"><h2>Calculator features</h2></div>
+              <div className="cc-card__body">
+                <ul className="cc-small" style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 4 }}>
+                  <li>7-step accordion interface</li>
+                  <li>Custom shape builder with formulas</li>
+                  <li>Dynamic dimension inputs</li>
+                  <li>Fabric categories with swatches</li>
+                  <li>Multiple fill type options</li>
+                  <li>Piping and button add-ons</li>
+                  <li>Live price calculations</li>
+                  <li>Price tier adjustments</li>
+                  <li>Add to cart with line item properties</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </s-page>
   );
 }
+
 
 export const headers = (headersArgs) => {
   return boundary.headers(headersArgs);

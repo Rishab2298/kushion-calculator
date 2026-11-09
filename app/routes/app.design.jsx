@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useLoaderData, useFetcher } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
+import { Badge, StatusBadge, TextField, TextArea, Checkbox, Modal, ConfirmModal, Thumb, EmptyState } from "../components/admin-ui";
 
 export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
@@ -74,6 +75,7 @@ export default function Design() {
 
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
     imageUrl: "",
@@ -123,13 +125,16 @@ export default function Design() {
   };
 
   const handleDelete = (id) => {
-    if (confirm("Delete this design option?")) {
-      const data = new FormData();
-      data.append("intent", "delete");
-      data.append("id", id);
-      fetcher.submit(data, { method: "POST" });
-      shopify.toast.show("Design option deleted");
-    }
+    const data = new FormData();
+    data.append("intent", "delete");
+    data.append("id", id);
+    fetcher.submit(data, { method: "POST" });
+    shopify.toast.show("Design option deleted");
+  };
+
+  const confirmDelete = () => {
+    if (deleteTarget) handleDelete(deleteTarget.id);
+    setDeleteTarget(null);
   };
 
   const handleSetDefault = (id) => {
@@ -140,138 +145,167 @@ export default function Design() {
     shopify.toast.show("Default design option updated");
   };
 
+  const handleAdd = () => { resetForm(); setShowForm(true); };
+
+  // Stable reference so the modal doesn't refocus its first field on every keystroke.
+  const closeForm = useCallback(() => {
+    setShowForm(false);
+    setFormData({
+      name: "",
+      imageUrl: "",
+      percent: 0,
+      description: "",
+      isActive: true,
+      isDefault: false,
+      sortOrder: designOptions.length,
+    });
+    setEditingItem(null);
+  }, [designOptions.length]);
+
+  const setField = (field, value) => setFormData((f) => ({ ...f, [field]: value }));
+
   return (
-    <s-page heading="Design Options" fullWidth>
-      <s-button slot="primary-action" onClick={() => { resetForm(); setShowForm(true); }}>
-        Add Design Option
+    <s-page heading="Design options" inlineSize="large">
+      <s-button slot="primary-action" variant="primary" onClick={handleAdd}>
+        Add design option
       </s-button>
 
-      <s-section>
-        <s-box padding="base" background="subdued" borderRadius="base">
-          <s-text>Design options add a percentage of the fabric cost to the total. This is useful for patterned or custom designs that require extra work.</s-text>
-        </s-box>
-      </s-section>
+      <div className="cc-page">
+        <div className="cc-banner">
+          Design options add a percentage of the fabric cost to the total. This is useful for patterned or custom designs that require extra work.
+        </div>
+        <div className="cc-card">
+          {designOptions.length === 0 ? (
+            <EmptyState
+              title="No design options yet"
+              action={<button type="button" className="cc-btn cc-btn--primary" onClick={handleAdd}>Add design option</button>}
+            >
+              Add a design option customers can choose in the calculator.
+            </EmptyState>
+          ) : (
+            <div className="cc-table-wrap">
+              <table className="cc-table">
+                <thead>
+                  <tr>
+                    <th>Option</th>
+                    <th>Price</th>
+                    <th>Status</th>
+                    <th><span className="cc-visually-hidden">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {designOptions.map((item) => (
+                    <tr
+                      key={item.id}
+                      className={`cc-clickable${item.isActive ? "" : " cc-row--inactive"}`}
+                      tabIndex={0}
+                      onClick={() => handleEdit(item)}
+                      onKeyDown={(e) => { if (e.key === "Enter" && e.target === e.currentTarget) handleEdit(item); }}
+                    >
+                      <td>
+                        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                          <Thumb src={item.imageUrl} alt={item.name} />
+                          <div style={{ minWidth: 0 }}>
+                            <span className="cc-name">{item.name}</span>
+                            {item.description && <div className="cc-muted cc-small">{item.description}</div>}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="cc-num">{item.percent}% <span className="cc-muted">of fabric cost</span></td>
+                      <td>
+                        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                          <StatusBadge active={item.isActive} />
+                          {item.isDefault && <Badge tone="info">Default</Badge>}
+                        </div>
+                      </td>
+                      <td onClick={(e) => e.stopPropagation()}>
+                        <div className="cc-rowact">
+                          {!item.isDefault && (
+                            <button type="button" className="cc-btn cc-btn--plain" onClick={() => handleSetDefault(item.id)}>Set as default</button>
+                          )}
+                          <button type="button" className="cc-btn cc-btn--plain cc-btn--critical" onClick={() => setDeleteTarget(item)}>Delete</button>
+                          <button type="button" className="cc-btn" onClick={() => handleEdit(item)}>Edit</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
 
-      {showForm && (
-        <s-section heading={editingItem ? "Edit Design Option" : "Create Design Option"}>
-          <s-box padding="base" borderWidth="base" borderRadius="base">
-            <s-stack direction="block" gap="base">
-              <s-text-field
-                label="Name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., Custom Pattern"
-                required
-              />
+      <Modal
+        open={showForm}
+        title={editingItem ? `Edit ${editingItem.name}` : "Add design option"}
+        onClose={closeForm}
+        footer={
+          <>
+            <button type="button" className="cc-btn" onClick={closeForm}>Cancel</button>
+            <button type="button" className="cc-btn cc-btn--primary" onClick={handleSubmit}>{editingItem ? "Save" : "Create"}</button>
+          </>
+        }
+      >
+        <TextField
+          id="design-name"
+          label="Name"
+          value={formData.name}
+          onChange={(v) => setField("name", v)}
+          placeholder="e.g., Custom Pattern"
+          required
+        />
+        <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <TextField
+              id="design-image"
+              label="Image URL"
+              value={formData.imageUrl}
+              onChange={(v) => setField("imageUrl", v)}
+              placeholder="https://example.com/image.png"
+            />
+          </div>
+          {formData.imageUrl && <Thumb src={formData.imageUrl} alt={formData.name} />}
+        </div>
+        <TextArea
+          id="design-description"
+          label="Description"
+          value={formData.description}
+          onChange={(v) => setField("description", v)}
+          placeholder="Optional description"
+          rows={2}
+        />
+        <div className="cc-row2">
+          <TextField
+            id="design-percent"
+            label="Percentage of fabric cost (%)"
+            type="number"
+            value={formData.percent}
+            onChange={(v) => setField("percent", parseFloat(v) || 0)}
+            help="This percentage of the fabric cost is added to the total."
+          />
+          <TextField
+            id="design-sort"
+            label="Sort order"
+            type="number"
+            value={formData.sortOrder}
+            onChange={(v) => setField("sortOrder", parseInt(v) || 0)}
+            help="Lower numbers appear first."
+          />
+        </div>
+        <Checkbox id="design-active" checked={formData.isActive} onChange={(v) => setField("isActive", v)} label="Active" />
+        <Checkbox id="design-default" checked={formData.isDefault} onChange={(v) => setField("isDefault", v)} label="Default option" />
+      </Modal>
 
-              <s-text-field
-                label="Image URL"
-                value={formData.imageUrl}
-                onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                placeholder="https://example.com/image.png"
-              />
-
-              <s-text-field
-                label="Percentage of Fabric Cost (%)"
-                type="number"
-                value={formData.percent}
-                onChange={(e) => setFormData({ ...formData, percent: parseFloat(e.target.value) || 0 })}
-                helpText="This percentage of the fabric cost will be added to the total"
-              />
-
-              <s-text-field
-                label="Description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Optional description"
-              />
-
-              <s-text-field
-                label="Sort Order"
-                type="number"
-                value={formData.sortOrder}
-                onChange={(e) => setFormData({ ...formData, sortOrder: parseInt(e.target.value) || 0 })}
-              />
-
-              <s-stack direction="inline" gap="base">
-                <input
-                  type="checkbox"
-                  id="designActive"
-                  checked={formData.isActive}
-                  onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                />
-                <label htmlFor="designActive">Active</label>
-              </s-stack>
-
-              <s-stack direction="inline" gap="base">
-                <input
-                  type="checkbox"
-                  id="designDefault"
-                  checked={formData.isDefault}
-                  onChange={(e) => setFormData({ ...formData, isDefault: e.target.checked })}
-                />
-                <label htmlFor="designDefault">Set as Default</label>
-              </s-stack>
-
-              <s-stack direction="inline" gap="base">
-                <s-button onClick={handleSubmit}>
-                  {editingItem ? "Update" : "Create"}
-                </s-button>
-                <s-button variant="tertiary" onClick={() => { setShowForm(false); resetForm(); }}>
-                  Cancel
-                </s-button>
-              </s-stack>
-            </s-stack>
-          </s-box>
-        </s-section>
-      )}
-
-      <s-section heading={`Design Options (${designOptions.length})`}>
-        {designOptions.length === 0 ? (
-          <s-box padding="base">
-            <s-paragraph>No design options created yet.</s-paragraph>
-          </s-box>
-        ) : (
-          <s-stack direction="block" gap="base">
-            {designOptions.map((item) => (
-              <s-box
-                key={item.id}
-                padding="base"
-                borderWidth="base"
-                borderRadius="base"
-                background={item.isActive ? "default" : "subdued"}
-              >
-                <s-stack direction="inline" gap="base" align="center" wrap>
-                  {item.imageUrl ? (
-                    <img src={item.imageUrl} alt={item.name} style={{ width: 50, height: 50, objectFit: "cover", borderRadius: 6 }} />
-                  ) : (
-                    <div style={{ width: 50, height: 50, background: "#f0f0f0", borderRadius: 6 }} />
-                  )}
-
-                  <s-stack direction="block" gap="tight" style={{ flex: 1 }}>
-                    <s-stack direction="inline" gap="tight" align="center">
-                      <s-text fontWeight="semibold">{item.name}</s-text>
-                      {item.isDefault && <s-badge tone="info">Default</s-badge>}
-                      {!item.isActive && <s-text tone="subdued" fontSize="small">(Inactive)</s-text>}
-                    </s-stack>
-                    <s-text tone="subdued" fontSize="small">
-                      {item.percent}% of fabric cost
-                    </s-text>
-                  </s-stack>
-
-                  <s-stack direction="inline" gap="tight">
-                    <s-button variant="tertiary" onClick={() => handleEdit(item)}>Edit</s-button>
-                    {!item.isDefault && (
-                      <s-button variant="tertiary" onClick={() => handleSetDefault(item.id)}>Set Default</s-button>
-                    )}
-                    <s-button variant="tertiary" tone="critical" onClick={() => handleDelete(item.id)}>Delete</s-button>
-                  </s-stack>
-                </s-stack>
-              </s-box>
-            ))}
-          </s-stack>
-        )}
-      </s-section>
+      <ConfirmModal
+        open={!!deleteTarget}
+        title={`Delete “${deleteTarget?.name}”?`}
+        confirmLabel="Delete"
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+      >
+        <p className="cc-p">This design option will be removed from the calculator. This can’t be undone.</p>
+      </ConfirmModal>
     </s-page>
   );
 }

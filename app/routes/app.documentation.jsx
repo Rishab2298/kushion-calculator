@@ -108,7 +108,7 @@ export default function Documentation() {
   };
 
   return (
-    <s-page heading="Documentation" fullWidth>
+    <s-page heading="Documentation" inlineSize="large">
       <div style={{ display: "flex", minHeight: "calc(100vh - 120px)" }}>
         {/* Sidebar Navigation */}
         <nav style={sidebarStyle}>

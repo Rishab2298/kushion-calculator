@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useLoaderData, useFetcher } from "react-router";
-import { useAppBridge } from "@shopify/app-bridge-react";
+import { useAppBridge, SaveBar } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { invalidateConfigCache } from "./api.calculator-config";
 import { cleanupExistingCustomVariants } from "../lib/variant-cleanup.server";
+import { Badge, Checkbox, TextField, ConfirmModal } from "../components/admin-ui";
 
 export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
@@ -203,6 +204,14 @@ export default function Settings() {
     })),
   });
 
+  // Dirty tracking for the App Bridge save bar: compare the form with the last saved/loaded state.
+  const [savedSnapshot, setSavedSnapshot] = useState(() => JSON.stringify(formData));
+  const isDirty = JSON.stringify(formData) !== savedSnapshot;
+  const [confirmCleanup, setConfirmCleanup] = useState(false);
+
+  // Small helper so each field can update its own key.
+  const setField = (key) => (value) => setFormData((prev) => ({ ...prev, [key]: value }));
+
   const toggleSampleCategory = (id) => {
     setFormData((prev) => ({
       ...prev,
@@ -243,15 +252,15 @@ export default function Settings() {
     );
     fetcher.submit(data, { method: "POST" });
     shopify.toast.show("Settings saved");
+    setSavedSnapshot(JSON.stringify(formData));
+  };
+
+  const handleDiscard = () => {
+    setFormData(JSON.parse(savedSnapshot));
   };
 
   const handleCleanup = () => {
-    const confirmed = window.confirm(
-      "Delete custom cushion variants older than 24 hours across all products? " +
-        "Variants tied to placed orders keep their snapshot, so existing orders are unaffected. " +
-        "This may take a moment for products with many variants."
-    );
-    if (!confirmed) return;
+    setConfirmCleanup(false);
     const data = new FormData();
     data.append("intent", "cleanup");
     cleanupFetcher.submit(data, { method: "POST" });
@@ -290,482 +299,495 @@ export default function Settings() {
     }
   };
 
+  const cleanupBusy = cleanupFetcher.state !== "idle";
+  const cleanupResult = cleanupFetcher.data?.cleanup;
+  const enabledSampleCount = formData.sampleCategories.filter((c) => c.showInSampleShop).length;
+  const formulaBox = { fontFamily: "var(--cc-mono)", fontSize: 12.5 };
+
   return (
-    <s-page heading="Calculator Settings" fullWidth>
-      <s-button slot="primary-action" onClick={handleSave}>
-        Save Settings
+    <s-page heading="Settings" inlineSize="large">
+      <SaveBar id="settings-save-bar" open={isDirty}>
+        <button variant="primary" onClick={handleSave}>Save</button>
+        <button onClick={handleDiscard}>Discard</button>
+      </SaveBar>
+      <s-button slot="primary-action" variant="primary" onClick={handleSave}>
+        Save
       </s-button>
 
-      <s-section heading="Debug Settings">
-        <s-box padding="base" borderWidth="base" borderRadius="base">
-          <s-stack direction="block" gap="loose">
-            <s-paragraph>
-              Enable debug pricing to show all prices throughout the calculator interface.
-              When disabled, prices are hidden from customers but calculations still work normally.
-            </s-paragraph>
-
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-                <input
-                  type="checkbox"
+      <div className="cc-page">
+        <div className="cc-layout">
+          <div className="cc-main">
+            {/* Pricing visibility */}
+            <div className="cc-card">
+              <div className="cc-card__head">
+                <h2>Price display</h2>
+                <span className="cc-card__actions">
+                  {formData.debugPricing ? <Badge tone="info">Prices visible</Badge> : <Badge>Prices hidden</Badge>}
+                </span>
+              </div>
+              <div className="cc-card__body">
+                <Checkbox
+                  id="settings-debug-pricing"
                   checked={formData.debugPricing}
-                  onChange={(e) => setFormData({ ...formData, debugPricing: e.target.checked })}
-                  style={{ width: "18px", height: "18px" }}
+                  onChange={setField("debugPricing")}
+                  label="Show prices throughout the calculator (debug pricing)"
+                  help="When off, prices are hidden from customers but calculations still work normally."
                 />
-                <span style={{ fontWeight: "500" }}>Enable Debug Pricing</span>
-              </label>
+                <div className="cc-banner cc-small">
+                  {formData.debugPricing
+                    ? "Prices are shown on option cards, the fabric browser, modals and the price breakdown."
+                    : "Prices are hidden in every calculator section. Only the final Add to cart price is shown."}
+                </div>
+              </div>
             </div>
 
-            <s-box padding="base" background="subdued" borderRadius="base">
-              <s-text fontSize="small">
-                {formData.debugPricing
-                  ? "✓ Pricing is visible on option cards, fabric browser, modals, and price breakdown."
-                  : "✗ Pricing is hidden from all calculator sections. Only the final 'Add to Cart' price is shown."}
-              </s-text>
-            </s-box>
-          </s-stack>
-        </s-box>
-      </s-section>
+            {/* Cost markups */}
+            <div className="cc-card">
+              <div className="cc-card__head"><h2>Cost markups</h2></div>
+              <div className="cc-card__body">
+                <p className="cc-p cc-muted">
+                  Conversion is applied to raw material costs (fabric, fill, ties) first. Shipping and labour are
+                  then added as percentages of the resulting subtotal.
+                </p>
+                <div className="cc-row3">
+                  <TextField
+                    id="settings-conversion"
+                    label="Conversion markup (%)"
+                    type="number"
+                    value={formData.conversionPercent}
+                    onChange={setField("conversionPercent")}
+                    help="Markup on fabric, fill and ties before other calculations."
+                    min="0"
+                    max="500"
+                    step="1"
+                  />
+                  <TextField
+                    id="settings-shipping"
+                    label="Shipping (%)"
+                    type="number"
+                    value={formData.shippingPercent}
+                    onChange={setField("shippingPercent")}
+                    help="Percent of the base cost added for shipping (100 = 100% of base)."
+                    min="0"
+                    max="500"
+                    step="1"
+                  />
+                  <TextField
+                    id="settings-labour"
+                    label="Labour (%)"
+                    type="number"
+                    value={formData.labourPercent}
+                    onChange={setField("labourPercent")}
+                    help="Percent of the base cost added for labour (100 = 100% of base)."
+                    min="0"
+                    max="500"
+                    step="1"
+                  />
+                </div>
+              </div>
+            </div>
 
-      <s-section heading="Cost Markup Settings">
-        <s-box padding="base" borderWidth="base" borderRadius="base">
-          <s-stack direction="block" gap="loose">
-            <s-paragraph>
-              Configure the cost markups. Conversion is applied to raw material costs (Fabric, Fill, Ties) first.
-              Shipping and Labour are then calculated as percentages of the resulting subtotal.
-            </s-paragraph>
-
-            <s-text-field
-              label="Shipping Cost (%)"
-              type="number"
-              value={formData.shippingPercent}
-              onChange={(e) => setFormData({ ...formData, shippingPercent: e.target.value })}
-              helpText="Percentage of base cost to add for shipping (e.g., 100 = 100% of base)"
-              min="0"
-              max="500"
-              step="1"
-              suffix="%"
-            />
-
-            <s-text-field
-              label="Labour Cost (%)"
-              type="number"
-              value={formData.labourPercent}
-              onChange={(e) => setFormData({ ...formData, labourPercent: e.target.value })}
-              helpText="Percentage of base cost to add for labour (e.g., 100 = 100% of base)"
-              min="0"
-              max="500"
-              step="1"
-              suffix="%"
-            />
-
-            <s-text-field
-              label="Conversion Markup (%)"
-              type="number"
-              value={formData.conversionPercent}
-              onChange={(e) => setFormData({ ...formData, conversionPercent: e.target.value })}
-              helpText="Markup applied to raw material costs (Fabric, Fill, Ties) before other calculations"
-              min="0"
-              max="500"
-              step="1"
-              suffix="%"
-            />
-          </s-stack>
-        </s-box>
-      </s-section>
-
-      <s-section heading="Minimum Flat-Rate Shipping & Labour">
-        <s-box padding="base" borderWidth="base" borderRadius="base">
-          <s-stack direction="block" gap="loose">
-            <s-paragraph>
-              For low-cost cushions, charge a flat shipping and labour fee instead of the
-              percentages above. When the fabric cost + fill cost is below the threshold,
-              shipping and labour are each set to the flat amounts below. In multi-piece
-              mode the combined fabric + fill across all pieces is compared, and the flat
-              fees are applied once to the whole order.
-            </s-paragraph>
-
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-                <input
-                  type="checkbox"
+            {/* Minimum flat-rate */}
+            <div className="cc-card">
+              <div className="cc-card__head">
+                <h2>Minimum flat-rate shipping and labour</h2>
+                <span className="cc-card__actions">
+                  {formData.enableMinimumFlatRate ? <Badge tone="success">On</Badge> : <Badge>Off</Badge>}
+                </span>
+              </div>
+              <div className="cc-card__body">
+                <Checkbox
+                  id="settings-flat-rate"
                   checked={formData.enableMinimumFlatRate}
-                  onChange={(e) => setFormData({ ...formData, enableMinimumFlatRate: e.target.checked })}
-                  style={{ width: "18px", height: "18px" }}
+                  onChange={setField("enableMinimumFlatRate")}
+                  label="Use flat shipping and labour fees for low-cost cushions"
+                  help="When fabric + fill cost is below the threshold, shipping and labour are each set to the flat amounts below instead of the percentages. In multi-piece mode the combined fabric + fill of all pieces is compared, and the flat fees are applied once to the whole order."
                 />
-                <span style={{ fontWeight: "500" }}>Enable minimum flat-rate shipping & labour</span>
-              </label>
+                <div className="cc-row3">
+                  <TextField
+                    id="settings-flat-threshold"
+                    label="Threshold, fabric + fill ($)"
+                    type="number"
+                    value={formData.flatRateThreshold}
+                    onChange={setField("flatRateThreshold")}
+                    help="Below this cost, the flat fees are used."
+                    min="0"
+                    step="1"
+                  />
+                  <TextField
+                    id="settings-flat-shipping"
+                    label="Flat shipping ($)"
+                    type="number"
+                    value={formData.flatShippingAmount}
+                    onChange={setField("flatShippingAmount")}
+                    help="Shipping fee charged below the threshold."
+                    min="0"
+                    step="1"
+                  />
+                  <TextField
+                    id="settings-flat-labour"
+                    label="Flat labour ($)"
+                    type="number"
+                    value={formData.flatLabourAmount}
+                    onChange={setField("flatLabourAmount")}
+                    help="Labour fee charged below the threshold."
+                    min="0"
+                    step="1"
+                  />
+                </div>
+              </div>
             </div>
 
-            <s-text-field
-              label="Threshold (Fabric + Fill cost)"
-              type="number"
-              value={formData.flatRateThreshold}
-              onChange={(e) => setFormData({ ...formData, flatRateThreshold: e.target.value })}
-              helpText="If fabric cost + fill cost is below this amount, the flat fees below are used"
-              min="0"
-              step="1"
-              prefix="$"
-            />
+            {/* Margin method */}
+            <div className="cc-card">
+              <div className="cc-card__head"><h2>Margin calculation</h2></div>
+              <div className="cc-card__body">
+                <div className="cc-seg" role="radiogroup" aria-label="Margin calculation method">
+                  <button
+                    type="button"
+                    aria-pressed={formData.marginCalculationMethod === "tier"}
+                    onClick={() => setFormData({ ...formData, marginCalculationMethod: "tier" })}
+                  >
+                    <strong>Tier-based</strong>
+                    <span>Margin % comes from predefined price ranges</span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={formData.marginCalculationMethod === "formula"}
+                    onClick={() => setFormData({ ...formData, marginCalculationMethod: "formula" })}
+                  >
+                    <strong>Formula-based</strong>
+                    <span>Logarithmic formulas for finer control</span>
+                  </button>
+                </div>
 
-            <s-text-field
-              label="Flat Shipping Amount"
-              type="number"
-              value={formData.flatShippingAmount}
-              onChange={(e) => setFormData({ ...formData, flatShippingAmount: e.target.value })}
-              helpText="Flat shipping fee charged when below the threshold"
-              min="0"
-              step="1"
-              prefix="$"
-            />
+                {formData.marginCalculationMethod === "tier" && (
+                  <div className="cc-banner">
+                    Set up price tiers on the <a href="/app/margins" style={{ color: "inherit", fontWeight: 600 }}>Margins page</a>.
+                    Each tier defines a price range and the margin percentage to apply.
+                  </div>
+                )}
 
-            <s-text-field
-              label="Flat Labour Amount"
-              type="number"
-              value={formData.flatLabourAmount}
-              onChange={(e) => setFormData({ ...formData, flatLabourAmount: e.target.value })}
-              helpText="Flat labour fee charged when below the threshold"
-              min="0"
-              step="1"
-              prefix="$"
-            />
-          </s-stack>
-        </s-box>
-      </s-section>
+                {formData.marginCalculationMethod === "formula" && (
+                  <>
+                    <p className="cc-p cc-muted">
+                      The margin % is calculated with natural logarithm (ln) formulas based on the subtotal before margin.
+                    </p>
 
-      <s-section heading="Example Calculation">
-        <s-box padding="base" background="subdued" borderRadius="base">
-          <s-stack direction="block" gap="tight">
-            <s-text>Raw Materials (Fabric + Fill + Ties) = <s-text fontWeight="semibold">${rawMaterials.toFixed(2)}</s-text></s-text>
-            <s-text>After Conversion ({formData.conversionPercent}%) = <s-text fontWeight="semibold">${exampleBase.toFixed(2)}</s-text></s-text>
-            <s-text>Shipping Cost ({formData.shippingPercent}%) = <s-text fontWeight="semibold">${exampleShipping.toFixed(2)}</s-text></s-text>
-            <s-text>Labour Cost ({formData.labourPercent}%) = <s-text fontWeight="semibold">${exampleLabour.toFixed(2)}</s-text></s-text>
-            <s-text style={{ borderTop: "1px solid #ccc", paddingTop: 8, marginTop: 8 }}>
-              <s-text fontWeight="bold">Total = ${exampleTotal.toFixed(2)}</s-text>
-            </s-text>
-          </s-stack>
-        </s-box>
-      </s-section>
+                    <div style={{ display: "grid", gap: 8 }}>
+                      <div className="cc-label">Flat margin range</div>
+                      <div className="cc-banner cc-banner--warning cc-small">
+                        Subtotal ≤ ${formData.flatMarginThreshold}: a flat {formData.flatMarginPercent}% margin is applied, no formula.
+                      </div>
+                      <div className="cc-row2">
+                        <TextField
+                          id="settings-flat-margin-threshold"
+                          label="Flat margin threshold ($)"
+                          type="number"
+                          value={formData.flatMarginThreshold}
+                          onChange={setField("flatMarginThreshold")}
+                          help="Subtotal at or below which the flat margin applies."
+                          min="0"
+                          step="0.01"
+                        />
+                        <TextField
+                          id="settings-flat-margin-percent"
+                          label="Flat margin (%)"
+                          type="number"
+                          value={formData.flatMarginPercent}
+                          onChange={setField("flatMarginPercent")}
+                          help="Fixed margin % for low subtotals."
+                          min="0"
+                          step="1"
+                        />
+                      </div>
+                    </div>
 
-      <s-section heading="Margin Calculation Method">
-        <s-box padding="base" borderWidth="base" borderRadius="base">
-          <s-stack direction="block" gap="loose">
-            <s-paragraph>
-              Choose how margin adjustments are calculated. The tier-based method uses predefined price ranges,
-              while the formula-based method uses logarithmic formulas for more precise control.
-            </s-paragraph>
+                    <TextField
+                      id="settings-formula-threshold"
+                      label="Formula threshold ($)"
+                      type="number"
+                      value={formData.formulaThreshold}
+                      onChange={setField("formulaThreshold")}
+                      help="Subtotal where the formula switches from the low range to the high range."
+                      min="1"
+                      step="0.01"
+                    />
 
-            <div style={{ display: "flex", gap: "16px", marginTop: "8px" }}>
-              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-                <input
-                  type="radio"
-                  name="marginMethod"
-                  value="tier"
-                  checked={formData.marginCalculationMethod === "tier"}
-                  onChange={() => setFormData({ ...formData, marginCalculationMethod: "tier" })}
-                />
-                <span>Tier-Based (Price Ranges)</span>
-              </label>
-              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-                <input
-                  type="radio"
-                  name="marginMethod"
-                  value="formula"
-                  checked={formData.marginCalculationMethod === "formula"}
-                  onChange={() => setFormData({ ...formData, marginCalculationMethod: "formula" })}
-                />
-                <span>Formula-Based (Logarithmic)</span>
-              </label>
+                    <div style={{ display: "grid", gap: 8 }}>
+                      <div className="cc-label">
+                        Low range <span className="cc-muted" style={{ fontWeight: 400 }}>(${formData.flatMarginThreshold} &lt; subtotal ≤ ${formData.formulaThreshold})</span>
+                      </div>
+                      <div className="cc-calc" style={formulaBox}>
+                        Margin % = {formData.formulaLowConstant} − {formData.formulaLowCoefficient} × ln(subtotal)
+                      </div>
+                      <div className="cc-row2">
+                        <TextField
+                          id="settings-low-constant"
+                          label="Low range constant"
+                          type="number"
+                          value={formData.formulaLowConstant}
+                          onChange={setField("formulaLowConstant")}
+                          help="Base value for the low range."
+                          step="0.01"
+                        />
+                        <TextField
+                          id="settings-low-coefficient"
+                          label="Low range coefficient"
+                          type="number"
+                          value={formData.formulaLowCoefficient}
+                          onChange={setField("formulaLowCoefficient")}
+                          help="Multiplier for ln(subtotal)."
+                          step="0.01"
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: "grid", gap: 8 }}>
+                      <div className="cc-label">
+                        High range <span className="cc-muted" style={{ fontWeight: 400 }}>(subtotal &gt; ${formData.formulaThreshold})</span>
+                      </div>
+                      <div className="cc-calc" style={formulaBox}>
+                        Margin % = {formData.formulaHighConstant} − {formData.formulaHighCoefficient} × ln(subtotal)
+                      </div>
+                      <div className="cc-row2">
+                        <TextField
+                          id="settings-high-constant"
+                          label="High range constant"
+                          type="number"
+                          value={formData.formulaHighConstant}
+                          onChange={setField("formulaHighConstant")}
+                          help="Base value for the high range."
+                          step="0.01"
+                        />
+                        <TextField
+                          id="settings-high-coefficient"
+                          label="High range coefficient"
+                          type="number"
+                          value={formData.formulaHighCoefficient}
+                          onChange={setField("formulaHighCoefficient")}
+                          help="Multiplier for ln(subtotal)."
+                          step="0.01"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
-
-            {formData.marginCalculationMethod === "tier" && (
-              <s-box padding="base" background="subdued" borderRadius="base" style={{ marginTop: "12px" }}>
-                <s-text>
-                  Configure price tiers in the <a href="/app/margins" style={{ color: "#008060" }}>Margins page</a>.
-                  Each tier defines a price range and the margin percentage to apply.
-                </s-text>
-              </s-box>
-            )}
 
             {formData.marginCalculationMethod === "formula" && (
-              <s-box padding="base" background="subdued" borderRadius="base" style={{ marginTop: "12px" }}>
-                <s-stack direction="block" gap="base">
-                  <s-text fontWeight="semibold">Formula Configuration</s-text>
-                  <s-paragraph fontSize="small">
-                    The margin percentage is calculated using natural logarithm (ln) formulas based on the subtotal before margin.
-                  </s-paragraph>
-
-                  <s-box padding="base" style={{ background: "#fff3cd", borderRadius: "4px", border: "1px solid #ffc107" }}>
-                    <s-text fontWeight="semibold" fontSize="small">Flat Margin Range (Subtotal ≤ ${formData.flatMarginThreshold})</s-text>
-                    <s-text fontSize="small" style={{ marginTop: "4px" }}>
-                      A flat {formData.flatMarginPercent}% margin is applied - no formula calculation.
-                    </s-text>
-                  </s-box>
-
-                  <s-stack direction="inline" gap="base">
-                    <s-text-field
-                      label="Flat Margin Threshold ($)"
-                      type="number"
-                      value={formData.flatMarginThreshold}
-                      onChange={(e) => setFormData({ ...formData, flatMarginThreshold: e.target.value })}
-                      helpText="Subtotal below which flat margin applies"
-                      min="0"
-                      step="0.01"
-                      prefix="$"
-                    />
-                    <s-text-field
-                      label="Flat Margin Percent (%)"
-                      type="number"
-                      value={formData.flatMarginPercent}
-                      onChange={(e) => setFormData({ ...formData, flatMarginPercent: e.target.value })}
-                      helpText="Fixed margin % for low subtotals"
-                      min="0"
-                      step="1"
-                      suffix="%"
-                    />
-                  </s-stack>
-
-                  <s-text-field
-                    label="Formula Threshold Amount ($)"
-                    type="number"
-                    value={formData.formulaThreshold}
-                    onChange={(e) => setFormData({ ...formData, formulaThreshold: e.target.value })}
-                    helpText="Subtotal value where the formula switches from low to high range"
-                    min="1"
-                    step="0.01"
-                    prefix="$"
-                  />
-
-                  <s-box padding="base" style={{ background: "#e8f4f0", borderRadius: "4px" }}>
-                    <s-text fontWeight="semibold" fontSize="small">Low Range Formula (${formData.flatMarginThreshold} &lt; Subtotal ≤ ${formData.formulaThreshold})</s-text>
-                    <s-text fontSize="small" style={{ fontFamily: "monospace", marginTop: "4px" }}>
-                      Margin % = {formData.formulaLowConstant} - {formData.formulaLowCoefficient} × ln(subtotal)
-                    </s-text>
-                  </s-box>
-
-                  <s-stack direction="inline" gap="base">
-                    <s-text-field
-                      label="Low Range Constant"
-                      type="number"
-                      value={formData.formulaLowConstant}
-                      onChange={(e) => setFormData({ ...formData, formulaLowConstant: e.target.value })}
-                      helpText="Base value for low range"
-                      step="0.01"
-                    />
-                    <s-text-field
-                      label="Low Range Coefficient"
-                      type="number"
-                      value={formData.formulaLowCoefficient}
-                      onChange={(e) => setFormData({ ...formData, formulaLowCoefficient: e.target.value })}
-                      helpText="Multiplier for ln(subtotal)"
-                      step="0.01"
-                    />
-                  </s-stack>
-
-                  <s-box padding="base" style={{ background: "#f0e8f4", borderRadius: "4px" }}>
-                    <s-text fontWeight="semibold" fontSize="small">High Range Formula (Subtotal &gt; ${formData.formulaThreshold})</s-text>
-                    <s-text fontSize="small" style={{ fontFamily: "monospace", marginTop: "4px" }}>
-                      Margin % = {formData.formulaHighConstant} - {formData.formulaHighCoefficient} × ln(subtotal)
-                    </s-text>
-                  </s-box>
-
-                  <s-stack direction="inline" gap="base">
-                    <s-text-field
-                      label="High Range Constant"
-                      type="number"
-                      value={formData.formulaHighConstant}
-                      onChange={(e) => setFormData({ ...formData, formulaHighConstant: e.target.value })}
-                      helpText="Base value for high range"
-                      step="0.01"
-                    />
-                    <s-text-field
-                      label="High Range Coefficient"
-                      type="number"
-                      value={formData.formulaHighCoefficient}
-                      onChange={(e) => setFormData({ ...formData, formulaHighCoefficient: e.target.value })}
-                      helpText="Multiplier for ln(subtotal)"
-                      step="0.01"
-                    />
-                  </s-stack>
-                </s-stack>
-              </s-box>
-            )}
-          </s-stack>
-        </s-box>
-      </s-section>
-
-      {formData.marginCalculationMethod === "formula" && (
-        <s-section heading="Formula Examples">
-          <s-box padding="base" background="subdued" borderRadius="base">
-            <s-stack direction="block" gap="tight">
-              <s-text fontWeight="semibold">Sample Margin Calculations:</s-text>
-              {[50, 100, 200, 400, 500, 800, 1000, 2000].map((subtotal) => {
-                const marginPct = calcFormulaMargin(subtotal);
-                const finalPrice = subtotal * (1 + marginPct / 100);
-                return (
-                  <s-text key={subtotal} fontSize="small">
-                    Subtotal ${subtotal} → Margin {marginPct.toFixed(1)}% → Final ${finalPrice.toFixed(2)}
-                  </s-text>
-                );
-              })}
-            </s-stack>
-          </s-box>
-        </s-section>
-      )}
-
-      <s-section heading="Fabric & Fill Sample Shop">
-        <s-box padding="base" borderWidth="base" borderRadius="base">
-          <s-stack direction="block" gap="loose">
-            <s-paragraph>
-              Configure the Fabric &amp; Fill Sample Shop storefront block. Customers can browse
-              and purchase fabric/fill samples with bundle pricing.
-            </s-paragraph>
-
-            <s-text-field
-              label="Fabric Sample Product ID"
-              value={formData.fabricSampleProductId}
-              onChange={(e) => setFormData({ ...formData, fabricSampleProductId: e.target.value })}
-              helpText="Shopify product ID or GID (e.g. gid://shopify/Product/123) for the base sample product. Create a product named 'Fabric Samples' in your store and paste its GID here."
-              placeholder="gid://shopify/Product/..."
-            />
-
-            <s-stack direction="inline" gap="base">
-              <s-text-field
-                label="Bundle Price ($)"
-                type="number"
-                value={formData.sampleBundlePrice}
-                onChange={(e) => setFormData({ ...formData, sampleBundlePrice: e.target.value })}
-                helpText="Price for the minimum bundle (e.g. any 4 for $25)"
-                min="0"
-                step="0.01"
-                prefix="$"
-              />
-              <s-text-field
-                label="Minimum Items"
-                type="number"
-                value={formData.sampleMinItems}
-                onChange={(e) => setFormData({ ...formData, sampleMinItems: e.target.value })}
-                helpText="Minimum number of items required to purchase"
-                min="1"
-                step="1"
-              />
-              <s-text-field
-                label="Price per Extra Item ($)"
-                type="number"
-                value={formData.samplePerItemPrice}
-                onChange={(e) => setFormData({ ...formData, samplePerItemPrice: e.target.value })}
-                helpText="Cost for each item beyond the minimum bundle"
-                min="0"
-                step="0.01"
-                prefix="$"
-              />
-            </s-stack>
-
-            <s-box padding="base" background="subdued" borderRadius="base">
-              <s-text fontSize="small">
-                Pricing example: any {formData.sampleMinItems} samples = ${formData.sampleBundlePrice},
-                then +${formData.samplePerItemPrice} per additional item.
-                (e.g. 5 items = ${(parseFloat(formData.sampleBundlePrice) + parseFloat(formData.samplePerItemPrice)).toFixed(2)},
-                6 items = ${(parseFloat(formData.sampleBundlePrice) + 2 * parseFloat(formData.samplePerItemPrice)).toFixed(2)})
-              </s-text>
-            </s-box>
-
-            <s-divider />
-
-            <s-stack direction="block" gap="tight">
-              <s-text fontWeight="semibold">Categories shown in the Sample Shop</s-text>
-              <s-paragraph fontSize="small">
-                Choose which fabric categories customers can browse in the Sample Shop. Unchecked
-                categories (and their fabrics) are hidden from the sample shop only — they still
-                appear in the main calculator. Uncategorized fabrics are always shown.
-              </s-paragraph>
-
-              {formData.sampleCategories.length === 0 ? (
-                <s-box padding="base" background="subdued" borderRadius="base">
-                  <s-text fontSize="small">
-                    No active fabric categories yet. Add categories under Fabrics to manage them here.
-                  </s-text>
-                </s-box>
-              ) : (
-                <s-box padding="base" borderWidth="base" borderRadius="base">
-                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                    {formData.sampleCategories.map((cat) => (
-                      <label
-                        key={cat.id}
-                        style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={cat.showInSampleShop}
-                          onChange={() => toggleSampleCategory(cat.id)}
-                          style={{ width: "18px", height: "18px" }}
-                        />
-                        <span style={{ fontWeight: "500" }}>{cat.name}</span>
-                      </label>
-                    ))}
+              <div className="cc-card">
+                <div className="cc-card__head">
+                  <h2>Formula examples</h2>
+                  <span className="cc-card__meta">Live preview of the settings above</span>
+                </div>
+                <div className="cc-card__flush">
+                  <div className="cc-table-wrap">
+                    <table className="cc-table" style={{ minWidth: 0 }}>
+                      <thead>
+                        <tr>
+                          <th>Subtotal</th>
+                          <th style={{ textAlign: "right" }}>Margin</th>
+                          <th style={{ textAlign: "right" }}>Final price</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[50, 100, 200, 400, 500, 800, 1000, 2000].map((subtotal) => {
+                          const marginPct = calcFormulaMargin(subtotal);
+                          const finalPrice = subtotal * (1 + marginPct / 100);
+                          return (
+                            <tr key={subtotal}>
+                              <td className="cc-num">${subtotal}</td>
+                              <td className="cc-num" style={{ textAlign: "right" }}>{marginPct.toFixed(1)}%</td>
+                              <td className="cc-num" style={{ textAlign: "right", fontWeight: 600 }}>${finalPrice.toFixed(2)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
-                </s-box>
-              )}
-            </s-stack>
-          </s-stack>
-        </s-box>
-      </s-section>
-
-      <s-section heading="Custom Variant Cleanup">
-        <s-box padding="base" borderWidth="base" borderRadius="base">
-          <s-stack direction="block" gap="loose">
-            <s-paragraph>
-              Each configured cushion added to the cart creates a Shopify variant on the product
-              to carry its custom price. These are auto-deleted once an order is placed, and abandoned
-              ones are swept every 6 hours after a 90-day retention window — so a shopper who returns
-              to an older cart still finds their configured item intact. Use the button below to clear
-              out leftover custom variants on demand.
-            </s-paragraph>
-
-            <s-stack direction="block" gap="tight">
-              <s-paragraph fontSize="small">
-                Deletes custom cushion variants older than 90 days from every product — the same
-                retention rule as the automatic cleanup, so a variant still in a shopper&apos;s cart
-                (younger than 90 days) is never dropped. Placed orders are unaffected (they keep their
-                own line-item snapshot).
-              </s-paragraph>
-              <div>
-                <s-button
-                  variant="secondary"
-                  tone="critical"
-                  onClick={handleCleanup}
-                  loading={cleanupFetcher.state !== "idle" ? "" : undefined}
-                  disabled={cleanupFetcher.state !== "idle" ? "" : undefined}
-                >
-                  {cleanupFetcher.state !== "idle" ? "Cleaning up…" : "Clean up custom variants"}
-                </s-button>
+                </div>
               </div>
-              {cleanupFetcher.data?.cleanup && (
-                <s-box padding="base" background="subdued" borderRadius="base">
-                  <s-text fontSize="small">
-                    {cleanupFetcher.data.cleanup.success
-                      ? `Done. Scanned ${cleanupFetcher.data.cleanup.scannedProducts} product(s), deleted ${cleanupFetcher.data.cleanup.deletedCount} custom variant(s).`
-                      : `Cleanup failed: ${cleanupFetcher.data.cleanup.error}`}
-                  </s-text>
-                </s-box>
-              )}
-            </s-stack>
-          </s-stack>
-        </s-box>
-      </s-section>
+            )}
 
-      <s-section slot="aside" heading="How It Works">
-        <s-box padding="base">
-          <s-stack direction="block" gap="tight">
-            <s-text fontWeight="semibold">Pricing Formula:</s-text>
-            <s-text fontSize="small">1. Raw Materials = (Fabric + Fill + Ties) × (1 + Conversion %)</s-text>
-            <s-text fontSize="small">2. Subtotal = Raw Materials + Add-ons (Piping, Button, etc.)</s-text>
-            <s-text fontSize="small">3. Shipping = Subtotal × Shipping %</s-text>
-            <s-text fontSize="small">4. Labour = Subtotal × Labour %</s-text>
-            <s-text fontSize="small">5. Total = Subtotal + Shipping + Labour</s-text>
-          </s-stack>
-        </s-box>
-      </s-section>
+            {/* Sample shop */}
+            <div className="cc-card">
+              <div className="cc-card__head"><h2>Fabric and fill sample shop</h2></div>
+              <div className="cc-card__body">
+                <p className="cc-p cc-muted">
+                  Settings for the Fabric &amp; Fill Sample Shop storefront block, where customers browse and buy
+                  fabric and fill samples with bundle pricing.
+                </p>
+                <TextField
+                  id="settings-sample-product"
+                  label="Fabric sample product ID"
+                  value={formData.fabricSampleProductId}
+                  onChange={setField("fabricSampleProductId")}
+                  placeholder="gid://shopify/Product/..."
+                  help="Shopify product ID or GID (e.g. gid://shopify/Product/123) of the base sample product. Create a product named “Fabric Samples” in your store and paste its GID here."
+                />
+                <div className="cc-row3">
+                  <TextField
+                    id="settings-sample-bundle-price"
+                    label="Bundle price ($)"
+                    type="number"
+                    value={formData.sampleBundlePrice}
+                    onChange={setField("sampleBundlePrice")}
+                    help="Price for the minimum bundle (e.g. any 4 for $25)."
+                    min="0"
+                    step="0.01"
+                  />
+                  <TextField
+                    id="settings-sample-min-items"
+                    label="Minimum items"
+                    type="number"
+                    value={formData.sampleMinItems}
+                    onChange={setField("sampleMinItems")}
+                    help="Minimum number of items required to purchase."
+                    min="1"
+                    step="1"
+                  />
+                  <TextField
+                    id="settings-sample-per-item"
+                    label="Price per extra item ($)"
+                    type="number"
+                    value={formData.samplePerItemPrice}
+                    onChange={setField("samplePerItemPrice")}
+                    help="Cost of each item beyond the minimum bundle."
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+                <div className="cc-calc">
+                  Any {formData.sampleMinItems} samples = ${formData.sampleBundlePrice}, then +${formData.samplePerItemPrice} per additional item
+                  (e.g. 5 items = ${(parseFloat(formData.sampleBundlePrice) + parseFloat(formData.samplePerItemPrice)).toFixed(2)},
+                  6 items = ${(parseFloat(formData.sampleBundlePrice) + 2 * parseFloat(formData.samplePerItemPrice)).toFixed(2)})
+                </div>
+
+                <div style={{ display: "grid", gap: 6, borderTop: "1px solid var(--cc-border)", paddingTop: 12 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                    <span className="cc-label">Categories shown in the sample shop</span>
+                    {formData.sampleCategories.length > 0 && (
+                      <span className="cc-muted cc-small cc-num">
+                        {enabledSampleCount} of {formData.sampleCategories.length} shown
+                      </span>
+                    )}
+                  </div>
+                  <span className="cc-help">
+                    Selected categories can be browsed in the sample shop. Unselected categories (and their fabrics) are
+                    hidden from the sample shop only; they still appear in the main calculator. Uncategorized fabrics are
+                    always shown.
+                  </span>
+                  {formData.sampleCategories.length === 0 ? (
+                    <div className="cc-banner cc-small">
+                      No active fabric categories yet. Add categories under Fabrics to manage them here.
+                    </div>
+                  ) : (
+                    <div className="cc-chips" style={{ paddingTop: 4 }}>
+                      {formData.sampleCategories.map((cat) => (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          className="cc-chip"
+                          aria-pressed={cat.showInSampleShop}
+                          onClick={() => toggleSampleCategory(cat.id)}
+                        >
+                          {cat.showInSampleShop ? "✓ " : ""}{cat.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Variant cleanup */}
+            <div className="cc-card">
+              <div className="cc-card__head"><h2>Custom variant cleanup</h2></div>
+              <div className="cc-card__body">
+                <p className="cc-p cc-muted">
+                  Each configured cushion added to the cart creates a Shopify variant on the product to carry its
+                  custom price. These are deleted automatically once an order is placed, and abandoned ones are
+                  swept every 6 hours after a 90-day retention window, so a shopper who returns to an older cart
+                  still finds their item intact.
+                </p>
+                <p className="cc-p cc-muted cc-small">
+                  Cleaning up now deletes custom cushion variants older than 90 days from every product, using the
+                  same retention rule as the automatic cleanup, so a variant still in a shopper&apos;s cart (younger
+                  than 90 days) is never dropped. Placed orders are unaffected; they keep their own line-item snapshot.
+                </p>
+                <div>
+                  <button
+                    type="button"
+                    className="cc-btn cc-btn--critical"
+                    onClick={() => setConfirmCleanup(true)}
+                    disabled={cleanupBusy}
+                  >
+                    {cleanupBusy ? "Cleaning up…" : "Clean up custom variants"}
+                  </button>
+                </div>
+                {cleanupResult && (
+                  <div className={`cc-banner cc-small${cleanupResult.success ? "" : " cc-banner--warning"}`}>
+                    {cleanupResult.success
+                      ? `Done. Scanned ${cleanupResult.scannedProducts} product(s), deleted ${cleanupResult.deletedCount} custom variant(s).`
+                      : `Cleanup failed: ${cleanupResult.error}`}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button type="button" className="cc-btn cc-btn--primary" onClick={handleSave}>Save</button>
+            </div>
+          </div>
+
+          <div className="cc-side">
+            <div className="cc-card">
+              <div className="cc-card__head">
+                <h2>Example calculation</h2>
+                <span className="cc-card__meta">$100 of materials</span>
+              </div>
+              <div className="cc-card__body">
+                <div className="cc-calc">
+                  <div><span>Raw materials (fabric + fill + ties)</span><span>${rawMaterials.toFixed(2)}</span></div>
+                  <div><span>After conversion ({formData.conversionPercent}%)</span><span>${exampleBase.toFixed(2)}</span></div>
+                  <div><span>Shipping ({formData.shippingPercent}%)</span><span>${exampleShipping.toFixed(2)}</span></div>
+                  <div><span>Labour ({formData.labourPercent}%)</span><span>${exampleLabour.toFixed(2)}</span></div>
+                  <div className="cc-calc__total"><span>Total</span><span>${exampleTotal.toFixed(2)}</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div className="cc-card">
+              <div className="cc-card__head"><h2>How pricing works</h2></div>
+              <div className="cc-card__body">
+                <ol className="cc-small" style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 4 }}>
+                  <li>Raw materials = (fabric + fill + ties) × (1 + conversion %)</li>
+                  <li>Subtotal = raw materials + add-ons (piping, button, etc.)</li>
+                  <li>Shipping = subtotal × shipping %</li>
+                  <li>Labour = subtotal × labour %</li>
+                  <li>Total = subtotal + shipping + labour</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <ConfirmModal
+        open={confirmCleanup}
+        title="Clean up custom variants?"
+        confirmLabel="Clean up"
+        onConfirm={handleCleanup}
+        onCancel={() => setConfirmCleanup(false)}
+      >
+        <p className="cc-p">
+          This deletes custom cushion variants older than 90 days across all products. Variants tied to placed
+          orders keep their snapshot, so existing orders are unaffected.
+        </p>
+        <p className="cc-p cc-muted">This may take a moment for products with many variants.</p>
+      </ConfirmModal>
     </s-page>
   );
 }

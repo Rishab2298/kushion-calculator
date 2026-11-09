@@ -3,6 +3,7 @@ import { useLoaderData, useFetcher } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
+import { Badge, StatusBadge, TextField, Checkbox, ConfirmModal, BackButton, Thumb, EmptyState } from "../components/admin-ui";
 
 export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
@@ -191,14 +192,22 @@ export default function Shapes() {
     resetForm();
   };
 
+  const [deleteTarget, setDeleteTarget] = useState(null);
+
   const handleDelete = (id) => {
-    if (confirm("Delete this shape?")) {
-      const data = new FormData();
-      data.append("intent", "delete");
-      data.append("id", id);
-      fetcher.submit(data, { method: "POST" });
-      shopify.toast.show("Shape deleted");
-    }
+    const data = new FormData();
+    data.append("intent", "delete");
+    data.append("id", id);
+    fetcher.submit(data, { method: "POST" });
+    shopify.toast.show("Shape deleted");
+  };
+
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    const wasEditing = editingShape && editingShape.id === deleteTarget.id;
+    handleDelete(deleteTarget.id);
+    setDeleteTarget(null);
+    if (wasEditing) { setShowForm(false); resetForm(); }
   };
 
   const handleSetDefault = (id) => {
@@ -231,255 +240,379 @@ export default function Shapes() {
     setInputFields(updated);
   };
 
+  const handleAdd = () => { resetForm(); setShowForm(true); };
+  const handleBack = () => { setShowForm(false); resetForm(); };
+
+  const deleteModal = (
+    <ConfirmModal
+      open={!!deleteTarget}
+      title={`Delete “${deleteTarget?.name}”?`}
+      confirmLabel="Delete shape"
+      onCancel={() => setDeleteTarget(null)}
+      onConfirm={confirmDelete}
+    >
+      <p className="cc-p">Customers will no longer be able to choose this shape. This can’t be undone.</p>
+    </ConfirmModal>
+  );
+
+  const mono = { fontFamily: "var(--cc-mono)", fontSize: 12 };
+
+  if (!showForm) {
+    return (
+      <s-page heading="Shape Builder" inlineSize="large">
+        <s-button slot="primary-action" variant="primary" onClick={handleAdd}>
+          Add shape
+        </s-button>
+
+        <div className="cc-page">
+          <div className="cc-card">
+            <div className="cc-card__head">
+              <h2>Shapes</h2>
+              <span className="cc-card__meta">{shapes.length}</span>
+            </div>
+            <div className="cc-card__flush" style={{ paddingTop: 10 }}>
+              {shapes.length === 0 ? (
+                <EmptyState
+                  title="No shapes yet"
+                  action={<button type="button" className="cc-btn cc-btn--primary" onClick={handleAdd}>Add shape</button>}
+                >
+                  Add your first shape to get started.
+                </EmptyState>
+              ) : (
+                <div className="cc-table-wrap">
+                  <table className="cc-table">
+                    <thead>
+                      <tr>
+                        <th>Shape</th>
+                        <th>Dimensions</th>
+                        <th>Surface area formula</th>
+                        <th>Status</th>
+                        <th><span className="cc-visually-hidden">Actions</span></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {shapes.map((shape) => (
+                        <tr
+                          key={shape.id}
+                          className={`cc-clickable${shape.isActive ? "" : " cc-row--inactive"}`}
+                          tabIndex={0}
+                          onClick={() => handleEdit(shape)}
+                          onKeyDown={(e) => { if (e.key === "Enter" && e.target === e.currentTarget) handleEdit(shape); }}
+                        >
+                          <td>
+                            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                              <Thumb src={shape.imageUrl} alt={shape.name} />
+                              <div style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}>
+                                <span className="cc-name">{shape.name}</span>
+                                {shape.is2D && <Badge tone="info">2D</Badge>}
+                                {shape.enablePanels && <Badge tone="warning">Panels</Badge>}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="cc-small">
+                            {shape.inputFields.length > 0
+                              ? shape.inputFields.map(f => `${f.label}${f.defaultValue ? ` (${f.defaultValue})` : ''}`).join(", ")
+                              : <span className="cc-muted">—</span>}
+                          </td>
+                          <td>
+                            <div className="cc-muted" style={{ ...mono, maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={shape.surfaceAreaFormula}>
+                              {shape.surfaceAreaFormula}
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                              <StatusBadge active={shape.isActive} />
+                              {shape.isDefault && <Badge tone="info">Default</Badge>}
+                            </div>
+                          </td>
+                          <td onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                            <div className="cc-rowact">
+                              {!shape.isDefault && (
+                                <button type="button" className="cc-btn cc-btn--plain" onClick={() => handleSetDefault(shape.id)}>Set as default</button>
+                              )}
+                              <button type="button" className="cc-btn cc-btn--plain cc-btn--critical" onClick={() => setDeleteTarget(shape)}>Delete</button>
+                              <button type="button" className="cc-btn" onClick={() => handleEdit(shape)}>Edit</button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        {deleteModal}
+      </s-page>
+    );
+  }
+
+  // ---- editor ----
   return (
-    <s-page heading="Shape Builder" fullWidth>
-      <s-button slot="primary-action" onClick={() => { resetForm(); setShowForm(true); }}>
-        Add Shape
-      </s-button>
+    <s-page heading={editingShape ? editingShape.name : "New shape"} inlineSize="large">
+      <div className="cc-page">
+        <div className="cc-header">
+          <BackButton onClick={handleBack} label="Back to shapes" />
+          <h1>{formData.name || (editingShape ? editingShape.name : "New shape")}</h1>
+          <StatusBadge active={formData.isActive} />
+          {formData.isDefault && <Badge tone="info">Default</Badge>}
+        </div>
 
-      {showForm && (
-        <s-section heading={editingShape ? "Edit Shape" : "Create Shape"}>
-          <s-box padding="base" borderWidth="base" borderRadius="base">
-            <s-stack direction="block" gap="base">
-              <s-text-field
-                label="Shape Name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., Rectangle, Circle, Hexagon"
-                required
-              />
-
-              <s-text-field
-                label="Image URL"
-                value={formData.imageUrl}
-                onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                placeholder="https://example.com/shape-image.png"
-              />
-
-              <s-heading level="4">Input Fields (Dimensions)</s-heading>
-              <s-paragraph>
-                Define the input fields customers will fill. Use the "key" in your formulas.
-              </s-paragraph>
-
-              {inputFields.map((field, index) => (
-                <s-box key={index} padding="base" background="subdued" borderRadius="base">
-                  <s-stack direction="block" gap="tight">
-                    <s-stack direction="inline" gap="tight" wrap>
-                      <s-text-field
-                        label="Label"
-                        value={field.label}
-                        onChange={(e) => updateInputField(index, "label", e.target.value)}
-                        placeholder="Length"
-                        style={{ flex: 1 }}
-                      />
-                      <s-text-field
-                        label="Key (for formula)"
-                        value={field.key}
-                        onChange={(e) => updateInputField(index, "key", e.target.value.toLowerCase().replace(/\s/g, "_"))}
-                        placeholder="length"
-                        style={{ flex: 1 }}
-                      />
-                      <s-text-field
-                        label="Min"
-                        type="number"
-                        value={field.min}
-                        onChange={(e) => updateInputField(index, "min", e.target.value)}
-                        style={{ width: "80px" }}
-                      />
-                      <s-text-field
-                        label="Max"
-                        type="number"
-                        value={field.max}
-                        onChange={(e) => updateInputField(index, "max", e.target.value)}
-                        style={{ width: "80px" }}
-                      />
-                      <s-text-field
-                        label="Default"
-                        type="number"
-                        value={field.defaultValue}
-                        onChange={(e) => updateInputField(index, "defaultValue", e.target.value)}
-                        placeholder="e.g., 12"
-                        style={{ width: "80px" }}
-                      />
-                      <s-button variant="tertiary" tone="critical" onClick={() => removeInputField(index)}>
-                        Remove
-                      </s-button>
-                    </s-stack>
-                  </s-stack>
-                </s-box>
-              ))}
-
-              <s-button variant="secondary" onClick={addInputField}>
-                + Add Input Field
-              </s-button>
-
-              <s-heading level="4">Formulas</s-heading>
-              <s-paragraph>
-                Use the input field keys in your formulas. Example: length*width*2
-              </s-paragraph>
-
-              <s-text-field
-                label="Surface Area Formula"
-                value={formData.surfaceAreaFormula}
-                onChange={(e) => setFormData({ ...formData, surfaceAreaFormula: e.target.value })}
-                placeholder="length*width*2 + length*thickness*2 + width*thickness*2"
-                helpText="Used for fabric cost calculation"
-              />
-
-              <s-text-field
-                label="Surface Area Without Base Formula (Weatherproof)"
-                value={formData.surfaceAreaWithoutBaseFormula}
-                onChange={(e) => setFormData({ ...formData, surfaceAreaWithoutBaseFormula: e.target.value })}
-                placeholder="length*width + length*thickness*2 + width*thickness*2"
-                helpText="Used when Weatherproof mode is enabled in profile (no bottom coverage)"
-              />
-
-              <s-text-field
-                label="Volume Formula"
-                value={formData.volumeFormula}
-                onChange={(e) => setFormData({ ...formData, volumeFormula: e.target.value })}
-                placeholder="length*width*thickness"
-                helpText="Used for fill cost calculation"
-              />
-
-              <s-text-field
-                label="Sort Order"
-                type="number"
-                value={formData.sortOrder}
-                onChange={(e) => setFormData({ ...formData, sortOrder: parseInt(e.target.value) || 0 })}
-              />
-
-              <s-stack direction="inline" gap="base">
-                <input
-                  type="checkbox"
-                  id="isActive"
-                  checked={formData.isActive}
-                  onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+        <div className="cc-layout">
+          <div className="cc-main">
+            <div className="cc-card">
+              <div className="cc-card__head"><h2>Details</h2></div>
+              <div className="cc-card__body">
+                <TextField
+                  id="shape-name"
+                  label="Shape name"
+                  value={formData.name}
+                  onChange={(v) => setFormData({ ...formData, name: v })}
+                  placeholder="e.g. Rectangle, Circle, Hexagon"
+                  required
                 />
-                <label htmlFor="isActive">Active</label>
-              </s-stack>
+                <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
+                  <Thumb src={formData.imageUrl} alt={formData.name} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <TextField
+                      id="shape-image"
+                      label="Image URL"
+                      value={formData.imageUrl}
+                      onChange={(v) => setFormData({ ...formData, imageUrl: v })}
+                      placeholder="https://example.com/shape-image.png"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
 
-              <s-heading level="4">2D Shape / Panels Configuration</s-heading>
-              <s-paragraph>
-                Enable these options for flat shapes like curtains that may need panel multipliers.
-              </s-paragraph>
+            <div className="cc-card">
+              <div className="cc-card__head">
+                <h2>Dimensions</h2>
+                <span className="cc-card__meta">{inputFields.length}</span>
+                <div className="cc-card__actions">
+                  <button type="button" className="cc-btn" onClick={addInputField}>+ Add dimension</button>
+                </div>
+              </div>
+              <div className="cc-card__body" style={{ paddingBottom: 4 }}>
+                <p className="cc-p cc-muted">The measurements customers enter. Use each dimension’s key in your formulas.</p>
+              </div>
+              <div className="cc-card__flush">
+                {inputFields.length === 0 ? (
+                  <div className="cc-card__body cc-muted">No dimensions yet. Add one to use it in your formulas.</div>
+                ) : (
+                  <div className="cc-table-wrap">
+                    <table className="cc-table">
+                      <thead>
+                        <tr>
+                          <th>Label</th>
+                          <th>Key (used in formulas)</th>
+                          <th>Min</th>
+                          <th>Max</th>
+                          <th>Default</th>
+                          <th><span className="cc-visually-hidden">Remove</span></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {inputFields.map((field, index) => (
+                          <tr key={index}>
+                            <td>
+                              <input
+                                className="cc-input"
+                                aria-label={`Dimension ${index + 1} label`}
+                                value={field.label ?? ""}
+                                onChange={(e) => updateInputField(index, "label", e.target.value)}
+                                placeholder="Length"
+                              />
+                            </td>
+                            <td>
+                              <input
+                                className="cc-input"
+                                aria-label={`Dimension ${index + 1} key`}
+                                style={{ fontFamily: "var(--cc-mono)" }}
+                                value={field.key ?? ""}
+                                onChange={(e) => updateInputField(index, "key", e.target.value.toLowerCase().replace(/\s/g, "_"))}
+                                placeholder="length"
+                              />
+                            </td>
+                            <td style={{ width: 96 }}>
+                              <input
+                                className="cc-input cc-num"
+                                type="number"
+                                aria-label={`Dimension ${index + 1} minimum`}
+                                value={field.min ?? ""}
+                                onChange={(e) => updateInputField(index, "min", e.target.value)}
+                              />
+                            </td>
+                            <td style={{ width: 96 }}>
+                              <input
+                                className="cc-input cc-num"
+                                type="number"
+                                aria-label={`Dimension ${index + 1} maximum`}
+                                value={field.max ?? ""}
+                                onChange={(e) => updateInputField(index, "max", e.target.value)}
+                              />
+                            </td>
+                            <td style={{ width: 104 }}>
+                              <input
+                                className="cc-input cc-num"
+                                type="number"
+                                aria-label={`Dimension ${index + 1} default value`}
+                                value={field.defaultValue ?? ""}
+                                onChange={(e) => updateInputField(index, "defaultValue", e.target.value)}
+                                placeholder="e.g. 12"
+                              />
+                            </td>
+                            <td style={{ width: 1 }}>
+                              <div className="cc-rowact">
+                                <button type="button" className="cc-btn cc-btn--plain cc-btn--critical" onClick={() => removeInputField(index)}>Remove</button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
 
-              <s-stack direction="inline" gap="base">
-                <input
-                  type="checkbox"
+            <div className="cc-card">
+              <div className="cc-card__head"><h2>Pricing formulas</h2></div>
+              <div className="cc-card__body">
+                <p className="cc-p cc-muted">Write formulas with the dimension keys, e.g. <code style={mono}>length*width*2</code>.</p>
+                <TextField
+                  id="shape-sa"
+                  label="Surface area formula"
+                  value={formData.surfaceAreaFormula}
+                  onChange={(v) => setFormData({ ...formData, surfaceAreaFormula: v })}
+                  placeholder="length*width*2 + length*thickness*2 + width*thickness*2"
+                  help="Used to price the fabric."
+                  style={{ fontFamily: "var(--cc-mono)" }}
+                />
+                <TextField
+                  id="shape-sa-nobase"
+                  label="Surface area without base (weatherproof)"
+                  value={formData.surfaceAreaWithoutBaseFormula}
+                  onChange={(v) => setFormData({ ...formData, surfaceAreaWithoutBaseFormula: v })}
+                  placeholder="length*width + length*thickness*2 + width*thickness*2"
+                  help="Used instead when the profile has weatherproof on (the base isn’t covered)."
+                  style={{ fontFamily: "var(--cc-mono)" }}
+                />
+                <TextField
+                  id="shape-volume"
+                  label="Volume formula"
+                  value={formData.volumeFormula}
+                  onChange={(v) => setFormData({ ...formData, volumeFormula: v })}
+                  placeholder="length*width*thickness"
+                  help="Used to price the fill."
+                  style={{ fontFamily: "var(--cc-mono)" }}
+                />
+              </div>
+            </div>
+
+            <div className="cc-card">
+              <div className="cc-card__head"><h2>2D shape and panels</h2></div>
+              <div className="cc-card__body">
+                <p className="cc-p cc-muted">For flat items like curtains that can be ordered as several panels.</p>
+                <Checkbox
                   id="is2D"
                   checked={formData.is2D}
-                  onChange={(e) => setFormData({ ...formData, is2D: e.target.checked, enablePanels: e.target.checked ? formData.enablePanels : false })}
+                  onChange={(v) => setFormData({ ...formData, is2D: v, enablePanels: v ? formData.enablePanels : false })}
+                  label="This is a 2D shape"
+                  help="e.g. a curtain panel."
                 />
-                <label htmlFor="is2D">This is a 2D shape (e.g., curtain panel)</label>
-              </s-stack>
-
-              {formData.is2D && (
-                <>
-                  <s-stack direction="inline" gap="base">
-                    <input
-                      type="checkbox"
-                      id="enablePanels"
-                      checked={formData.enablePanels}
-                      onChange={(e) => setFormData({ ...formData, enablePanels: e.target.checked })}
-                    />
-                    <label htmlFor="enablePanels">Enable panel count input (multiplies total by panel count)</label>
-                  </s-stack>
-
-                  {formData.enablePanels && (
-                    <s-text-field
-                      label="Maximum Panels"
+                {formData.is2D && (
+                  <Checkbox
+                    id="enablePanels"
+                    checked={formData.enablePanels}
+                    onChange={(v) => setFormData({ ...formData, enablePanels: v })}
+                    label="Let customers choose a panel count"
+                    help="The total is multiplied by the number of panels."
+                  />
+                )}
+                {formData.is2D && formData.enablePanels && (
+                  <div style={{ maxWidth: 220 }}>
+                    <TextField
+                      id="shape-max-panels"
+                      label="Maximum panels"
                       type="number"
                       value={formData.maxPanels}
-                      onChange={(e) => setFormData({ ...formData, maxPanels: parseInt(e.target.value) || 10 })}
-                      helpText="Maximum number of panels a customer can order (1-20)"
+                      onChange={(v) => setFormData({ ...formData, maxPanels: parseInt(v) || 10 })}
+                      help="The most panels a customer can order (1–20)."
                       min="1"
                       max="20"
                     />
-                  )}
-                </>
-              )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
 
-              <s-stack direction="inline" gap="base">
-                <s-button onClick={handleSubmit}>
-                  {editingShape ? "Update Shape" : "Create Shape"}
-                </s-button>
-                <s-button variant="tertiary" onClick={() => { setShowForm(false); resetForm(); }}>
-                  Cancel
-                </s-button>
-              </s-stack>
-            </s-stack>
-          </s-box>
-        </s-section>
-      )}
+          <div className="cc-side">
+            <div className="cc-card">
+              <div className="cc-card__head"><h2>Status</h2></div>
+              <div className="cc-card__body">
+                <Checkbox
+                  id="isActive"
+                  checked={formData.isActive}
+                  onChange={(v) => setFormData({ ...formData, isActive: v })}
+                  label="Active"
+                  help="Inactive shapes are hidden from customers."
+                />
+                <span className="cc-help">
+                  {formData.isDefault
+                    ? "This is the default shape."
+                    : "To make this the default shape, use “Set as default” in the shapes list."}
+                </span>
+              </div>
+            </div>
 
-      <s-section heading={`Shapes (${shapes.length})`}>
-        {shapes.length === 0 ? (
-          <s-box padding="base">
-            <s-paragraph>No shapes created yet. Add your first shape to get started.</s-paragraph>
-          </s-box>
-        ) : (
-          <s-stack direction="block" gap="base">
-            {shapes.map((shape) => (
-              <s-box
-                key={shape.id}
-                padding="base"
-                borderWidth="base"
-                borderRadius="base"
-                background={shape.isActive ? "default" : "subdued"}
-              >
-                <s-stack direction="inline" gap="base" align="center" wrap>
-                  {shape.imageUrl ? (
-                    <img src={shape.imageUrl} alt={shape.name} style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 6 }} />
-                  ) : (
-                    <div style={{ width: 60, height: 60, background: "#f0f0f0", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#999" }}>
-                      No image
-                    </div>
-                  )}
+            <div className="cc-card">
+              <div className="cc-card__head"><h2>List position</h2></div>
+              <div className="cc-card__body">
+                <TextField
+                  id="shape-sort"
+                  label="Sort order"
+                  type="number"
+                  value={formData.sortOrder}
+                  onChange={(v) => setFormData({ ...formData, sortOrder: parseInt(v) || 0 })}
+                  help="Lower numbers appear first."
+                />
+              </div>
+            </div>
 
-                  <s-stack direction="block" gap="tight" style={{ flex: 1 }}>
-                    <s-stack direction="inline" gap="tight" align="center">
-                      <s-text fontWeight="semibold">{shape.name}</s-text>
-                      {shape.is2D && <span style={{ background: "#e0f0ff", color: "#0066cc", padding: "2px 6px", borderRadius: "4px", fontSize: "11px", fontWeight: "600" }}>2D</span>}
-                      {shape.enablePanels && <span style={{ background: "#fff3e0", color: "#e65100", padding: "2px 6px", borderRadius: "4px", fontSize: "11px", fontWeight: "600" }}>Panels</span>}
-                      {shape.isDefault && <s-text tone="success" fontSize="small">(Default)</s-text>}
-                      {!shape.isActive && <s-text tone="subdued" fontSize="small">(Inactive)</s-text>}
-                    </s-stack>
-                    <s-text tone="subdued" fontSize="small">
-                      Inputs: {shape.inputFields.map(f => `${f.label}${f.defaultValue ? ` (${f.defaultValue})` : ''}`).join(", ")}
-                    </s-text>
-                    <s-text tone="subdued" fontSize="small">
-                      SA: {shape.surfaceAreaFormula}
-                    </s-text>
-                  </s-stack>
+            <div className="cc-card">
+              <div className="cc-card__head"><h2>Formula examples</h2></div>
+              <div className="cc-card__body" style={{ gap: 10 }}>
+                <div>
+                  <div className="cc-label">Rectangle</div>
+                  <div className="cc-muted" style={{ ...mono, wordBreak: "break-word" }}>SA: length*width*2 + length*thickness*2 + width*thickness*2</div>
+                  <div className="cc-muted" style={{ ...mono, wordBreak: "break-word" }}>Vol: length*width*thickness</div>
+                </div>
+                <div>
+                  <div className="cc-label">Circle</div>
+                  <div className="cc-muted" style={{ ...mono, wordBreak: "break-word" }}>SA: 3.14159*radius*radius*2 + 3.14159*2*radius*thickness</div>
+                  <div className="cc-muted" style={{ ...mono, wordBreak: "break-word" }}>Vol: 3.14159*radius*radius*thickness</div>
+                </div>
+              </div>
+            </div>
 
-                  <s-stack direction="inline" gap="tight">
-                    <s-button variant="tertiary" onClick={() => handleEdit(shape)}>Edit</s-button>
-                    {!shape.isDefault && (
-                      <s-button variant="tertiary" onClick={() => handleSetDefault(shape.id)}>Set Default</s-button>
-                    )}
-                    <s-button variant="tertiary" tone="critical" onClick={() => handleDelete(shape.id)}>Delete</s-button>
-                  </s-stack>
-                </s-stack>
-              </s-box>
-            ))}
-          </s-stack>
-        )}
-      </s-section>
+            {editingShape && (
+              <button type="button" className="cc-btn cc-btn--critical" style={{ justifySelf: "start" }} onClick={() => setDeleteTarget(editingShape)}>
+                Delete shape
+              </button>
+            )}
+          </div>
+        </div>
 
-      <s-section slot="aside" heading="Formula Examples">
-        <s-box padding="base">
-          <s-stack direction="block" gap="tight">
-            <s-text fontWeight="semibold">Rectangle:</s-text>
-            <s-text fontSize="small">SA: length*width*2 + length*thickness*2 + width*thickness*2</s-text>
-            <s-text fontSize="small">Vol: length*width*thickness</s-text>
-
-            <s-text fontWeight="semibold" style={{ marginTop: 12 }}>Circle:</s-text>
-            <s-text fontSize="small">SA: 3.14159*radius*radius*2 + 3.14159*2*radius*thickness</s-text>
-            <s-text fontSize="small">Vol: 3.14159*radius*radius*thickness</s-text>
-          </s-stack>
-        </s-box>
-      </s-section>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, borderTop: "1px solid var(--cc-border)", paddingTop: 16 }}>
+          <button type="button" className="cc-btn" onClick={handleBack}>Cancel</button>
+          <button type="button" className="cc-btn cc-btn--primary" onClick={handleSubmit}>{editingShape ? "Save" : "Create shape"}</button>
+        </div>
+      </div>
+      {deleteModal}
     </s-page>
   );
 }

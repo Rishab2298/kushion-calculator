@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useLoaderData, useFetcher } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
+import { Card, Badge, StatusBadge, TextField, TextArea, Checkbox, Modal, ConfirmModal, Thumb, EmptyState } from "../components/admin-ui";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 
@@ -74,6 +75,7 @@ export default function FabricTies() {
 
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
     imageUrl: "",
@@ -122,15 +124,32 @@ export default function FabricTies() {
     resetForm();
   };
 
-  const handleDelete = (id) => {
-    if (confirm("Delete this fabric ties option?")) {
-      const data = new FormData();
-      data.append("intent", "delete");
-      data.append("id", id);
-      fetcher.submit(data, { method: "POST" });
-      shopify.toast.show("Fabric ties option deleted");
-    }
+  const handleDelete = (item) => setDeleteTarget(item);
+
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    const data = new FormData();
+    data.append("intent", "delete");
+    data.append("id", deleteTarget.id);
+    fetcher.submit(data, { method: "POST" });
+    shopify.toast.show("Fabric ties option deleted");
+    setDeleteTarget(null);
   };
+
+  // Stable close handler so the modal doesn't re-focus its first field on every keystroke.
+  const closeForm = useCallback(() => {
+    setShowForm(false);
+    setFormData({
+      name: "",
+      imageUrl: "",
+      price: 0,
+      description: "",
+      isActive: true,
+      isDefault: false,
+      sortOrder: fabricTiesOptions.length,
+    });
+    setEditingItem(null);
+  }, [fabricTiesOptions.length]);
 
   const handleSetDefault = (id) => {
     const data = new FormData();
@@ -140,138 +159,162 @@ export default function FabricTies() {
     shopify.toast.show("Default fabric ties option updated");
   };
 
+  const openAdd = () => { resetForm(); setShowForm(true); };
+
   return (
-    <s-page heading="Fabric Ties Options" fullWidth>
-      <s-button slot="primary-action" onClick={() => { resetForm(); setShowForm(true); }}>
-        Add Fabric Ties Option
+    <s-page heading="Fabric ties options" inlineSize="large">
+      <s-button slot="primary-action" variant="primary" onClick={openAdd}>
+        Add fabric ties option
       </s-button>
 
-      <s-section>
-        <s-box padding="base" background="subdued" borderRadius="base">
-          <s-text>Fabric ties options add a fixed dollar amount to the total. These are ties made from the same fabric as the cushion/curtain.</s-text>
-        </s-box>
-      </s-section>
+      <div className="cc-page">
+        <p className="cc-p cc-muted">Fabric ties options add a fixed dollar amount to the total. These are ties made from the same fabric as the cushion/curtain.</p>
+        <Card title="Options" meta={`${fabricTiesOptions.length} total`} flush>
+          {fabricTiesOptions.length === 0 ? (
+            <EmptyState
+              title="No fabric ties options yet"
+              action={<button type="button" className="cc-btn cc-btn--primary" onClick={openAdd}>Add fabric ties option</button>}
+            >
+              Add an option for customers to choose in the calculator.
+            </EmptyState>
+          ) : (
+            <div className="cc-table-wrap">
+              <table className="cc-table">
+                <thead>
+                  <tr>
+                    <th>Option</th>
+                    <th>Price</th>
+                    <th>Sort order</th>
+                    <th>Status</th>
+                    <th><span className="cc-visually-hidden">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fabricTiesOptions.map((item) => (
+                    <tr
+                      key={item.id}
+                      className={`cc-clickable${item.isActive ? "" : " cc-row--inactive"}`}
+                      tabIndex={0}
+                      onClick={() => handleEdit(item)}
+                      onKeyDown={(e) => { if (e.key === "Enter" && e.target === e.currentTarget) handleEdit(item); }}
+                    >
+                      <td>
+                        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                          <Thumb src={item.imageUrl} alt={item.name} />
+                          <div style={{ minWidth: 0 }}>
+                            <div className="cc-name">{item.name}</div>
+                            {item.description && <div className="cc-muted cc-small">{item.description}</div>}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="cc-num">${item.price.toFixed(2)}</td>
+                      <td className="cc-num cc-muted">{item.sortOrder}</td>
+                      <td>
+                        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                          <StatusBadge active={item.isActive} />
+                          {item.isDefault && <Badge tone="info">Default</Badge>}
+                        </div>
+                      </td>
+                      <td onClick={(e) => e.stopPropagation()}>
+                        <div className="cc-rowact">
+                          {!item.isDefault && (
+                            <button type="button" className="cc-btn cc-btn--plain" onClick={() => handleSetDefault(item.id)}>Set as default</button>
+                          )}
+                          <button type="button" className="cc-btn cc-btn--plain cc-btn--critical" style={{ color: "var(--cc-crit)" }} onClick={() => handleDelete(item)}>Delete</button>
+                          <button type="button" className="cc-btn" onClick={() => handleEdit(item)}>Edit</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      </div>
 
-      {showForm && (
-        <s-section heading={editingItem ? "Edit Fabric Ties Option" : "Create Fabric Ties Option"}>
-          <s-box padding="base" borderWidth="base" borderRadius="base">
-            <s-stack direction="block" gap="base">
-              <s-text-field
-                label="Name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., 2 Fabric Ties"
-                required
-              />
+      <Modal
+        open={showForm}
+        title={editingItem ? `Edit ${editingItem.name}` : "Add fabric ties option"}
+        onClose={closeForm}
+        footer={
+          <>
+            <button type="button" className="cc-btn" onClick={closeForm}>Cancel</button>
+            <button type="button" className="cc-btn cc-btn--primary" onClick={handleSubmit}>
+              {editingItem ? "Save" : "Create"}
+            </button>
+          </>
+        }
+      >
+        <TextField
+          id="fabricTiesName"
+          label="Name"
+          value={formData.name}
+          onChange={(v) => setFormData({ ...formData, name: v })}
+          placeholder="e.g., 2 Fabric Ties"
+          required
+        />
+        <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <TextField
+              id="fabricTiesImageUrl"
+              label="Image URL"
+              value={formData.imageUrl}
+              onChange={(v) => setFormData({ ...formData, imageUrl: v })}
+              placeholder="https://example.com/image.png"
+            />
+          </div>
+          {formData.imageUrl && <Thumb src={formData.imageUrl} alt="Preview" />}
+        </div>
+        <div className="cc-row2">
+          <TextField
+            id="fabricTiesPrice"
+            label="Price ($)"
+            type="number"
+            step="0.01"
+            value={formData.price}
+            onChange={(v) => setFormData({ ...formData, price: parseFloat(v) || 0 })}
+            help="Fixed dollar amount added to the total."
+          />
+          <TextField
+            id="fabricTiesSortOrder"
+            label="Sort order"
+            type="number"
+            value={formData.sortOrder}
+            onChange={(v) => setFormData({ ...formData, sortOrder: parseInt(v) || 0 })}
+          />
+        </div>
+        <TextArea
+          id="fabricTiesDescription"
+          label="Description"
+          value={formData.description}
+          onChange={(v) => setFormData({ ...formData, description: v })}
+          placeholder="Optional description"
+          rows={2}
+        />
+        <Checkbox
+          id="fabricTiesActive"
+          checked={formData.isActive}
+          onChange={(v) => setFormData({ ...formData, isActive: v })}
+          label="Active"
+        />
+        <Checkbox
+          id="fabricTiesDefault"
+          checked={formData.isDefault}
+          onChange={(v) => setFormData({ ...formData, isDefault: v })}
+          label="Default option"
+        />
+      </Modal>
 
-              <s-text-field
-                label="Image URL"
-                value={formData.imageUrl}
-                onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                placeholder="https://example.com/image.png"
-              />
-
-              <s-text-field
-                label="Price ($)"
-                type="number"
-                value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
-                helpText="Fixed dollar amount added to total"
-              />
-
-              <s-text-field
-                label="Description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Optional description"
-              />
-
-              <s-text-field
-                label="Sort Order"
-                type="number"
-                value={formData.sortOrder}
-                onChange={(e) => setFormData({ ...formData, sortOrder: parseInt(e.target.value) || 0 })}
-              />
-
-              <s-stack direction="inline" gap="base">
-                <input
-                  type="checkbox"
-                  id="fabricTiesActive"
-                  checked={formData.isActive}
-                  onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                />
-                <label htmlFor="fabricTiesActive">Active</label>
-              </s-stack>
-
-              <s-stack direction="inline" gap="base">
-                <input
-                  type="checkbox"
-                  id="fabricTiesDefault"
-                  checked={formData.isDefault}
-                  onChange={(e) => setFormData({ ...formData, isDefault: e.target.checked })}
-                />
-                <label htmlFor="fabricTiesDefault">Set as Default</label>
-              </s-stack>
-
-              <s-stack direction="inline" gap="base">
-                <s-button onClick={handleSubmit}>
-                  {editingItem ? "Update" : "Create"}
-                </s-button>
-                <s-button variant="tertiary" onClick={() => { setShowForm(false); resetForm(); }}>
-                  Cancel
-                </s-button>
-              </s-stack>
-            </s-stack>
-          </s-box>
-        </s-section>
-      )}
-
-      <s-section heading={`Fabric Ties Options (${fabricTiesOptions.length})`}>
-        {fabricTiesOptions.length === 0 ? (
-          <s-box padding="base">
-            <s-paragraph>No fabric ties options created yet.</s-paragraph>
-          </s-box>
-        ) : (
-          <s-stack direction="block" gap="base">
-            {fabricTiesOptions.map((item) => (
-              <s-box
-                key={item.id}
-                padding="base"
-                borderWidth="base"
-                borderRadius="base"
-                background={item.isActive ? "default" : "subdued"}
-              >
-                <s-stack direction="inline" gap="base" align="center" wrap>
-                  {item.imageUrl ? (
-                    <img src={item.imageUrl} alt={item.name} style={{ width: 50, height: 50, objectFit: "cover", borderRadius: 6 }} />
-                  ) : (
-                    <div style={{ width: 50, height: 50, background: "#f0f0f0", borderRadius: 6 }} />
-                  )}
-
-                  <s-stack direction="block" gap="tight" style={{ flex: 1 }}>
-                    <s-stack direction="inline" gap="tight" align="center">
-                      <s-text fontWeight="semibold">{item.name}</s-text>
-                      {item.isDefault && <s-badge tone="info">Default</s-badge>}
-                      {!item.isActive && <s-text tone="subdued" fontSize="small">(Inactive)</s-text>}
-                    </s-stack>
-                    <s-text tone="subdued" fontSize="small">
-                      ${item.price.toFixed(2)}
-                    </s-text>
-                  </s-stack>
-
-                  <s-stack direction="inline" gap="tight">
-                    <s-button variant="tertiary" onClick={() => handleEdit(item)}>Edit</s-button>
-                    {!item.isDefault && (
-                      <s-button variant="tertiary" onClick={() => handleSetDefault(item.id)}>Set Default</s-button>
-                    )}
-                    <s-button variant="tertiary" tone="critical" onClick={() => handleDelete(item.id)}>Delete</s-button>
-                  </s-stack>
-                </s-stack>
-              </s-box>
-            ))}
-          </s-stack>
-        )}
-      </s-section>
+      <ConfirmModal
+        open={!!deleteTarget}
+        title={`Delete “${deleteTarget?.name}”?`}
+        confirmLabel="Delete"
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+      >
+        <p className="cc-p">This fabric ties option will be permanently removed and customers will no longer be able to choose it. This can’t be undone.</p>
+      </ConfirmModal>
     </s-page>
   );
 }

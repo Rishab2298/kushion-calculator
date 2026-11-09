@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { useLoaderData, useFetcher, useSearchParams } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
+import { Badge, StatusBadge, TextField, SelectField, Checkbox, Modal, ConfirmModal, BackButton, Thumb, EmptyState } from "../components/admin-ui";
 import prisma from "../db.server";
 import { invalidateConfigCache } from "./api.calculator-config";
 
@@ -517,6 +518,24 @@ export default function Fabrics() {
   // Material form state
   const [materialData, setMaterialData] = useState({ name: "", sortOrder: 0 });
 
+  // Confirmation dialog (replaces window.confirm): { title, message, confirmLabel, onConfirm }
+  const [confirmAction, setConfirmAction] = useState(null);
+  const askConfirm = (opts) => setConfirmAction(opts);
+  const cancelConfirm = useCallback(() => setConfirmAction(null), []);
+  const runConfirm = () => {
+    const fn = confirmAction?.onConfirm;
+    setConfirmAction(null);
+    if (fn) fn();
+  };
+
+  // Stable close handlers so the shared Modal does not re-focus on every keystroke
+  const closeCategoryModal = useCallback(() => setShowCategoryModal(false), []);
+  const closeBrandModal = useCallback(() => setShowBrandModal(false), []);
+  const closePatternModal = useCallback(() => setShowPatternModal(false), []);
+  const closeColorModal = useCallback(() => setShowColorModal(false), []);
+  const closeMaterialModal = useCallback(() => setShowMaterialModal(false), []);
+  const closeImportModal = useCallback(() => setShowImportModal(false), []);
+
   // --- Sort handler ---
   const handleSort = useCallback((col) => {
     const params = new URLSearchParams(searchParams);
@@ -630,13 +649,19 @@ export default function Fabrics() {
     setShowFabricModal(false);
   };
 
-  const deleteFabric = (id) => {
-    if (confirm("Delete this fabric?")) {
-      const data = new FormData();
-      data.append("intent", "deleteFabric");
-      data.append("id", id);
-      fetcher.submit(data, { method: "POST" });
-    }
+  const deleteFabric = (id, afterDelete) => {
+    askConfirm({
+      title: "Delete this fabric?",
+      message: "This can’t be undone.",
+      confirmLabel: "Delete fabric",
+      onConfirm: () => {
+        const data = new FormData();
+        data.append("intent", "deleteFabric");
+        data.append("id", id);
+        fetcher.submit(data, { method: "POST" });
+        if (afterDelete) afterDelete();
+      },
+    });
   };
 
   // --- Category modal handlers ---
@@ -662,13 +687,19 @@ export default function Fabrics() {
     setShowCategoryModal(false);
   };
 
-  const deleteCategory = (id) => {
-    if (confirm("Delete this category? Fabrics will become uncategorized.")) {
-      const data = new FormData();
-      data.append("intent", "deleteCategory");
-      data.append("id", id);
-      fetcher.submit(data, { method: "POST" });
-    }
+  const deleteCategory = (id, afterDelete) => {
+    askConfirm({
+      title: "Delete this category?",
+      message: "Fabrics will become uncategorized.",
+      confirmLabel: "Delete category",
+      onConfirm: () => {
+        const data = new FormData();
+        data.append("intent", "deleteCategory");
+        data.append("id", id);
+        fetcher.submit(data, { method: "POST" });
+        if (afterDelete) afterDelete();
+      },
+    });
   };
 
   // --- Brand modal handlers ---
@@ -699,13 +730,19 @@ export default function Fabrics() {
     setShowBrandModal(false);
   };
 
-  const deleteBrand = (id) => {
-    if (confirm("Delete this brand? Fabrics using it will be unlinked.")) {
-      const data = new FormData();
-      data.append("intent", "deleteBrand");
-      data.append("id", id);
-      fetcher.submit(data, { method: "POST" });
-    }
+  const deleteBrand = (id, afterDelete) => {
+    askConfirm({
+      title: "Delete this brand?",
+      message: "Fabrics using it will be unlinked.",
+      confirmLabel: "Delete brand",
+      onConfirm: () => {
+        const data = new FormData();
+        data.append("intent", "deleteBrand");
+        data.append("id", id);
+        fetcher.submit(data, { method: "POST" });
+        if (afterDelete) afterDelete();
+      },
+    });
   };
 
   // --- Pattern modal handlers ---
@@ -731,13 +768,19 @@ export default function Fabrics() {
     setShowPatternModal(false);
   };
 
-  const deletePattern = (id) => {
-    if (confirm("Delete this pattern? Fabric assignments will be removed.")) {
-      const data = new FormData();
-      data.append("intent", "deletePattern");
-      data.append("id", id);
-      fetcher.submit(data, { method: "POST" });
-    }
+  const deletePattern = (id, afterDelete) => {
+    askConfirm({
+      title: "Delete this pattern?",
+      message: "Fabric assignments will be removed.",
+      confirmLabel: "Delete pattern",
+      onConfirm: () => {
+        const data = new FormData();
+        data.append("intent", "deletePattern");
+        data.append("id", id);
+        fetcher.submit(data, { method: "POST" });
+        if (afterDelete) afterDelete();
+      },
+    });
   };
 
   // --- Color modal handlers ---
@@ -763,13 +806,19 @@ export default function Fabrics() {
     setShowColorModal(false);
   };
 
-  const deleteColor = (id) => {
-    if (confirm("Delete this color? Fabric assignments will be removed.")) {
-      const data = new FormData();
-      data.append("intent", "deleteColor");
-      data.append("id", id);
-      fetcher.submit(data, { method: "POST" });
-    }
+  const deleteColor = (id, afterDelete) => {
+    askConfirm({
+      title: "Delete this color?",
+      message: "Fabric assignments will be removed.",
+      confirmLabel: "Delete color",
+      onConfirm: () => {
+        const data = new FormData();
+        data.append("intent", "deleteColor");
+        data.append("id", id);
+        fetcher.submit(data, { method: "POST" });
+        if (afterDelete) afterDelete();
+      },
+    });
   };
 
   // --- Material modal handlers ---
@@ -795,13 +844,19 @@ export default function Fabrics() {
     setShowMaterialModal(false);
   };
 
-  const deleteMaterial = (id) => {
-    if (confirm("Delete this material? Fabric assignments will be removed.")) {
-      const data = new FormData();
-      data.append("intent", "deleteMaterial");
-      data.append("id", id);
-      fetcher.submit(data, { method: "POST" });
-    }
+  const deleteMaterial = (id, afterDelete) => {
+    askConfirm({
+      title: "Delete this material?",
+      message: "Fabric assignments will be removed.",
+      confirmLabel: "Delete material",
+      onConfirm: () => {
+        const data = new FormData();
+        data.append("intent", "deleteMaterial");
+        data.append("id", id);
+        fetcher.submit(data, { method: "POST" });
+        if (afterDelete) afterDelete();
+      },
+    });
   };
 
   // --- Bulk action handler ---
@@ -810,13 +865,22 @@ export default function Fabrics() {
     const ids = JSON.stringify([...selectedIds]);
 
     if (bulkAction === "delete") {
-      if (!confirm(`Delete ${selectedIds.size} fabric(s)?`)) return;
-      const data = new FormData();
-      data.append("intent", "bulkDelete");
-      data.append("ids", ids);
-      fetcher.submit(data, { method: "POST" });
-      shopify.toast.show(`${selectedIds.size} fabrics deleted`);
-      setSelectedIds(new Set());
+      const count = selectedIds.size;
+      askConfirm({
+        title: `Delete ${count} fabric(s)?`,
+        message: "The selected fabrics will be permanently deleted. This can’t be undone.",
+        confirmLabel: "Delete fabrics",
+        onConfirm: () => {
+          const data = new FormData();
+          data.append("intent", "bulkDelete");
+          data.append("ids", ids);
+          fetcher.submit(data, { method: "POST" });
+          shopify.toast.show(`${count} fabrics deleted`);
+          setSelectedIds(new Set());
+          setBulkAction("");
+        },
+      });
+      return;
     } else if (bulkAction === "setTier") {
       const data = new FormData();
       data.append("intent", "bulkUpdateTier");
@@ -879,896 +943,798 @@ export default function Fabrics() {
     return arr.includes(id) ? arr.filter(x => x !== id) : [...arr, id];
   };
 
-  const selectStyle = { padding: "4px 6px", borderRadius: 3, border: "1px solid #ccc", fontSize: "0.75rem" };
-  const tabStyle = (tab) => ({
-    padding: "10px 16px",
-    cursor: "pointer",
-    borderBottom: activeTab === tab ? "3px solid #008060" : "3px solid transparent",
-    color: activeTab === tab ? "#008060" : "#6d7175",
-    fontWeight: activeTab === tab ? 600 : 400,
-    background: "none",
-    border: "none",
-    fontSize: "0.9rem",
+  const fixSortOrders = () => {
+    askConfirm({
+      title: "Reassign all fabric sort orders?",
+      message: "Every fabric gets a new sort order (0, 1, 2…) based on when it was created. This can’t be undone.",
+      confirmLabel: "Reassign sort orders",
+      onConfirm: () => {
+        const d = new FormData();
+        d.append("intent", "fixSortOrders");
+        fetcher.submit(d, { method: "POST" });
+      },
+    });
+  };
+
+  const openImport = () => { setShowImportModal(true); setImportCsv(""); setImportResult(null); };
+
+  const TIER_TONES = { low: "success", medium: "warning", high: "critical" };
+  const TIER_OPTIONS = [["none", "None"], ["low", "$ Low"], ["medium", "$$ Medium"], ["high", "$$$ High"]];
+
+  const sortHeader = (col, label, align) => {
+    const active = filters.sortBy === col;
+    return (
+      <th key={col} style={align ? { textAlign: align } : undefined} aria-sort={active ? (filters.sortDir === "asc" ? "ascending" : "descending") : undefined}>
+        <button
+          type="button"
+          onClick={() => handleSort(col)}
+          style={{ border: 0, background: "transparent", padding: 0, font: "inherit", color: active ? "var(--cc-fg)" : "inherit", cursor: "pointer", display: "inline-flex", gap: 4, alignItems: "center", whiteSpace: "nowrap" }}
+        >
+          {label}
+          <span aria-hidden="true" style={{ fontSize: 10, color: active ? "var(--cc-fg)" : "var(--cc-fg-3)" }}>
+            {active ? (filters.sortDir === "asc" ? "▲" : "▼") : "↕"}
+          </span>
+        </button>
+      </th>
+    );
+  };
+
+  const chipStyle = { display: "inline-flex", alignItems: "center", gap: 6 };
+  const swatchDot = (hex, size = 12) => (
+    <span aria-hidden="true" style={{ width: size, height: size, borderRadius: 999, background: hex || "var(--cc-surface-3)", boxShadow: "inset 0 0 0 1px rgba(0,0,0,.15)", display: "inline-block", flex: "none" }} />
+  );
+
+  const confirmModal = (
+    <ConfirmModal
+      open={!!confirmAction}
+      title={confirmAction?.title || ""}
+      confirmLabel={confirmAction?.confirmLabel || "Delete"}
+      onCancel={cancelConfirm}
+      onConfirm={runConfirm}
+    >
+      {confirmAction?.message && <p className="cc-p">{confirmAction.message}</p>}
+    </ConfirmModal>
+  );
+
+  // =============== FABRIC EDITOR (dedicated view) ===============
+  if (showFabricModal) {
+    const price = parseFloat(fabricData.pricePerSqInch);
+    return (
+      <s-page heading={editingFabric ? editingFabric.name : "New fabric"} inlineSize="large">
+        <div className="cc-page">
+          <div className="cc-header">
+            <BackButton onClick={() => setShowFabricModal(false)} label="Back to fabrics" />
+            <h1>{fabricData.name || (editingFabric ? "Untitled fabric" : "New fabric")}</h1>
+            <StatusBadge active={fabricData.isActive} />
+            {fabricData.isDefault && <Badge tone="info">Default</Badge>}
+            {fabricData.discountEnabled && fabricData.discountPercent > 0 && <Badge tone="success">−{fabricData.discountPercent}%</Badge>}
+          </div>
+
+          <div className="cc-layout">
+            <div className="cc-main">
+              <div className="cc-card">
+                <div className="cc-card__head"><h2>Details</h2></div>
+                <div className="cc-card__body">
+                  <TextField id="fabric-name" label="Fabric name" value={fabricData.name}
+                    onChange={(v) => setFabricData({ ...fabricData, name: v })}
+                    placeholder="e.g. Blue Velvet" required />
+                  <TextField id="fabric-description" label="Description" value={fabricData.description}
+                    onChange={(v) => setFabricData({ ...fabricData, description: v })} />
+                </div>
+              </div>
+
+              <div className="cc-card">
+                <div className="cc-card__head"><h2>Swatch image</h2></div>
+                <div className="cc-card__body">
+                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                    {fabricData.imageUrl ? (
+                      <img src={fabricData.imageUrl} alt={fabricData.name || "Fabric swatch"} style={{ width: 72, height: 72, borderRadius: 10, objectFit: "cover", background: "var(--cc-surface-3)", flex: "none", boxShadow: "inset 0 0 0 1px var(--cc-border)" }} />
+                    ) : (
+                      <span aria-hidden="true" style={{ width: 72, height: 72, borderRadius: 10, background: "var(--cc-surface-3)", flex: "none", display: "grid", placeItems: "center", color: "var(--cc-fg-3)", fontSize: 11 }}>No image</span>
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <TextField id="fabric-image" label="Image URL" value={fabricData.imageUrl}
+                        onChange={(v) => setFabricData({ ...fabricData, imageUrl: v })}
+                        placeholder="https://example.com/swatch.jpg"
+                        help="Shown to customers as the fabric swatch." />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="cc-card">
+                <div className="cc-card__head"><h2>Pricing</h2></div>
+                <div className="cc-card__body">
+                  <TextField id="fabric-price" label="Price per square inch (USD)" type="number" value={fabricData.pricePerSqInch}
+                    onChange={(v) => setFabricData({ ...fabricData, pricePerSqInch: v })}
+                    placeholder="0.05" step="0.001" required
+                    help={Number.isFinite(price) && price > 0 ? `About $${(price * 144).toFixed(2)} per square foot.` : "Required."} />
+                  <div className="cc-field">
+                    <span className="cc-label" id="fabric-tier-label">Price tier</span>
+                    <div className="cc-chips" role="group" aria-labelledby="fabric-tier-label">
+                      {TIER_OPTIONS.map(([val, label]) => (
+                        <button key={val} type="button" className="cc-chip" aria-pressed={fabricData.priceTier === val}
+                          onClick={() => setFabricData({ ...fabricData, priceTier: val })}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <span className="cc-help">Used to group fabrics by price on the storefront.</span>
+                  </div>
+                  <Checkbox id="fabricDiscountEnabled" checked={fabricData.discountEnabled}
+                    onChange={(v) => setFabricData({ ...fabricData, discountEnabled: v })}
+                    label="Discount from total"
+                    help="When on, this percentage is taken off the customer’s final total price." />
+                  {fabricData.discountEnabled && (
+                    <div style={{ maxWidth: 200, paddingLeft: 24 }}>
+                      <TextField id="fabric-discount" label="Discount (%)" type="number" value={fabricData.discountPercent}
+                        onChange={(v) => setFabricData({ ...fabricData, discountPercent: parseFloat(v) || 0 })}
+                        placeholder="10" step="0.1" min="0" max="100" />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="cc-card">
+                <div className="cc-card__head"><h2>Attributes</h2><span className="cc-card__meta">Used for storefront filters</span></div>
+                <div className="cc-card__body">
+                  <div className="cc-field">
+                    <span className="cc-label">Patterns</span>
+                    {patterns.length === 0 ? (
+                      <span className="cc-help">No patterns yet. Add them on the Patterns tab first.</span>
+                    ) : (
+                      <div className="cc-chips">
+                        {patterns.map(p => (
+                          <button key={p.id} type="button" className="cc-chip" aria-pressed={fabricData.patternIds.includes(p.id)}
+                            onClick={() => setFabricData({ ...fabricData, patternIds: toggleMultiSelect(fabricData.patternIds, p.id) })}>
+                            {p.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="cc-field">
+                    <span className="cc-label">Colors</span>
+                    {colors.length === 0 ? (
+                      <span className="cc-help">No colors yet. Add them on the Colors tab first.</span>
+                    ) : (
+                      <div className="cc-chips">
+                        {colors.map(c => (
+                          <button key={c.id} type="button" className="cc-chip" style={chipStyle} aria-pressed={fabricData.colorIds.includes(c.id)}
+                            onClick={() => setFabricData({ ...fabricData, colorIds: toggleMultiSelect(fabricData.colorIds, c.id) })}>
+                            {c.hexCode && swatchDot(c.hexCode)}
+                            {c.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="cc-field">
+                    <span className="cc-label">Materials</span>
+                    {materials.length === 0 ? (
+                      <span className="cc-help">No materials yet. Add them on the Materials tab first.</span>
+                    ) : (
+                      <div className="cc-chips">
+                        {materials.map(m => (
+                          <button key={m.id} type="button" className="cc-chip" aria-pressed={fabricData.materialIds.includes(m.id)}
+                            onClick={() => setFabricData({ ...fabricData, materialIds: toggleMultiSelect(fabricData.materialIds, m.id) })}>
+                            {m.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="cc-side">
+              <div className="cc-card">
+                <div className="cc-card__head"><h2>Status</h2></div>
+                <div className="cc-card__body">
+                  <Checkbox id="fabric-active" checked={fabricData.isActive}
+                    onChange={(v) => setFabricData({ ...fabricData, isActive: v })}
+                    label="Active" help="Inactive fabrics are hidden from customers." />
+                  <Checkbox id="fabric-default" checked={fabricData.isDefault}
+                    onChange={(v) => setFabricData({ ...fabricData, isDefault: v })}
+                    label="Default fabric" help="Pre-selected when the calculator opens." />
+                </div>
+              </div>
+
+              <div className="cc-card">
+                <div className="cc-card__head"><h2>Organization</h2></div>
+                <div className="cc-card__body">
+                  <SelectField id="fabric-category" label="Category" value={fabricData.categoryId}
+                    onChange={(v) => setFabricData({ ...fabricData, categoryId: v })}
+                    placeholder="No category"
+                    options={categories.map(c => ({ value: c.id, label: c.name }))} />
+                  <SelectField id="fabric-brand" label="Brand" value={fabricData.brandId}
+                    onChange={(v) => setFabricData({ ...fabricData, brandId: v })}
+                    placeholder="No brand"
+                    options={brands.map(b => ({ value: b.id, label: b.name }))} />
+                </div>
+              </div>
+
+              <div className="cc-card">
+                <div className="cc-card__head"><h2>List position</h2></div>
+                <div className="cc-card__body">
+                  <TextField id="fabric-sort" label="Sort order" type="number" value={fabricData.sortOrder}
+                    onChange={(v) => setFabricData({ ...fabricData, sortOrder: parseInt(v) || 0 })}
+                    help="Lower numbers appear first." />
+                </div>
+              </div>
+
+              {editingFabric && (
+                <button type="button" className="cc-btn cc-btn--critical" style={{ justifySelf: "start" }}
+                  onClick={() => deleteFabric(editingFabric.id, () => setShowFabricModal(false))}>
+                  Delete fabric
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, borderTop: "1px solid var(--cc-border)", paddingTop: 16 }}>
+            <button type="button" className="cc-btn" onClick={() => setShowFabricModal(false)}>Cancel</button>
+            <button type="button" className="cc-btn cc-btn--primary" onClick={submitFabric}>{editingFabric ? "Save" : "Create fabric"}</button>
+          </div>
+        </div>
+        {confirmModal}
+      </s-page>
+    );
+  }
+
+  // =============== LIST VIEWS ===============
+  const counts = {
+    Fabrics: pagination.totalCount,
+    Categories: categories.length,
+    Brands: brands.length,
+    Patterns: patterns.length,
+    Colors: colors.length,
+    Materials: materials.length,
+  };
+  const primaryAction = {
+    Fabrics: ["Add fabric", openAddFabric],
+    Categories: ["Add category", openAddCategory],
+    Brands: ["Add brand", openAddBrand],
+    Patterns: ["Add pattern", openAddPattern],
+    Colors: ["Add color", openAddColor],
+    Materials: ["Add material", openAddMaterial],
+  }[activeTab];
+
+  const allSelected = selectedIds.size === fabrics.length && fabrics.length > 0;
+  const statusTab = (value, label) => (
+    <button type="button" className="cc-tab" aria-pressed={(filters.status || "") === value} onClick={() => updateFilter("status", value)}>{label}</button>
+  );
+  const filterSelect = (id, label, value, key, options, extra) => (
+    <select id={id} aria-label={label} className="cc-select" style={{ width: "auto", minWidth: 120, padding: "6px 8px" }} value={value} onChange={(e) => updateFilter(key, e.target.value)}>
+      <option value="">{`All ${label.toLowerCase()}`}</option>
+      {extra}
+      {options.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+    </select>
+  );
+  const rowActions = (onEdit, onDelete) => (
+    <td onClick={(e) => e.stopPropagation()}>
+      <div className="cc-rowact">
+        <button type="button" className="cc-btn cc-btn--plain cc-btn--critical" onClick={onDelete}>Delete</button>
+        <button type="button" className="cc-btn" onClick={onEdit}>Edit</button>
+      </div>
+    </td>
+  );
+  const clickableRow = (onOpen) => ({
+    tabIndex: 0,
+    onClick: onOpen,
+    onKeyDown: (e) => { if (e.key === "Enter" && e.target === e.currentTarget) onOpen(); },
   });
+  const simpleListCard = ({ title, items, emptyTitle, emptyText, addLabel, onAdd, head, row }) => (
+    <div className="cc-card">
+      <div className="cc-card__head"><h2>{title}</h2><span className="cc-card__meta">{items.length}</span></div>
+      <div className="cc-card__flush">
+        {items.length === 0 ? (
+          <EmptyState title={emptyTitle} action={<button type="button" className="cc-btn cc-btn--primary" onClick={onAdd}>{addLabel}</button>}>
+            {emptyText}
+          </EmptyState>
+        ) : (
+          <div className="cc-table-wrap">
+            <table className="cc-table" style={{ minWidth: 480 }}>
+              <thead><tr>{head}<th><span className="cc-visually-hidden">Actions</span></th></tr></thead>
+              <tbody>{items.map(row)}</tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   return (
-    <s-page heading="Fabrics Management" fullWidth>
-      {/* Tab navigation */}
-      <s-section>
-        <div style={{ display: "flex", borderBottom: "1px solid #e1e3e5", marginBottom: 16 }}>
+    <s-page heading="Fabrics" inlineSize="large">
+      {primaryAction && (
+        <s-button slot="primary-action" variant="primary" onClick={primaryAction[1]}>{primaryAction[0]}</s-button>
+      )}
+      <div className="cc-page">
+        {/* Section navigation */}
+        <div className="cc-tabs" role="group" aria-label="Fabric settings">
           {TABS.map(tab => (
-            <button key={tab} style={tabStyle(tab)} onClick={() => setActiveTab(tab)}>
-              {tab}
-              {tab === "Fabrics" && ` (${pagination.totalCount})`}
-              {tab === "Categories" && ` (${categories.length})`}
-              {tab === "Brands" && ` (${brands.length})`}
-              {tab === "Patterns" && ` (${patterns.length})`}
-              {tab === "Colors" && ` (${colors.length})`}
-              {tab === "Materials" && ` (${materials.length})`}
+            <button key={tab} type="button" className="cc-tab" aria-pressed={activeTab === tab} onClick={() => setActiveTab(tab)}>
+              {tab} <span className="cc-num" style={{ color: "var(--cc-fg-3)", fontWeight: 500 }}>{counts[tab]}</span>
             </button>
           ))}
         </div>
-      </s-section>
 
-      {/* =============== FABRICS TAB =============== */}
-      {activeTab === "Fabrics" && (
-        <>
-          <s-section>
-            <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-              <s-button variant="primary" onClick={openAddFabric}>Add Fabric</s-button>
-              <s-button variant="secondary" onClick={exportCsv}>Export CSV</s-button>
-              <s-button variant="secondary" onClick={() => { setShowImportModal(true); setImportCsv(""); setImportResult(null); }}>Import CSV</s-button>
-            </div>
-          </s-section>
+        {/* =============== FABRICS TAB =============== */}
+        {activeTab === "Fabrics" && (
+          <>
+            <div className="cc-card">
+              <div className="cc-card__head" style={{ paddingBottom: 10 }}>
+                <h2>Fabrics</h2>
+                <span className="cc-card__meta cc-num">{pagination.totalCount} total</span>
+                <div className="cc-card__actions">
+                  <button type="button" className="cc-btn" onClick={exportCsv}>Export CSV</button>
+                  <button type="button" className="cc-btn" onClick={openImport}>Import CSV</button>
+                </div>
+              </div>
+              <div className="cc-toolbar" style={{ borderTop: "1px solid var(--cc-border)" }}>
+                <div className="cc-tabs">
+                  {statusTab("", "All")}
+                  {statusTab("active", "Active")}
+                  {statusTab("inactive", "Inactive")}
+                </div>
+                <input
+                  type="search"
+                  className="cc-search"
+                  placeholder="Search fabrics (press Enter)"
+                  aria-label="Search fabrics"
+                  defaultValue={filters.search}
+                  onKeyDown={(e) => { if (e.key === "Enter") updateFilter("search", e.target.value); }}
+                  onBlur={(e) => { if (e.target.value !== filters.search) updateFilter("search", e.target.value); }}
+                />
+                {filterSelect("filter-category", "Categories", filters.categoryId, "categoryId", categories, <option value="uncategorized">Uncategorized</option>)}
+                {filterSelect("filter-brand", "Brands", filters.brandId, "brandId", brands)}
+                {filterSelect("filter-pattern", "Patterns", filters.patternId, "patternId", patterns)}
+                {filterSelect("filter-color", "Colors", filters.colorId, "colorId", colors)}
+              </div>
 
-          {/* Filters */}
-          <s-section>
-            <div style={{ display: "flex", flexWrap: "nowrap", gap: 6, alignItems: "center" }}>
-              <input
-                type="text"
-                placeholder="Search..."
-                defaultValue={filters.search}
-                onKeyDown={(e) => { if (e.key === "Enter") updateFilter("search", e.target.value); }}
-                onBlur={(e) => { if (e.target.value !== filters.search) updateFilter("search", e.target.value); }}
-                style={{ padding: "4px 8px", borderRadius: 3, border: "1px solid #ccc", width: 140, fontSize: "0.75rem" }}
-              />
-              <select value={filters.categoryId} onChange={(e) => updateFilter("categoryId", e.target.value)} style={selectStyle}>
-                <option value="">Category</option>
-                <option value="uncategorized">Uncategorized</option>
-                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-              <select value={filters.brandId} onChange={(e) => updateFilter("brandId", e.target.value)} style={selectStyle}>
-                <option value="">Brand</option>
-                {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-              </select>
-              <select value={filters.patternId} onChange={(e) => updateFilter("patternId", e.target.value)} style={selectStyle}>
-                <option value="">Pattern</option>
-                {patterns.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-              <select value={filters.colorId} onChange={(e) => updateFilter("colorId", e.target.value)} style={selectStyle}>
-                <option value="">Color</option>
-                {colors.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-              <select value={filters.status} onChange={(e) => updateFilter("status", e.target.value)} style={selectStyle}>
-                <option value="">Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
-          </s-section>
-
-          {/* One-time sort order fix */}
-          <s-section>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <s-button variant="secondary" onClick={() => {
-                if (!confirm("Reassign all fabric sort orders by creation date? This cannot be undone.")) return;
-                const d = new FormData();
-                d.append("intent", "fixSortOrders");
-                fetcher.submit(d, { method: "POST" });
-              }}>Fix Sort Orders (by creation date)</s-button>
-              <s-text tone="subdued" fontSize="small">Assigns 0, 1, 2… to all fabrics in creation order</s-text>
-            </div>
-          </s-section>
-
-          {/* Bulk actions */}
-          {selectedIds.size > 0 && (
-            <s-section>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", padding: "8px 0" }}>
-                <s-text fontWeight="semibold">Selected: {selectedIds.size} of {pagination.totalCount}</s-text>
-                <select value={bulkAction} onChange={(e) => setBulkAction(e.target.value)} style={selectStyle}>
-                  <option value="">Bulk Actions...</option>
-                  <option value="delete">Delete Selected</option>
-                  <option value="setTier">Set Price Tier</option>
-                </select>
-                {bulkAction === "setTier" && (
-                  <select value={bulkTier} onChange={(e) => setBulkTier(e.target.value)} style={selectStyle}>
-                    <option value="none">None</option>
-                    <option value="low">$ Low</option>
-                    <option value="medium">$$ Medium</option>
-                    <option value="high">$$$ High</option>
+              {selectedIds.size > 0 && (
+                <div className="cc-toolbar" style={{ background: "var(--cc-surface-2)" }}>
+                  <strong className="cc-num">{selectedIds.size} selected</strong>
+                  <span className="cc-muted cc-num">of {pagination.totalCount}</span>
+                  <span className="cc-spacer" />
+                  <select aria-label="Bulk action" className="cc-select" style={{ width: "auto", padding: "6px 8px" }} value={bulkAction} onChange={(e) => setBulkAction(e.target.value)}>
+                    <option value="">Choose an action…</option>
+                    <option value="delete">Delete selected</option>
+                    <option value="setTier">Set price tier</option>
                   </select>
-                )}
-                {bulkAction && (
-                  <s-button variant="primary" onClick={executeBulkAction}>Apply</s-button>
-                )}
-              </div>
-            </s-section>
-          )}
+                  {bulkAction === "setTier" && (
+                    <select aria-label="Price tier" className="cc-select" style={{ width: "auto", padding: "6px 8px" }} value={bulkTier} onChange={(e) => setBulkTier(e.target.value)}>
+                      <option value="none">None</option>
+                      <option value="low">$ Low</option>
+                      <option value="medium">$$ Medium</option>
+                      <option value="high">$$$ High</option>
+                    </select>
+                  )}
+                  {bulkAction && (
+                    <button type="button" className={`cc-btn ${bulkAction === "delete" ? "cc-btn--critical-solid" : "cc-btn--primary"}`} onClick={executeBulkAction}>Apply</button>
+                  )}
+                  <button type="button" className="cc-btn cc-btn--plain" onClick={() => setSelectedIds(new Set())}>Clear</button>
+                </div>
+              )}
 
-          {/* Fabric table */}
-          <s-section>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
-                <thead>
-                  <tr style={{ borderBottom: "2px solid #e1e3e5", textAlign: "left" }}>
-                    <th style={{ padding: "8px 6px", width: 30 }}>
-                      <input type="checkbox" checked={selectedIds.size === fabrics.length && fabrics.length > 0}
-                        onChange={toggleSelectAll} />
-                    </th>
-                    <th style={{ padding: "8px 6px", width: 50 }}>Image</th>
-                    {[
-                      { col: "name", label: "Name" },
-                      { col: "category", label: "Category" },
-                      { col: "brand", label: "Brand" },
-                    ].map(({ col, label }) => {
-                      const active = filters.sortBy === col;
-                      return (
-                        <th key={col} onClick={() => handleSort(col)} style={{ padding: "8px 6px", cursor: "pointer", userSelect: "none", whiteSpace: "nowrap" }}>
-                          {label} <span style={{ color: active ? "#008060" : "#aaa", fontSize: "0.7rem" }}>{active ? (filters.sortDir === "asc" ? "▲" : "▼") : "▲▼"}</span>
-                        </th>
-                      );
-                    })}
-                    <th style={{ padding: "8px 6px" }}>Tier</th>
-                    <th onClick={() => handleSort("pricePerSqInch")} style={{ padding: "8px 6px", cursor: "pointer", userSelect: "none", whiteSpace: "nowrap" }}>
-                      $/sq in <span style={{ color: filters.sortBy === "pricePerSqInch" ? "#008060" : "#aaa", fontSize: "0.7rem" }}>{filters.sortBy === "pricePerSqInch" ? (filters.sortDir === "asc" ? "▲" : "▼") : "▲▼"}</span>
-                    </th>
-                    <th onClick={() => handleSort("status")} style={{ padding: "8px 6px", cursor: "pointer", userSelect: "none", whiteSpace: "nowrap" }}>
-                      Status <span style={{ color: filters.sortBy === "status" ? "#008060" : "#aaa", fontSize: "0.7rem" }}>{filters.sortBy === "status" ? (filters.sortDir === "asc" ? "▲" : "▼") : "▲▼"}</span>
-                    </th>
-                    <th onClick={() => handleSort("sortOrder")} style={{ padding: "8px 6px", cursor: "pointer", userSelect: "none", whiteSpace: "nowrap", textAlign: "center" }}>
-                      Sort Order <span style={{ color: filters.sortBy === "sortOrder" ? "#008060" : "#aaa", fontSize: "0.7rem" }}>{filters.sortBy === "sortOrder" ? (filters.sortDir === "asc" ? "▲" : "▼") : "▲▼"}</span>
-                    </th>
-                    <th style={{ padding: "8px 6px" }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {fabrics.length === 0 ? (
+              <div className="cc-table-wrap">
+                <table className="cc-table" style={{ minWidth: 900 }}>
+                  <thead>
                     <tr>
-                      <td colSpan="11" style={{ padding: 24, textAlign: "center", color: "#6d7175" }}>
-                        No fabrics found. Adjust filters or add a new fabric.
-                      </td>
+                      <th style={{ width: 36 }}>
+                        <input type="checkbox" aria-label="Select all fabrics on this page" checked={allSelected} onChange={toggleSelectAll} />
+                      </th>
+                      {sortHeader("name", "Fabric")}
+                      {sortHeader("category", "Category")}
+                      {sortHeader("brand", "Brand")}
+                      <th>Tier</th>
+                      {sortHeader("pricePerSqInch", "Price / sq in", "right")}
+                      {sortHeader("status", "Status")}
+                      {sortHeader("sortOrder", "Sort", "right")}
+                      <th><span className="cc-visually-hidden">Actions</span></th>
                     </tr>
-                  ) : fabrics.map(fab => (
-                    <tr key={fab.id} style={{ borderBottom: "1px solid #e1e3e5", opacity: fab.isActive ? 1 : 0.55 }}>
-                      <td style={{ padding: "6px" }}>
-                        <input type="checkbox" checked={selectedIds.has(fab.id)} onChange={() => toggleSelect(fab.id)} />
-                      </td>
-                      <td style={{ padding: "6px" }}>
-                        {fab.imageUrl ? (
-                          <img src={fab.imageUrl} alt={fab.name} style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 4, border: "1px solid #ddd" }} />
-                        ) : (
-                          <div style={{ width: 40, height: 40, background: "#f0f0f0", borderRadius: 4 }} />
-                        )}
-                      </td>
-                      <td style={{ padding: "6px", fontWeight: 500 }}>
-                        {fab.name}
-                        {fab.isDefault && <span style={{ marginLeft: 4, fontSize: "0.75rem", color: "#2c6ecb" }}>(Default)</span>}
-                        {fab.discountEnabled && fab.discountPercent > 0 && (
-                          <span style={{ marginLeft: 4, fontSize: "0.7rem", padding: "1px 5px", borderRadius: 8, backgroundColor: "#d4edda", color: "#155724", fontWeight: 600 }}>
-                            -{fab.discountPercent}%
-                          </span>
-                        )}
-                      </td>
-                      <td style={{ padding: "6px", color: "#6d7175" }}>{fab.category?.name || "—"}</td>
-                      <td style={{ padding: "6px", color: "#6d7175" }}>{fab.brand?.name || "—"}</td>
-                      <td style={{ padding: "6px" }}>
-                        <span style={{
-                          padding: "2px 6px", borderRadius: 4, fontSize: "0.8rem", fontWeight: 600,
-                          backgroundColor: fab.priceTier === "high" ? "#ffd6a5" : fab.priceTier === "medium" ? "#fff3cd" : fab.priceTier === "low" ? "#d4edda" : "#f0f0f0",
-                          color: fab.priceTier === "high" ? "#8a4500" : fab.priceTier === "medium" ? "#856404" : fab.priceTier === "low" ? "#155724" : "#666",
-                        }}>
-                          {TIER_LABELS[fab.priceTier] || "—"}
-                        </span>
-                      </td>
-                      <td style={{ padding: "6px", fontFamily: "monospace", fontSize: "0.8rem" }}>{fab.pricePerSqInch.toFixed(4)}</td>
-                      <td style={{ padding: "6px" }}>
-                        <span style={{
-                          padding: "2px 6px", borderRadius: 10, fontSize: "0.75rem",
-                          backgroundColor: fab.isActive ? "#e3f1df" : "#fbeae5",
-                          color: fab.isActive ? "#108043" : "#d72c0d"
-                        }}>
-                          {fab.isActive ? "Active" : "Inactive"}
-                        </span>
-                      </td>
-                      <td style={{ padding: "6px", textAlign: "center", fontFamily: "monospace", color: "#6d7175" }}>{fab.sortOrder}</td>
-                      <td style={{ padding: "6px" }}>
-                        <s-stack direction="inline" gap="tight">
-                          <s-button variant="tertiary" onClick={() => openEditFabric(fab)}>Edit</s-button>
-                          <s-button variant="tertiary" tone="critical" onClick={() => deleteFabric(fab.id)}>Del</s-button>
-                        </s-stack>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </s-section>
-
-          {/* Pagination */}
-          <s-section>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <s-button variant="tertiary" disabled={pagination.page <= 1}
-                  onClick={() => changePage(pagination.page - 1)}>Previous</s-button>
-                <s-text>Page {pagination.page} of {pagination.totalPages || 1}</s-text>
-                <s-button variant="tertiary" disabled={pagination.page >= pagination.totalPages}
-                  onClick={() => changePage(pagination.page + 1)}>Next</s-button>
+                  </thead>
+                  <tbody>
+                    {fabrics.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} style={{ padding: 0 }}>
+                          <EmptyState
+                            title="No fabrics found"
+                            action={<button type="button" className="cc-btn cc-btn--primary" onClick={openAddFabric}>Add fabric</button>}
+                          >
+                            Try changing the filters, or add a new fabric.
+                          </EmptyState>
+                        </td>
+                      </tr>
+                    ) : fabrics.map(fab => (
+                      <tr key={fab.id} className={`cc-clickable${fab.isActive ? "" : " cc-row--inactive"}`} {...clickableRow(() => openEditFabric(fab))}>
+                        <td onClick={(e) => e.stopPropagation()}>
+                          <input type="checkbox" aria-label={`Select ${fab.name}`} checked={selectedIds.has(fab.id)} onChange={() => toggleSelect(fab.id)} />
+                        </td>
+                        <td>
+                          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                            <Thumb src={fab.imageUrl} alt={fab.name} />
+                            <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", minWidth: 0 }}>
+                              <span className="cc-name">{fab.name}</span>
+                              {fab.isDefault && <Badge tone="info">Default</Badge>}
+                              {fab.discountEnabled && fab.discountPercent > 0 && <Badge tone="success">−{fab.discountPercent}%</Badge>}
+                            </div>
+                          </div>
+                        </td>
+                        <td className={fab.category ? undefined : "cc-muted"}>{fab.category?.name || "—"}</td>
+                        <td className={fab.brand ? undefined : "cc-muted"}>{fab.brand?.name || "—"}</td>
+                        <td>
+                          {fab.priceTier && fab.priceTier !== "none"
+                            ? <Badge tone={TIER_TONES[fab.priceTier]}>{TIER_LABELS[fab.priceTier] || "—"}</Badge>
+                            : <span className="cc-muted">—</span>}
+                        </td>
+                        <td className="cc-num" style={{ textAlign: "right" }}>${fab.pricePerSqInch.toFixed(4)}</td>
+                        <td><StatusBadge active={fab.isActive} /></td>
+                        <td className="cc-num cc-muted" style={{ textAlign: "right" }}>{fab.sortOrder}</td>
+                        {rowActions(() => openEditFabric(fab), () => deleteFabric(fab.id))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <s-text tone="subdued">Show</s-text>
-                <select value={pagination.perPage} onChange={(e) => changePerPage(parseInt(e.target.value))} style={selectStyle}>
-                  <option value="25">25</option>
-                  <option value="50">50</option>
-                  <option value="100">100</option>
-                  <option value="200">200</option>
-                </select>
-                <s-text tone="subdued">per page | Total: {pagination.totalCount}</s-text>
+
+              {/* Pagination */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, padding: "10px 12px", borderTop: "1px solid var(--cc-border)" }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <button type="button" className="cc-btn" disabled={pagination.page <= 1} onClick={() => changePage(pagination.page - 1)} aria-label="Previous page">‹ Previous</button>
+                  <span className="cc-num cc-muted">Page {pagination.page} of {pagination.totalPages || 1}</span>
+                  <button type="button" className="cc-btn" disabled={pagination.page >= pagination.totalPages} onClick={() => changePage(pagination.page + 1)} aria-label="Next page">Next ›</button>
+                </div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <label htmlFor="fabrics-per-page" className="cc-muted">Rows per page</label>
+                  <select id="fabrics-per-page" className="cc-select" style={{ width: "auto", padding: "5px 8px" }} value={pagination.perPage} onChange={(e) => changePerPage(parseInt(e.target.value))}>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                    <option value="200">200</option>
+                  </select>
+                </div>
               </div>
             </div>
-          </s-section>
-        </>
-      )}
 
-      {/* =============== CATEGORIES TAB =============== */}
-      {activeTab === "Categories" && (
-        <>
-          <s-section>
-            <s-button variant="primary" onClick={openAddCategory}>Add Category</s-button>
-          </s-section>
-          <s-section>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
-                <thead>
-                  <tr style={{ borderBottom: "2px solid #e1e3e5", textAlign: "left" }}>
-                    <th style={{ padding: "8px 12px" }}>Name</th>
-                    <th style={{ padding: "8px 12px" }}>Image</th>
-                    <th style={{ padding: "8px 12px" }}>Description</th>
-                    <th style={{ padding: "8px 12px" }}>Status</th>
-                    <th style={{ padding: "8px 12px" }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {categories.length === 0 ? (
-                    <tr><td colSpan="5" style={{ padding: 16, textAlign: "center", color: "#6d7175" }}>No categories yet.</td></tr>
-                  ) : categories.map(cat => (
-                    <tr key={cat.id} style={{ borderBottom: "1px solid #e1e3e5", opacity: cat.isActive ? 1 : 0.5 }}>
-                      <td style={{ padding: "8px 12px", fontWeight: 500 }}>{cat.name}</td>
-                      <td style={{ padding: "8px 12px" }}>
-                        {cat.imageUrl ? (
-                          <img src={cat.imageUrl} alt={cat.name} style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 4 }} />
-                        ) : "—"}
-                      </td>
-                      <td style={{ padding: "8px 12px", color: "#6d7175" }}>{cat.description || "—"}</td>
-                      <td style={{ padding: "8px 12px" }}>
-                        <span style={{
-                          padding: "2px 8px", borderRadius: 10, fontSize: "0.8rem",
-                          backgroundColor: cat.isActive ? "#e3f1df" : "#fbeae5",
-                          color: cat.isActive ? "#108043" : "#d72c0d"
-                        }}>
-                          {cat.isActive ? "Active" : "Inactive"}
-                        </span>
-                      </td>
-                      <td style={{ padding: "8px 12px" }}>
-                        <s-stack direction="inline" gap="tight">
-                          <s-button variant="tertiary" onClick={() => openEditCategory(cat)}>Edit</s-button>
-                          <s-button variant="tertiary" tone="critical" onClick={() => deleteCategory(cat.id)}>Delete</s-button>
-                        </s-stack>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="cc-card">
+              <div className="cc-card__head"><h2>Sort order tools</h2></div>
+              <div className="cc-card__body">
+                <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                  <span className="cc-muted" style={{ flex: 1, minWidth: 220 }}>
+                    Renumber every fabric 0, 1, 2… in the order they were created. Use this once if sort orders have gaps or duplicates.
+                  </span>
+                  <button type="button" className="cc-btn" onClick={fixSortOrders}>Fix sort orders</button>
+                </div>
+              </div>
             </div>
-          </s-section>
-        </>
-      )}
+          </>
+        )}
 
-      {/* =============== BRANDS TAB =============== */}
-      {activeTab === "Brands" && (
-        <>
-          <s-section>
-            <s-button variant="primary" onClick={openAddBrand}>Add Brand</s-button>
-          </s-section>
-          <s-section>
-            {brands.length === 0 ? (
-              <s-box padding="base">
-                <s-paragraph>No brands yet. Click Add Brand to create one.</s-paragraph>
-              </s-box>
-            ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
-                  <thead>
-                    <tr style={{ borderBottom: "2px solid #e1e3e5", textAlign: "left" }}>
-                      <th style={{ padding: "8px 12px" }}>Name</th>
-                      <th style={{ padding: "8px 12px" }}>Logo</th>
-                      <th style={{ padding: "8px 12px" }}>Description</th>
-                      <th style={{ padding: "8px 12px" }}>Fabrics</th>
-                      <th style={{ padding: "8px 12px" }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {brands.map(brand => (
-                      <tr key={brand.id} style={{ borderBottom: "1px solid #e1e3e5" }}>
-                        <td style={{ padding: "8px 12px", fontWeight: 500 }}>{brand.name}</td>
-                        <td style={{ padding: "8px 12px" }}>
-                          {brand.logoUrl ? (
-                            <img src={brand.logoUrl} alt={brand.name} style={{ width: 32, height: 32, objectFit: "contain" }} />
-                          ) : "—"}
-                        </td>
-                        <td style={{ padding: "8px 12px", color: "#6d7175" }}>{brand.description || "—"}</td>
-                        <td style={{ padding: "8px 12px" }}>{brand._count?.fabrics || 0}</td>
-                        <td style={{ padding: "8px 12px" }}>
-                          <s-stack direction="inline" gap="tight">
-                            <s-button variant="tertiary" onClick={() => openEditBrand(brand)}>Edit</s-button>
-                            <s-button variant="tertiary" tone="critical" onClick={() => deleteBrand(brand.id)}>Delete</s-button>
-                          </s-stack>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </s-section>
-        </>
-      )}
+        {/* =============== CATEGORIES TAB =============== */}
+        {activeTab === "Categories" && simpleListCard({
+          title: "Categories",
+          items: categories,
+          emptyTitle: "No categories yet",
+          emptyText: "Group fabrics into categories such as Outdoor or Indoor.",
+          addLabel: "Add category",
+          onAdd: openAddCategory,
+          head: <><th>Category</th><th>Description</th><th>Status</th></>,
+          row: (cat) => (
+            <tr key={cat.id} className={`cc-clickable${cat.isActive ? "" : " cc-row--inactive"}`} {...clickableRow(() => openEditCategory(cat))}>
+              <td>
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <Thumb src={cat.imageUrl} alt={cat.name} />
+                  <span className="cc-name">{cat.name}</span>
+                </div>
+              </td>
+              <td className="cc-muted">{cat.description || "—"}</td>
+              <td><StatusBadge active={cat.isActive} /></td>
+              {rowActions(() => openEditCategory(cat), () => deleteCategory(cat.id))}
+            </tr>
+          ),
+        })}
 
-      {/* =============== PATTERNS TAB =============== */}
-      {activeTab === "Patterns" && (
-        <>
-          <s-section>
-            <s-button variant="primary" onClick={openAddPattern}>Add Pattern</s-button>
-          </s-section>
-          <s-section>
-            {patterns.length === 0 ? (
-              <s-box padding="base">
-                <s-paragraph>No patterns yet. Click Add Pattern to create one.</s-paragraph>
-              </s-box>
-            ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
-                  <thead>
-                    <tr style={{ borderBottom: "2px solid #e1e3e5", textAlign: "left" }}>
-                      <th style={{ padding: "8px 12px" }}>Name</th>
-                      <th style={{ padding: "8px 12px" }}>Fabrics</th>
-                      <th style={{ padding: "8px 12px" }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {patterns.map(pattern => (
-                      <tr key={pattern.id} style={{ borderBottom: "1px solid #e1e3e5" }}>
-                        <td style={{ padding: "8px 12px", fontWeight: 500 }}>{pattern.name}</td>
-                        <td style={{ padding: "8px 12px" }}>{pattern._count?.fabricAssignments || 0}</td>
-                        <td style={{ padding: "8px 12px" }}>
-                          <s-stack direction="inline" gap="tight">
-                            <s-button variant="tertiary" onClick={() => openEditPattern(pattern)}>Edit</s-button>
-                            <s-button variant="tertiary" tone="critical" onClick={() => deletePattern(pattern.id)}>Delete</s-button>
-                          </s-stack>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </s-section>
-        </>
-      )}
+        {/* =============== BRANDS TAB =============== */}
+        {activeTab === "Brands" && simpleListCard({
+          title: "Brands",
+          items: brands,
+          emptyTitle: "No brands yet",
+          emptyText: "Add the fabric brands you carry, such as Sunbrella.",
+          addLabel: "Add brand",
+          onAdd: openAddBrand,
+          head: <><th>Brand</th><th>Description</th><th style={{ textAlign: "right" }}>Fabrics</th></>,
+          row: (brand) => (
+            <tr key={brand.id} className="cc-clickable" {...clickableRow(() => openEditBrand(brand))}>
+              <td>
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  {brand.logoUrl
+                    ? <img className="cc-thumb" src={brand.logoUrl} alt={brand.name} style={{ objectFit: "contain", background: "var(--cc-surface)" }} />
+                    : <Thumb />}
+                  <span className="cc-name">{brand.name}</span>
+                </div>
+              </td>
+              <td className="cc-muted">{brand.description || "—"}</td>
+              <td className="cc-num" style={{ textAlign: "right" }}>{brand._count?.fabrics || 0}</td>
+              {rowActions(() => openEditBrand(brand), () => deleteBrand(brand.id))}
+            </tr>
+          ),
+        })}
 
-      {/* =============== COLORS TAB =============== */}
-      {activeTab === "Colors" && (
-        <>
-          <s-section>
-            <s-button variant="primary" onClick={openAddColor}>Add Color</s-button>
-          </s-section>
-          <s-section>
-            {colors.length === 0 ? (
-              <s-box padding="base">
-                <s-paragraph>No colors yet. Click Add Color to create one.</s-paragraph>
-              </s-box>
-            ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
-                  <thead>
-                    <tr style={{ borderBottom: "2px solid #e1e3e5", textAlign: "left" }}>
-                      <th style={{ padding: "8px 12px" }}>Swatch</th>
-                      <th style={{ padding: "8px 12px" }}>Name</th>
-                      <th style={{ padding: "8px 12px" }}>Hex Code</th>
-                      <th style={{ padding: "8px 12px" }}>Fabrics</th>
-                      <th style={{ padding: "8px 12px" }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {colors.map(color => (
-                      <tr key={color.id} style={{ borderBottom: "1px solid #e1e3e5" }}>
-                        <td style={{ padding: "8px 12px" }}>
-                          <div style={{
-                            width: 28, height: 28, borderRadius: 4,
-                            backgroundColor: color.hexCode || "#ccc",
-                            border: "1px solid #ddd"
-                          }} />
-                        </td>
-                        <td style={{ padding: "8px 12px", fontWeight: 500 }}>{color.name}</td>
-                        <td style={{ padding: "8px 12px", color: "#6d7175", fontFamily: "monospace" }}>{color.hexCode || "—"}</td>
-                        <td style={{ padding: "8px 12px" }}>{color._count?.fabricAssignments || 0}</td>
-                        <td style={{ padding: "8px 12px" }}>
-                          <s-stack direction="inline" gap="tight">
-                            <s-button variant="tertiary" onClick={() => openEditColor(color)}>Edit</s-button>
-                            <s-button variant="tertiary" tone="critical" onClick={() => deleteColor(color.id)}>Delete</s-button>
-                          </s-stack>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </s-section>
-        </>
-      )}
+        {/* =============== PATTERNS TAB =============== */}
+        {activeTab === "Patterns" && simpleListCard({
+          title: "Patterns",
+          items: patterns,
+          emptyTitle: "No patterns yet",
+          emptyText: "Patterns like Solid, Striped or Floral let customers filter fabrics.",
+          addLabel: "Add pattern",
+          onAdd: openAddPattern,
+          head: <><th>Pattern</th><th style={{ textAlign: "right" }}>Fabrics</th></>,
+          row: (pattern) => (
+            <tr key={pattern.id} className="cc-clickable" {...clickableRow(() => openEditPattern(pattern))}>
+              <td><span className="cc-name">{pattern.name}</span></td>
+              <td className="cc-num" style={{ textAlign: "right" }}>{pattern._count?.fabricAssignments || 0}</td>
+              {rowActions(() => openEditPattern(pattern), () => deletePattern(pattern.id))}
+            </tr>
+          ),
+        })}
 
-      {/* =============== MATERIALS TAB =============== */}
-      {activeTab === "Materials" && (
-        <>
-          <s-section>
-            <s-button variant="primary" onClick={openAddMaterial}>Add Material</s-button>
-          </s-section>
-          <s-section>
-            {materials.length === 0 ? (
-              <s-box padding="base">
-                <s-paragraph>No materials yet. Click Add Material to create one.</s-paragraph>
-              </s-box>
-            ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
-                  <thead>
-                    <tr style={{ borderBottom: "2px solid #e1e3e5", textAlign: "left" }}>
-                      <th style={{ padding: "8px 12px" }}>Name</th>
-                      <th style={{ padding: "8px 12px" }}>Fabrics</th>
-                      <th style={{ padding: "8px 12px" }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {materials.map(material => (
-                      <tr key={material.id} style={{ borderBottom: "1px solid #e1e3e5" }}>
-                        <td style={{ padding: "8px 12px", fontWeight: 500 }}>{material.name}</td>
-                        <td style={{ padding: "8px 12px" }}>{material._count?.fabricAssignments || 0}</td>
-                        <td style={{ padding: "8px 12px" }}>
-                          <s-stack direction="inline" gap="tight">
-                            <s-button variant="tertiary" onClick={() => openEditMaterial(material)}>Edit</s-button>
-                            <s-button variant="tertiary" tone="critical" onClick={() => deleteMaterial(material.id)}>Delete</s-button>
-                          </s-stack>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </s-section>
-        </>
-      )}
+        {/* =============== COLORS TAB =============== */}
+        {activeTab === "Colors" && simpleListCard({
+          title: "Colors",
+          items: colors,
+          emptyTitle: "No colors yet",
+          emptyText: "Colors let customers filter fabrics by shade.",
+          addLabel: "Add color",
+          onAdd: openAddColor,
+          head: <><th>Color</th><th>Hex code</th><th style={{ textAlign: "right" }}>Fabrics</th></>,
+          row: (color) => (
+            <tr key={color.id} className="cc-clickable" {...clickableRow(() => openEditColor(color))}>
+              <td>
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  {swatchDot(color.hexCode || "#ccc", 24)}
+                  <span className="cc-name">{color.name}</span>
+                </div>
+              </td>
+              <td className="cc-muted" style={{ fontFamily: "var(--cc-mono)", fontSize: 12 }}>{color.hexCode || "—"}</td>
+              <td className="cc-num" style={{ textAlign: "right" }}>{color._count?.fabricAssignments || 0}</td>
+              {rowActions(() => openEditColor(color), () => deleteColor(color.id))}
+            </tr>
+          ),
+        })}
+
+        {/* =============== MATERIALS TAB =============== */}
+        {activeTab === "Materials" && simpleListCard({
+          title: "Materials",
+          items: materials,
+          emptyTitle: "No materials yet",
+          emptyText: "Materials like Cotton, Polyester or Velvet let customers filter fabrics.",
+          addLabel: "Add material",
+          onAdd: openAddMaterial,
+          head: <><th>Material</th><th style={{ textAlign: "right" }}>Fabrics</th></>,
+          row: (material) => (
+            <tr key={material.id} className="cc-clickable" {...clickableRow(() => openEditMaterial(material))}>
+              <td><span className="cc-name">{material.name}</span></td>
+              <td className="cc-num" style={{ textAlign: "right" }}>{material._count?.fabricAssignments || 0}</td>
+              {rowActions(() => openEditMaterial(material), () => deleteMaterial(material.id))}
+            </tr>
+          ),
+        })}
+      </div>
 
       {/* =============== MODALS =============== */}
 
-      {/* Fabric Modal */}
-      {showFabricModal && (
-        <div style={{
-          position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)",
-          display: "flex", justifyContent: "center", alignItems: "flex-start", zIndex: 1000, overflowY: "auto", padding: "40px 20px"
-        }}>
-          <div style={{ background: "white", borderRadius: 12, padding: 24, width: "100%", maxWidth: 640, maxHeight: "80vh", overflowY: "auto" }}>
-            <h2 style={{ margin: "0 0 16px", fontSize: "1.1rem" }}>{editingFabric ? "Edit Fabric" : "Add Fabric"}</h2>
+      {/* Category modal */}
+      <Modal
+        open={showCategoryModal}
+        title={editingCategory ? "Edit category" : "Add category"}
+        onClose={closeCategoryModal}
+        footer={
+          <>
+            <button type="button" className="cc-btn" onClick={closeCategoryModal}>Cancel</button>
+            <button type="button" className="cc-btn cc-btn--primary" onClick={submitCategory}>{editingCategory ? "Save" : "Create category"}</button>
+          </>
+        }
+      >
+        <TextField id="category-name" label="Category name" value={categoryData.name}
+          onChange={(v) => setCategoryData({ ...categoryData, name: v })}
+          placeholder="e.g. Outdoor, Indoor" required />
+        <TextField id="category-description" label="Description" value={categoryData.description}
+          onChange={(v) => setCategoryData({ ...categoryData, description: v })} />
+        <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
+          <Thumb src={categoryData.imageUrl} alt={categoryData.name} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <TextField id="category-image" label="Image URL" value={categoryData.imageUrl}
+              onChange={(v) => setCategoryData({ ...categoryData, imageUrl: v })}
+              placeholder="https://example.com/category.jpg" />
+          </div>
+        </div>
+        <TextField id="category-sort" label="Sort order" type="number" value={categoryData.sortOrder}
+          onChange={(v) => setCategoryData({ ...categoryData, sortOrder: parseInt(v) || 0 })}
+          help="Lower numbers appear first." />
+        <Checkbox id="category-active" checked={categoryData.isActive}
+          onChange={(v) => setCategoryData({ ...categoryData, isActive: v })}
+          label="Active" help="Inactive categories are hidden from customers." />
+      </Modal>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <s-text-field label="Fabric Name *" value={fabricData.name}
-                onChange={(e) => setFabricData({ ...fabricData, name: e.target.value })}
-                placeholder="e.g., Blue Velvet" />
+      {/* Brand modal */}
+      <Modal
+        open={showBrandModal}
+        title={editingBrand ? "Edit brand" : "Add brand"}
+        onClose={closeBrandModal}
+        footer={
+          <>
+            <button type="button" className="cc-btn" onClick={closeBrandModal}>Cancel</button>
+            <button type="button" className="cc-btn cc-btn--primary" onClick={submitBrand}>{editingBrand ? "Save" : "Create brand"}</button>
+          </>
+        }
+      >
+        <TextField id="brand-name" label="Brand name" value={brandData.name}
+          onChange={(v) => setBrandData({ ...brandData, name: v })}
+          placeholder="e.g. Sunbrella" required />
+        <TextField id="brand-logo" label="Logo URL" value={brandData.logoUrl}
+          onChange={(v) => setBrandData({ ...brandData, logoUrl: v })}
+          placeholder="https://example.com/logo.png" />
+        <TextField id="brand-description" label="Description" value={brandData.description}
+          onChange={(v) => setBrandData({ ...brandData, description: v })} />
+        <TextField id="brand-sort" label="Sort order" type="number" value={brandData.sortOrder}
+          onChange={(v) => setBrandData({ ...brandData, sortOrder: parseInt(v) || 0 })}
+          help="Lower numbers appear first." />
+      </Modal>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div>
-                  <label style={{ display: "block", marginBottom: 4, fontSize: "0.85rem", fontWeight: 500 }}>Category</label>
-                  <select value={fabricData.categoryId}
-                    onChange={(e) => setFabricData({ ...fabricData, categoryId: e.target.value })}
-                    style={{ width: "100%", padding: "8px", borderRadius: 6, border: "1px solid #ccc" }}>
-                    <option value="">— No Category —</option>
-                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: "block", marginBottom: 4, fontSize: "0.85rem", fontWeight: 500 }}>Brand</label>
-                  <select value={fabricData.brandId}
-                    onChange={(e) => setFabricData({ ...fabricData, brandId: e.target.value })}
-                    style={{ width: "100%", padding: "8px", borderRadius: 6, border: "1px solid #ccc" }}>
-                    <option value="">— No Brand —</option>
-                    {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                  </select>
-                </div>
-              </div>
+      {/* Pattern modal */}
+      <Modal
+        open={showPatternModal}
+        title={editingPattern ? "Edit pattern" : "Add pattern"}
+        onClose={closePatternModal}
+        footer={
+          <>
+            <button type="button" className="cc-btn" onClick={closePatternModal}>Cancel</button>
+            <button type="button" className="cc-btn cc-btn--primary" onClick={submitPattern}>{editingPattern ? "Save" : "Create pattern"}</button>
+          </>
+        }
+      >
+        <TextField id="pattern-name" label="Pattern name" value={patternData.name}
+          onChange={(v) => setPatternData({ ...patternData, name: v })}
+          placeholder="e.g. Solid, Striped, Floral" required />
+        <TextField id="pattern-sort" label="Sort order" type="number" value={patternData.sortOrder}
+          onChange={(v) => setPatternData({ ...patternData, sortOrder: parseInt(v) || 0 })}
+          help="Lower numbers appear first." />
+      </Modal>
 
-              <s-text-field label="Image URL" value={fabricData.imageUrl}
-                onChange={(e) => setFabricData({ ...fabricData, imageUrl: e.target.value })}
-                placeholder="https://example.com/swatch.jpg" />
+      {/* Color modal */}
+      <Modal
+        open={showColorModal}
+        title={editingColor ? "Edit color" : "Add color"}
+        onClose={closeColorModal}
+        footer={
+          <>
+            <button type="button" className="cc-btn" onClick={closeColorModal}>Cancel</button>
+            <button type="button" className="cc-btn cc-btn--primary" onClick={submitColor}>{editingColor ? "Save" : "Create color"}</button>
+          </>
+        }
+      >
+        <TextField id="color-name" label="Color name" value={colorData.name}
+          onChange={(v) => setColorData({ ...colorData, name: v })}
+          placeholder="e.g. Red, Navy Blue, Beige" required />
+        <div className="cc-field">
+          <label htmlFor="color-hex">Hex code</label>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <input
+              type="color"
+              aria-label="Pick a color"
+              value={colorData.hexCode || "#000000"}
+              onChange={(e) => setColorData({ ...colorData, hexCode: e.target.value })}
+              style={{ width: 36, height: 34, padding: 2, border: "1px solid var(--cc-border-2)", borderRadius: 8, cursor: "pointer", background: "var(--cc-surface)", flex: "none" }}
+            />
+            <input
+              id="color-hex"
+              type="text"
+              className="cc-input"
+              value={colorData.hexCode}
+              onChange={(e) => setColorData({ ...colorData, hexCode: e.target.value })}
+              placeholder="#FF0000"
+              style={{ fontFamily: "var(--cc-mono)" }}
+            />
+          </div>
+        </div>
+        <TextField id="color-sort" label="Sort order" type="number" value={colorData.sortOrder}
+          onChange={(v) => setColorData({ ...colorData, sortOrder: parseInt(v) || 0 })}
+          help="Lower numbers appear first." />
+      </Modal>
 
-              <s-text-field label="Price per Sq Inch (USD) *" type="number" value={fabricData.pricePerSqInch}
-                onChange={(e) => setFabricData({ ...fabricData, pricePerSqInch: e.target.value })}
-                placeholder="0.05" step="0.001" />
+      {/* Material modal */}
+      <Modal
+        open={showMaterialModal}
+        title={editingMaterial ? "Edit material" : "Add material"}
+        onClose={closeMaterialModal}
+        footer={
+          <>
+            <button type="button" className="cc-btn" onClick={closeMaterialModal}>Cancel</button>
+            <button type="button" className="cc-btn cc-btn--primary" onClick={submitMaterial}>{editingMaterial ? "Save" : "Create material"}</button>
+          </>
+        }
+      >
+        <TextField id="material-name" label="Material name" value={materialData.name}
+          onChange={(v) => setMaterialData({ ...materialData, name: v })}
+          placeholder="e.g. Cotton, Polyester, Velvet" required />
+        <TextField id="material-sort" label="Sort order" type="number" value={materialData.sortOrder}
+          onChange={(v) => setMaterialData({ ...materialData, sortOrder: parseInt(v) || 0 })}
+          help="Lower numbers appear first." />
+      </Modal>
 
-              <s-text-field label="Description" value={fabricData.description}
-                onChange={(e) => setFabricData({ ...fabricData, description: e.target.value })} />
+      {/* Import CSV modal */}
+      <Modal
+        open={showImportModal}
+        wide
+        title="Import fabrics from CSV"
+        onClose={closeImportModal}
+        footer={
+          <>
+            <button type="button" className="cc-btn" onClick={closeImportModal}>Cancel</button>
+            <button type="button" className="cc-btn cc-btn--primary" onClick={submitImport} disabled={importing || !importCsv}>
+              {importing ? "Importing…" : "Import"}
+            </button>
+          </>
+        }
+      >
+        <div className="cc-banner">
+          <strong>How the CSV works</strong>
+          <ul style={{ margin: "6px 0 0", paddingLeft: 18, display: "grid", gap: 2 }}>
+            <li>Export your fabrics first to get the right columns.</li>
+            <li>Leave <code>id</code> empty to create a new fabric.</li>
+            <li>Keep the <code>id</code> to update an existing fabric.</li>
+            <li>Separate multiple patterns, colors or materials with a pipe (|).</li>
+            <li>Category, brand, pattern and color names must match ones that already exist.</li>
+          </ul>
+        </div>
 
-              {/* Price Tier */}
-              <div>
-                <label style={{ display: "block", marginBottom: 4, fontSize: "0.85rem", fontWeight: 500 }}>Price Tier</label>
-                <div style={{ display: "flex", gap: 12 }}>
-                  {[["none", "None"], ["low", "$"], ["medium", "$$"], ["high", "$$$"]].map(([val, label]) => (
-                    <label key={val} style={{ display: "flex", gap: 4, alignItems: "center", cursor: "pointer" }}>
-                      <input type="radio" name="priceTier" value={val} checked={fabricData.priceTier === val}
-                        onChange={() => setFabricData({ ...fabricData, priceTier: val })} />
-                      {label}
-                    </label>
-                  ))}
-                </div>
-              </div>
+        <div className="cc-field">
+          <label htmlFor="fabrics-import-file">CSV file</label>
+          <input
+            id="fabrics-import-file"
+            type="file"
+            accept=".csv,text/csv"
+            onChange={handleImportFile}
+            className="cc-input"
+          />
+        </div>
 
-              {/* Patterns multi-select */}
-              <div>
-                <label style={{ display: "block", marginBottom: 4, fontSize: "0.85rem", fontWeight: 500 }}>Patterns</label>
-                {patterns.length === 0 ? (
-                  <s-text tone="subdued" fontSize="small">No patterns available. Create patterns first.</s-text>
-                ) : (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                    {patterns.map(p => (
-                      <label key={p.id} style={{
-                        display: "flex", gap: 4, alignItems: "center", padding: "4px 8px",
-                        borderRadius: 4, border: "1px solid #ccc", cursor: "pointer",
-                        backgroundColor: fabricData.patternIds.includes(p.id) ? "#e3f1df" : "white"
-                      }}>
-                        <input type="checkbox" checked={fabricData.patternIds.includes(p.id)}
-                          onChange={() => setFabricData({ ...fabricData, patternIds: toggleMultiSelect(fabricData.patternIds, p.id) })} />
-                        {p.name}
-                      </label>
-                    ))}
-                  </div>
+        {importCsv && (
+          <div className="cc-banner" style={{ background: "var(--cc-on-bg)", color: "var(--cc-on)" }}>
+            File loaded: <span className="cc-num">{importCsv.split("\n").length - 1}</span> data rows found
+          </div>
+        )}
+
+        {importResult && (
+          <div className="cc-banner" style={importResult.success ? { background: "var(--cc-on-bg)", color: "var(--cc-on)" } : { background: "var(--cc-crit-bg)", color: "var(--cc-crit)" }}>
+            {importResult.success ? (
+              <>
+                <p className="cc-p" style={{ fontWeight: 600 }}>Import complete</p>
+                <p className="cc-p cc-num">Created: {importResult.created} · Updated: {importResult.updated}</p>
+                {importResult.totalErrors > 0 && (
+                  <p className="cc-p" style={{ marginTop: 8, color: "var(--cc-warn-fg)" }}>
+                    {importResult.totalErrors} row(s) had problems
+                  </p>
                 )}
-              </div>
-
-              {/* Colors multi-select */}
-              <div>
-                <label style={{ display: "block", marginBottom: 4, fontSize: "0.85rem", fontWeight: 500 }}>Colors</label>
-                {colors.length === 0 ? (
-                  <s-text tone="subdued" fontSize="small">No colors available. Create colors first.</s-text>
-                ) : (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                    {colors.map(c => (
-                      <label key={c.id} style={{
-                        display: "flex", gap: 4, alignItems: "center", padding: "4px 8px",
-                        borderRadius: 4, border: "1px solid #ccc", cursor: "pointer",
-                        backgroundColor: fabricData.colorIds.includes(c.id) ? "#e3f1df" : "white"
-                      }}>
-                        <input type="checkbox" checked={fabricData.colorIds.includes(c.id)}
-                          onChange={() => setFabricData({ ...fabricData, colorIds: toggleMultiSelect(fabricData.colorIds, c.id) })} />
-                        {c.hexCode && <div style={{ width: 14, height: 14, borderRadius: 3, backgroundColor: c.hexCode, border: "1px solid #ccc" }} />}
-                        {c.name}
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Materials multi-select */}
-              <div>
-                <label style={{ display: "block", marginBottom: 4, fontSize: "0.85rem", fontWeight: 500 }}>Materials</label>
-                {materials.length === 0 ? (
-                  <s-text tone="subdued" fontSize="small">No materials available. Create materials first.</s-text>
-                ) : (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                    {materials.map(m => (
-                      <label key={m.id} style={{
-                        display: "flex", gap: 4, alignItems: "center", padding: "4px 8px",
-                        borderRadius: 4, border: "1px solid #ccc", cursor: "pointer",
-                        backgroundColor: fabricData.materialIds.includes(m.id) ? "#e3f1df" : "white"
-                      }}>
-                        <input type="checkbox" checked={fabricData.materialIds.includes(m.id)}
-                          onChange={() => setFabricData({ ...fabricData, materialIds: toggleMultiSelect(fabricData.materialIds, m.id) })} />
-                        {m.name}
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <s-text-field label="Sort Order" type="number" value={fabricData.sortOrder}
-                  onChange={(e) => setFabricData({ ...fabricData, sortOrder: parseInt(e.target.value) || 0 })} />
-              </div>
-
-              <div style={{ display: "flex", gap: 16 }}>
-                <label style={{ display: "flex", gap: 4, alignItems: "center", cursor: "pointer" }}>
-                  <input type="checkbox" checked={fabricData.isActive}
-                    onChange={(e) => setFabricData({ ...fabricData, isActive: e.target.checked })} /> Active
-                </label>
-                <label style={{ display: "flex", gap: 4, alignItems: "center", cursor: "pointer" }}>
-                  <input type="checkbox" checked={fabricData.isDefault}
-                    onChange={(e) => setFabricData({ ...fabricData, isDefault: e.target.checked })} /> Set as Default
-                </label>
-              </div>
-
-              {/* Discount from Total */}
-              <div style={{ padding: 12, backgroundColor: "#f6f6f7", borderRadius: 8, marginTop: 8 }}>
-                <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
-                  <input type="checkbox" id="fabricDiscountEnabled" checked={fabricData.discountEnabled}
-                    onChange={(e) => setFabricData({ ...fabricData, discountEnabled: e.target.checked })} />
-                  <label htmlFor="fabricDiscountEnabled" style={{ fontWeight: 500 }}>Enable Discount from Total</label>
-                </div>
-                {fabricData.discountEnabled && (
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <input type="number" value={fabricData.discountPercent}
-                      onChange={(e) => setFabricData({ ...fabricData, discountPercent: parseFloat(e.target.value) || 0 })}
-                      placeholder="10" step="0.1" min="0" max="100"
-                      style={{ width: 80, padding: "6px 10px", borderRadius: 4, border: "1px solid #ccc" }} />
-                    <span>%</span>
-                  </div>
-                )}
-                <p style={{ fontSize: "0.8rem", color: "#6d7175", marginTop: 8, marginBottom: 0 }}>
-                  When enabled, this percentage is deducted from the final total price.
-                </p>
-              </div>
-            </div>
-
-            <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "flex-end" }}>
-              <s-button variant="tertiary" onClick={() => setShowFabricModal(false)}>Cancel</s-button>
-              <s-button variant="primary" onClick={submitFabric}>{editingFabric ? "Update Fabric" : "Create Fabric"}</s-button>
-            </div>
+              </>
+            ) : (
+              <p className="cc-p">{importResult.error || "Import failed"}</p>
+            )}
+            {importResult.errors?.length > 0 && (
+              <ul style={{ margin: "8px 0 0", paddingLeft: 20 }}>
+                {importResult.errors.slice(0, 5).map((err, i) => (
+                  <li key={i}>{err}</li>
+                ))}
+                {importResult.errors.length > 5 && <li>…and {importResult.errors.length - 5} more</li>}
+              </ul>
+            )}
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
 
-      {/* Category Modal */}
-      {showCategoryModal && (
-        <div style={{
-          position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)",
-          display: "flex", justifyContent: "center", alignItems: "flex-start", zIndex: 1000, overflowY: "auto", padding: "40px 20px"
-        }}>
-          <div style={{ background: "white", borderRadius: 12, padding: 24, width: "100%", maxWidth: 480 }}>
-            <h2 style={{ margin: "0 0 16px", fontSize: "1.1rem" }}>{editingCategory ? "Edit Category" : "Add Category"}</h2>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <s-text-field label="Category Name *" value={categoryData.name}
-                onChange={(e) => setCategoryData({ ...categoryData, name: e.target.value })}
-                placeholder="e.g., Outdoor, Indoor" />
-              <s-text-field label="Description" value={categoryData.description}
-                onChange={(e) => setCategoryData({ ...categoryData, description: e.target.value })} />
-              <s-text-field label="Image URL" value={categoryData.imageUrl}
-                onChange={(e) => setCategoryData({ ...categoryData, imageUrl: e.target.value })}
-                placeholder="https://example.com/category.jpg" />
-              <s-text-field label="Sort Order" type="number" value={categoryData.sortOrder}
-                onChange={(e) => setCategoryData({ ...categoryData, sortOrder: parseInt(e.target.value) || 0 })} />
-              <label style={{ display: "flex", gap: 4, alignItems: "center", cursor: "pointer" }}>
-                <input type="checkbox" checked={categoryData.isActive}
-                  onChange={(e) => setCategoryData({ ...categoryData, isActive: e.target.checked })} /> Active
-              </label>
-            </div>
-
-            <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "flex-end" }}>
-              <s-button variant="tertiary" onClick={() => setShowCategoryModal(false)}>Cancel</s-button>
-              <s-button variant="primary" onClick={submitCategory}>{editingCategory ? "Update" : "Create"}</s-button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Brand Modal */}
-      {showBrandModal && (
-        <div style={{
-          position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)",
-          display: "flex", justifyContent: "center", alignItems: "flex-start", zIndex: 1000, overflowY: "auto", padding: "40px 20px"
-        }}>
-          <div style={{ background: "white", borderRadius: 12, padding: 24, width: "100%", maxWidth: 480 }}>
-            <h2 style={{ margin: "0 0 16px", fontSize: "1.1rem" }}>{editingBrand ? "Edit Brand" : "Add Brand"}</h2>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <s-text-field label="Brand Name *" value={brandData.name}
-                onChange={(e) => setBrandData({ ...brandData, name: e.target.value })}
-                placeholder="e.g., Sunbrella" />
-              <s-text-field label="Logo URL" value={brandData.logoUrl}
-                onChange={(e) => setBrandData({ ...brandData, logoUrl: e.target.value })}
-                placeholder="https://example.com/logo.png" />
-              <s-text-field label="Description" value={brandData.description}
-                onChange={(e) => setBrandData({ ...brandData, description: e.target.value })} />
-              <s-text-field label="Sort Order" type="number" value={brandData.sortOrder}
-                onChange={(e) => setBrandData({ ...brandData, sortOrder: parseInt(e.target.value) || 0 })} />
-            </div>
-
-            <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "flex-end" }}>
-              <s-button variant="tertiary" onClick={() => setShowBrandModal(false)}>Cancel</s-button>
-              <s-button variant="primary" onClick={submitBrand}>{editingBrand ? "Update" : "Create"}</s-button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Pattern Modal */}
-      {showPatternModal && (
-        <div style={{
-          position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)",
-          display: "flex", justifyContent: "center", alignItems: "flex-start", zIndex: 1000, overflowY: "auto", padding: "40px 20px"
-        }}>
-          <div style={{ background: "white", borderRadius: 12, padding: 24, width: "100%", maxWidth: 480 }}>
-            <h2 style={{ margin: "0 0 16px", fontSize: "1.1rem" }}>{editingPattern ? "Edit Pattern" : "Add Pattern"}</h2>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <s-text-field label="Pattern Name *" value={patternData.name}
-                onChange={(e) => setPatternData({ ...patternData, name: e.target.value })}
-                placeholder="e.g., Solid, Striped, Floral" />
-              <s-text-field label="Sort Order" type="number" value={patternData.sortOrder}
-                onChange={(e) => setPatternData({ ...patternData, sortOrder: parseInt(e.target.value) || 0 })} />
-            </div>
-
-            <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "flex-end" }}>
-              <s-button variant="tertiary" onClick={() => setShowPatternModal(false)}>Cancel</s-button>
-              <s-button variant="primary" onClick={submitPattern}>{editingPattern ? "Update" : "Create"}</s-button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Color Modal */}
-      {showColorModal && (
-        <div style={{
-          position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)",
-          display: "flex", justifyContent: "center", alignItems: "flex-start", zIndex: 1000, overflowY: "auto", padding: "40px 20px"
-        }}>
-          <div style={{ background: "white", borderRadius: 12, padding: 24, width: "100%", maxWidth: 480 }}>
-            <h2 style={{ margin: "0 0 16px", fontSize: "1.1rem" }}>{editingColor ? "Edit Color" : "Add Color"}</h2>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <s-text-field label="Color Name *" value={colorData.name}
-                onChange={(e) => setColorData({ ...colorData, name: e.target.value })}
-                placeholder="e.g., Red, Navy Blue, Beige" />
-              <div>
-                <label style={{ display: "block", marginBottom: 4, fontSize: "0.85rem", fontWeight: 500 }}>Hex Code</label>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <input
-                    type="color"
-                    value={colorData.hexCode || "#000000"}
-                    onChange={(e) => setColorData({ ...colorData, hexCode: e.target.value })}
-                    style={{ width: 40, height: 40, border: "1px solid #ccc", borderRadius: 4, cursor: "pointer" }}
-                  />
-                  <input
-                    type="text"
-                    value={colorData.hexCode}
-                    onChange={(e) => setColorData({ ...colorData, hexCode: e.target.value })}
-                    placeholder="#FF0000"
-                    style={{ flex: 1, padding: "10px", borderRadius: 6, border: "1px solid #ccc" }}
-                  />
-                </div>
-              </div>
-              <s-text-field label="Sort Order" type="number" value={colorData.sortOrder}
-                onChange={(e) => setColorData({ ...colorData, sortOrder: parseInt(e.target.value) || 0 })} />
-            </div>
-
-            <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "flex-end" }}>
-              <s-button variant="tertiary" onClick={() => setShowColorModal(false)}>Cancel</s-button>
-              <s-button variant="primary" onClick={submitColor}>{editingColor ? "Update" : "Create"}</s-button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Material Modal */}
-      {showMaterialModal && (
-        <div style={{
-          position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)",
-          display: "flex", justifyContent: "center", alignItems: "flex-start", zIndex: 1000, overflowY: "auto", padding: "40px 20px"
-        }}>
-          <div style={{ background: "white", borderRadius: 12, padding: 24, width: "100%", maxWidth: 480 }}>
-            <h2 style={{ margin: "0 0 16px", fontSize: "1.1rem" }}>{editingMaterial ? "Edit Material" : "Add Material"}</h2>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <s-text-field label="Material Name *" value={materialData.name}
-                onChange={(e) => setMaterialData({ ...materialData, name: e.target.value })}
-                placeholder="e.g., Cotton, Polyester, Velvet" />
-              <s-text-field label="Sort Order" type="number" value={materialData.sortOrder}
-                onChange={(e) => setMaterialData({ ...materialData, sortOrder: parseInt(e.target.value) || 0 })} />
-            </div>
-
-            <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "flex-end" }}>
-              <s-button variant="tertiary" onClick={() => setShowMaterialModal(false)}>Cancel</s-button>
-              <s-button variant="primary" onClick={submitMaterial}>{editingMaterial ? "Update" : "Create"}</s-button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Import CSV Modal */}
-      {showImportModal && (
-        <div style={{
-          position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)",
-          display: "flex", justifyContent: "center", alignItems: "flex-start", zIndex: 1000, overflowY: "auto", padding: "40px 20px"
-        }}>
-          <div style={{ background: "white", borderRadius: 12, padding: 24, width: "100%", maxWidth: 600 }}>
-            <h2 style={{ margin: "0 0 16px", fontSize: "1.1rem" }}>Import Fabrics from CSV</h2>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div style={{ padding: 12, backgroundColor: "#f6f6f7", borderRadius: 8, fontSize: "0.85rem" }}>
-                <p style={{ margin: "0 0 8px", fontWeight: 600 }}>CSV Format:</p>
-                <p style={{ margin: "0 0 4px" }}>• Export existing fabrics first to get the correct format</p>
-                <p style={{ margin: "0 0 4px" }}>• Leave <code>id</code> empty to create new fabrics</p>
-                <p style={{ margin: "0 0 4px" }}>• Include <code>id</code> to update existing fabrics</p>
-                <p style={{ margin: "0 0 4px" }}>• Use pipe (|) to separate multiple patterns, colors, or materials</p>
-                <p style={{ margin: 0 }}>• Category, brand, pattern, color names must match existing entries</p>
-              </div>
-
-              <div>
-                <label style={{ display: "block", marginBottom: 8, fontSize: "0.85rem", fontWeight: 500 }}>
-                  Select CSV File
-                </label>
-                <input
-                  type="file"
-                  accept=".csv,text/csv"
-                  onChange={handleImportFile}
-                  style={{ width: "100%", padding: 8, border: "1px solid #ccc", borderRadius: 6 }}
-                />
-              </div>
-
-              {importCsv && (
-                <div style={{ padding: 8, backgroundColor: "#e3f1df", borderRadius: 6, fontSize: "0.85rem" }}>
-                  File loaded: {importCsv.split("\n").length - 1} data rows detected
-                </div>
-              )}
-
-              {importResult && (
-                <div style={{
-                  padding: 12, borderRadius: 6, fontSize: "0.85rem",
-                  backgroundColor: importResult.success ? "#e3f1df" : "#fbeae5",
-                  color: importResult.success ? "#108043" : "#d72c0d"
-                }}>
-                  {importResult.success ? (
-                    <>
-                      <p style={{ margin: "0 0 4px", fontWeight: 600 }}>Import Complete!</p>
-                      <p style={{ margin: 0 }}>Created: {importResult.created} | Updated: {importResult.updated}</p>
-                      {importResult.totalErrors > 0 && (
-                        <p style={{ margin: "8px 0 0", color: "#b98900" }}>
-                          Errors: {importResult.totalErrors} row(s) had issues
-                        </p>
-                      )}
-                    </>
-                  ) : (
-                    <p style={{ margin: 0 }}>{importResult.error || "Import failed"}</p>
-                  )}
-                  {importResult.errors?.length > 0 && (
-                    <ul style={{ margin: "8px 0 0", paddingLeft: 20 }}>
-                      {importResult.errors.slice(0, 5).map((err, i) => (
-                        <li key={i}>{err}</li>
-                      ))}
-                      {importResult.errors.length > 5 && <li>...and {importResult.errors.length - 5} more</li>}
-                    </ul>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div style={{ display: "flex", gap: 8, marginTop: 20, justifyContent: "flex-end" }}>
-              <s-button variant="tertiary" onClick={() => setShowImportModal(false)}>Cancel</s-button>
-              <s-button variant="primary" onClick={submitImport} disabled={importing || !importCsv}>
-                {importing ? "Importing..." : "Import"}
-              </s-button>
-            </div>
-          </div>
-        </div>
-      )}
-
+      {confirmModal}
     </s-page>
   );
 }

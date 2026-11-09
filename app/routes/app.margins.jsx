@@ -1,8 +1,9 @@
 import { useLoaderData, useActionData, useNavigation, Form } from "react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
+import { Badge, TextField, ConfirmModal, EmptyState } from "../components/admin-ui";
 
 export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
@@ -206,283 +207,339 @@ export default function MarginsPage() {
     setEditTier({ minPrice: "", maxPrice: "", adjustmentPercent: "" });
   };
 
+  // Delete and reset still submit their own <Form>s; the modal only asks first.
+  const deleteFormRefs = useRef({});
+  const resetFormRef = useRef(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [confirmReset, setConfirmReset] = useState(false);
+
+  const confirmDelete = () => {
+    const form = deleteTarget && deleteFormRefs.current[deleteTarget.id];
+    setDeleteTarget(null);
+    form?.requestSubmit();
+  };
+
+  const confirmResetTiers = () => {
+    setConfirmReset(false);
+    resetFormRef.current?.requestSubmit();
+  };
+
+  const adjustmentTone = (percent) => {
+    const tone = getAdjustmentColor(percent);
+    return tone === "subdued" ? undefined : tone;
+  };
+
+  const inlineInput = (width) => ({ width, padding: "5px 8px" });
+
   return (
-    <s-page heading="Price Margins" fullWidth>
+    <s-page heading="Price Margins" inlineSize="large">
       <s-button slot="primary-action" href="/app">
         Back to Dashboard
       </s-button>
 
-      {actionData?.error && (
-        <s-banner tone="critical" style={{ marginBottom: 16 }}>
-          {actionData.error}
-        </s-banner>
-      )}
-
-      {actionData?.success && (
-        <s-banner tone="success" style={{ marginBottom: 16 }}>
-          {actionData.success}
-        </s-banner>
-      )}
-
-      <s-section heading="About Price Margins">
-        <s-box padding="base">
-          <s-paragraph>
-            Price margins automatically adjust the final price based on the calculated subtotal
-            (after fabric, fill, shipping, and labour costs). Use positive percentages to increase
-            prices for lower-value orders, and negative percentages to offer discounts on higher-value orders.
-          </s-paragraph>
-          <s-paragraph style={{ marginTop: 8 }}>
-            <s-text fontWeight="semibold">Formula:</s-text> Final Price = Subtotal + (Subtotal × Margin%)
-          </s-paragraph>
-        </s-box>
-      </s-section>
-
-      {priceTiers.length === 0 && (
-        <s-section heading="Quick Setup">
-          <s-box padding="base">
-            <s-paragraph>
-              No price tiers configured yet. Click below to load the recommended default tiers.
-            </s-paragraph>
-            <Form method="post" style={{ marginTop: 16 }}>
-              <input type="hidden" name="intent" value="bulk_create" />
-              <input type="hidden" name="tiers" value={JSON.stringify(defaultTiers)} />
-              <s-button variant="primary" type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Loading..." : "Load Default Tiers (28 tiers)"}
-              </s-button>
-            </Form>
-          </s-box>
-        </s-section>
-      )}
-
-      <s-section heading={`Price Tiers (${priceTiers.length})`}>
-        {!showAddForm && (
-          <s-button slot="action" onClick={() => setShowAddForm(true)}>
-            Add Tier
-          </s-button>
+      <div className="cc-page">
+        {actionData?.error && (
+          <div className="cc-banner" role="alert" style={{ background: "var(--cc-crit-bg)", color: "var(--cc-crit)" }}>
+            {actionData.error}
+          </div>
         )}
 
-        {showAddForm && (
-          <s-box padding="base" style={{ marginBottom: 16, background: "#f9fafb", borderRadius: 8 }}>
-            <s-heading level="4">Add New Price Tier</s-heading>
-            <Form method="post" style={{ marginTop: 12 }}>
-              <input type="hidden" name="intent" value="create" />
-              <s-stack direction="inline" gap="base" align="end">
-                <s-stack direction="block" gap="tight">
-                  <label>Min Price ($)</label>
-                  <input
-                    type="number"
-                    name="minPrice"
-                    value={newTier.minPrice}
-                    onChange={(e) => setNewTier({ ...newTier, minPrice: e.target.value })}
-                    placeholder="0"
-                    step="0.01"
-                    style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc", width: 100 }}
-                    required
-                  />
-                </s-stack>
-                <s-stack direction="block" gap="tight">
-                  <label>Max Price ($)</label>
-                  <input
-                    type="number"
-                    name="maxPrice"
-                    value={newTier.maxPrice}
-                    onChange={(e) => setNewTier({ ...newTier, maxPrice: e.target.value })}
-                    placeholder="100"
-                    step="0.01"
-                    style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc", width: 100 }}
-                    required
-                  />
-                </s-stack>
-                <s-stack direction="block" gap="tight">
-                  <label>Adjustment (%)</label>
-                  <input
-                    type="number"
-                    name="adjustmentPercent"
-                    value={newTier.adjustmentPercent}
-                    onChange={(e) => setNewTier({ ...newTier, adjustmentPercent: e.target.value })}
-                    placeholder="10 or -10"
-                    step="1"
-                    style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc", width: 120 }}
-                    required
-                  />
-                </s-stack>
-                <s-button type="submit" variant="primary" disabled={isSubmitting}>
-                  {isSubmitting ? "Adding..." : "Add"}
-                </s-button>
-                <s-button type="button" onClick={() => { setShowAddForm(false); setNewTier({ minPrice: "", maxPrice: "", adjustmentPercent: "" }); }}>
-                  Cancel
-                </s-button>
-              </s-stack>
-            </Form>
-          </s-box>
+        {actionData?.success && (
+          <div className="cc-banner" role="status" style={{ background: "var(--cc-on-bg)", color: "var(--cc-on)" }}>
+            {actionData.success}
+          </div>
         )}
 
-        {priceTiers.length > 0 ? (
-          <s-box padding="none">
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ background: "#f3f4f6" }}>
-                  <th style={{ padding: 12, textAlign: "left", borderBottom: "1px solid #e5e7eb" }}>Price Range</th>
-                  <th style={{ padding: 12, textAlign: "left", borderBottom: "1px solid #e5e7eb" }}>Margin Adjustment</th>
-                  <th style={{ padding: 12, textAlign: "left", borderBottom: "1px solid #e5e7eb" }}>Example</th>
-                  <th style={{ padding: 12, textAlign: "right", borderBottom: "1px solid #e5e7eb" }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {priceTiers.map((tier, index) => (
-                  <tr key={tier.id} style={{ background: index % 2 === 0 ? "#fff" : "#f9fafb" }}>
-                    {editingId === tier.id ? (
-                      <td colSpan="4" style={{ padding: 8, borderBottom: "1px solid #e5e7eb" }}>
-                        <Form method="post">
-                          <input type="hidden" name="intent" value="update" />
-                          <input type="hidden" name="id" value={tier.id} />
-                          <s-stack direction="inline" gap="base" align="center">
-                            <s-stack direction="inline" gap="tight" align="center">
-                              <span>$</span>
-                              <input
-                                type="number"
-                                name="minPrice"
-                                value={editTier.minPrice}
-                                onChange={(e) => setEditTier({ ...editTier, minPrice: e.target.value })}
-                                step="0.01"
-                                style={{ padding: 6, borderRadius: 4, border: "1px solid #ccc", width: 90 }}
-                                required
-                              />
-                              <span>-</span>
-                              <span>$</span>
-                              <input
-                                type="number"
-                                name="maxPrice"
-                                value={editTier.maxPrice}
-                                onChange={(e) => setEditTier({ ...editTier, maxPrice: e.target.value })}
-                                step="0.01"
-                                style={{ padding: 6, borderRadius: 4, border: "1px solid #ccc", width: 90 }}
-                                required
-                              />
-                            </s-stack>
-                            <s-stack direction="inline" gap="tight" align="center">
-                              <span>Margin:</span>
-                              <input
-                                type="number"
-                                name="adjustmentPercent"
-                                value={editTier.adjustmentPercent}
-                                onChange={(e) => setEditTier({ ...editTier, adjustmentPercent: e.target.value })}
-                                step="1"
-                                style={{ padding: 6, borderRadius: 4, border: "1px solid #ccc", width: 80 }}
-                                required
-                              />
-                              <span>%</span>
-                            </s-stack>
-                            <span style={{ color: "#666" }}>
-                              (${editTier.minPrice || 0} → ${((parseFloat(editTier.minPrice) || 0) * (1 + (parseFloat(editTier.adjustmentPercent) || 0) / 100)).toFixed(2)})
-                            </span>
-                            <s-stack direction="inline" gap="tight">
-                              <button
-                                type="submit"
-                                disabled={isSubmitting}
-                                style={{
-                                  padding: "6px 12px",
-                                  background: "#008060",
-                                  color: "white",
-                                  border: "none",
-                                  borderRadius: 4,
-                                  cursor: "pointer"
-                                }}
-                              >
-                                {isSubmitting ? "Saving..." : "Save"}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={cancelEditing}
-                                style={{
-                                  padding: "6px 12px",
-                                  background: "#f3f4f6",
-                                  color: "#333",
-                                  border: "1px solid #ccc",
-                                  borderRadius: 4,
-                                  cursor: "pointer"
-                                }}
-                              >
-                                Cancel
-                              </button>
-                            </s-stack>
-                          </s-stack>
-                        </Form>
-                      </td>
-                    ) : (
-                      <>
-                        <td style={{ padding: 12, borderBottom: "1px solid #e5e7eb" }}>
-                          ${tier.minPrice.toLocaleString()} - ${tier.maxPrice.toLocaleString()}
-                        </td>
-                        <td style={{ padding: 12, borderBottom: "1px solid #e5e7eb" }}>
-                          <s-text tone={getAdjustmentColor(tier.adjustmentPercent)}>
-                            {formatAdjustment(tier.adjustmentPercent)}
-                          </s-text>
-                        </td>
-                        <td style={{ padding: 12, borderBottom: "1px solid #e5e7eb", color: "#666" }}>
-                          ${tier.minPrice} → ${(tier.minPrice * (1 + tier.adjustmentPercent / 100)).toFixed(2)}
-                        </td>
-                        <td style={{ padding: 12, borderBottom: "1px solid #e5e7eb", textAlign: "right" }}>
-                          <s-stack direction="inline" gap="tight">
-                            <s-button type="button" variant="plain" size="small" onClick={() => startEditing(tier)}>
-                              Edit
-                            </s-button>
-                            <Form method="post" style={{ display: "inline" }}>
-                              <input type="hidden" name="intent" value="delete" />
-                              <input type="hidden" name="id" value={tier.id} />
-                              <s-button type="submit" variant="plain" tone="critical" size="small">
-                                Delete
-                              </s-button>
-                            </Form>
-                          </s-stack>
-                        </td>
-                      </>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </s-box>
-        ) : (
-          <s-box padding="large" style={{ textAlign: "center" }}>
-            <s-text tone="subdued">No price tiers configured. Add tiers or load defaults above.</s-text>
-          </s-box>
-        )}
+        <div className="cc-layout">
+          <div className="cc-main">
+            {priceTiers.length === 0 && (
+              <div className="cc-card">
+                <div className="cc-card__head"><h2>Quick setup</h2></div>
+                <div className="cc-card__body">
+                  <p className="cc-p cc-muted">No price tiers yet. Load the recommended default tiers to get started.</p>
+                  <Form method="post">
+                    <input type="hidden" name="intent" value="bulk_create" />
+                    <input type="hidden" name="tiers" value={JSON.stringify(defaultTiers)} />
+                    <button type="submit" className="cc-btn cc-btn--primary" disabled={isSubmitting}>
+                      {isSubmitting ? "Loading..." : "Load default tiers (28 tiers)"}
+                    </button>
+                  </Form>
+                </div>
+              </div>
+            )}
 
-        {priceTiers.length > 0 && (
-          <s-box padding="base" style={{ marginTop: 16 }}>
-            <Form method="post">
-              <input type="hidden" name="intent" value="bulk_create" />
-              <input type="hidden" name="tiers" value={JSON.stringify(defaultTiers)} />
-              <s-button type="submit" variant="plain" tone="critical" disabled={isSubmitting}>
-                {isSubmitting ? "Resetting..." : "Reset to Default Tiers"}
-              </s-button>
-              <s-text tone="subdued" style={{ marginLeft: 12 }}>
-                This will delete all current tiers and load the 28 default tiers.
-              </s-text>
-            </Form>
-          </s-box>
-        )}
-      </s-section>
+            <div className="cc-card">
+              <div className="cc-card__head">
+                <h2>Price tiers</h2>
+                <span className="cc-card__meta">{priceTiers.length}</span>
+                {!showAddForm && (
+                  <div className="cc-card__actions">
+                    <button type="button" className="cc-btn" onClick={() => setShowAddForm(true)}>Add tier</button>
+                  </div>
+                )}
+              </div>
 
-      <s-section slot="aside" heading="How It Works">
-        <s-box padding="base">
-          <s-stack direction="block" gap="base">
-            <s-text fontWeight="semibold">Low-value orders (increase price):</s-text>
-            <s-text fontSize="small">$0-$30 → +100% margin</s-text>
-            <s-text fontSize="small">$31-$50 → +90% margin</s-text>
-            <s-text fontSize="small">...</s-text>
+              {showAddForm && (
+                <div className="cc-card__body" style={{ paddingBottom: 4 }}>
+                  <div style={{ background: "var(--cc-surface-2)", border: "1px solid var(--cc-border)", borderRadius: 10, padding: 12, display: "grid", gap: 10 }}>
+                    <div className="cc-label">New price tier</div>
+                    <Form method="post">
+                      <input type="hidden" name="intent" value="create" />
+                      <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
+                        <div style={{ width: 130 }}>
+                          <TextField
+                            id="tier-min"
+                            label="Min price ($)"
+                            type="number"
+                            name="minPrice"
+                            value={newTier.minPrice}
+                            onChange={(v) => setNewTier({ ...newTier, minPrice: v })}
+                            placeholder="0"
+                            step="0.01"
+                            required
+                          />
+                        </div>
+                        <div style={{ width: 130 }}>
+                          <TextField
+                            id="tier-max"
+                            label="Max price ($)"
+                            type="number"
+                            name="maxPrice"
+                            value={newTier.maxPrice}
+                            onChange={(v) => setNewTier({ ...newTier, maxPrice: v })}
+                            placeholder="100"
+                            step="0.01"
+                            required
+                          />
+                        </div>
+                        <div style={{ width: 140 }}>
+                          <TextField
+                            id="tier-adjustment"
+                            label="Adjustment (%)"
+                            type="number"
+                            name="adjustmentPercent"
+                            value={newTier.adjustmentPercent}
+                            onChange={(v) => setNewTier({ ...newTier, adjustmentPercent: v })}
+                            placeholder="10 or -10"
+                            step="1"
+                            required
+                          />
+                        </div>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button type="button" className="cc-btn" onClick={() => { setShowAddForm(false); setNewTier({ minPrice: "", maxPrice: "", adjustmentPercent: "" }); }}>
+                            Cancel
+                          </button>
+                          <button type="submit" className="cc-btn cc-btn--primary" disabled={isSubmitting}>
+                            {isSubmitting ? "Adding..." : "Add"}
+                          </button>
+                        </div>
+                      </div>
+                    </Form>
+                  </div>
+                </div>
+              )}
 
-            <s-text fontWeight="semibold" style={{ marginTop: 8 }}>Break-even point:</s-text>
-            <s-text fontSize="small">$276-$300 → 0% (no change)</s-text>
+              <div className="cc-card__flush" style={{ paddingTop: 10 }}>
+                {priceTiers.length > 0 ? (
+                  <div className="cc-table-wrap">
+                    <table className="cc-table">
+                      <thead>
+                        <tr>
+                          <th>Price range</th>
+                          <th>Margin adjustment</th>
+                          <th>Example</th>
+                          <th><span className="cc-visually-hidden">Actions</span></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {priceTiers.map((tier) => (
+                          <tr key={tier.id}>
+                            {editingId === tier.id ? (
+                              <td colSpan="4" style={{ background: "var(--cc-surface-2)" }}>
+                                <Form method="post">
+                                  <input type="hidden" name="intent" value="update" />
+                                  <input type="hidden" name="id" value={tier.id} />
+                                  <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                                      <span className="cc-muted">$</span>
+                                      <input
+                                        className="cc-input cc-num"
+                                        type="number"
+                                        name="minPrice"
+                                        aria-label="Min price"
+                                        value={editTier.minPrice}
+                                        onChange={(e) => setEditTier({ ...editTier, minPrice: e.target.value })}
+                                        step="0.01"
+                                        style={inlineInput(100)}
+                                        required
+                                      />
+                                      <span className="cc-muted">to $</span>
+                                      <input
+                                        className="cc-input cc-num"
+                                        type="number"
+                                        name="maxPrice"
+                                        aria-label="Max price"
+                                        value={editTier.maxPrice}
+                                        onChange={(e) => setEditTier({ ...editTier, maxPrice: e.target.value })}
+                                        step="0.01"
+                                        style={inlineInput(100)}
+                                        required
+                                      />
+                                    </div>
+                                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                                      <span className="cc-muted">Margin</span>
+                                      <input
+                                        className="cc-input cc-num"
+                                        type="number"
+                                        name="adjustmentPercent"
+                                        aria-label="Margin adjustment (%)"
+                                        value={editTier.adjustmentPercent}
+                                        onChange={(e) => setEditTier({ ...editTier, adjustmentPercent: e.target.value })}
+                                        step="1"
+                                        style={inlineInput(84)}
+                                        required
+                                      />
+                                      <span className="cc-muted">%</span>
+                                    </div>
+                                    <span className="cc-muted cc-num cc-small">
+                                      ${editTier.minPrice || 0} → ${((parseFloat(editTier.minPrice) || 0) * (1 + (parseFloat(editTier.adjustmentPercent) || 0) / 100)).toFixed(2)}
+                                    </span>
+                                    <span className="cc-spacer" />
+                                    <div style={{ display: "flex", gap: 6 }}>
+                                      <button type="button" className="cc-btn" onClick={cancelEditing}>Cancel</button>
+                                      <button type="submit" className="cc-btn cc-btn--primary" disabled={isSubmitting}>
+                                        {isSubmitting ? "Saving..." : "Save"}
+                                      </button>
+                                    </div>
+                                  </div>
+                                </Form>
+                              </td>
+                            ) : (
+                              <>
+                                <td className="cc-num">
+                                  ${tier.minPrice.toLocaleString()} – ${tier.maxPrice.toLocaleString()}
+                                </td>
+                                <td>
+                                  <Badge tone={adjustmentTone(tier.adjustmentPercent)}>
+                                    {formatAdjustment(tier.adjustmentPercent)}
+                                  </Badge>
+                                </td>
+                                <td className="cc-num cc-muted">
+                                  ${tier.minPrice} → ${(tier.minPrice * (1 + tier.adjustmentPercent / 100)).toFixed(2)}
+                                </td>
+                                <td>
+                                  <div className="cc-rowact">
+                                    <Form
+                                      method="post"
+                                      style={{ display: "inline" }}
+                                      ref={(el) => { if (el) deleteFormRefs.current[tier.id] = el; else delete deleteFormRefs.current[tier.id]; }}
+                                    >
+                                      <input type="hidden" name="intent" value="delete" />
+                                      <input type="hidden" name="id" value={tier.id} />
+                                      <button type="button" className="cc-btn cc-btn--plain cc-btn--critical" onClick={() => setDeleteTarget(tier)}>
+                                        Delete
+                                      </button>
+                                    </Form>
+                                    <button type="button" className="cc-btn" onClick={() => startEditing(tier)}>
+                                      Edit
+                                    </button>
+                                  </div>
+                                </td>
+                              </>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <EmptyState title="No price tiers yet">
+                    Add a tier, or load the default tiers above.
+                  </EmptyState>
+                )}
+              </div>
+            </div>
 
-            <s-text fontWeight="semibold" style={{ marginTop: 8 }}>High-value orders (discount):</s-text>
-            <s-text fontSize="small">$301-$325 → -5% discount</s-text>
-            <s-text fontSize="small">...</s-text>
-            <s-text fontSize="small">$10,001-$20,000 → -75% discount</s-text>
-          </s-stack>
-        </s-box>
-      </s-section>
+            {priceTiers.length > 0 && (
+              <div className="cc-card">
+                <div className="cc-card__head"><h2>Reset tiers</h2></div>
+                <div className="cc-card__body">
+                  <Form method="post" ref={resetFormRef} style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                    <input type="hidden" name="intent" value="bulk_create" />
+                    <input type="hidden" name="tiers" value={JSON.stringify(defaultTiers)} />
+                    <span className="cc-muted" style={{ flex: 1, minWidth: 220 }}>
+                      Delete all current tiers and load the 28 default tiers.
+                    </span>
+                    <button type="button" className="cc-btn cc-btn--critical" disabled={isSubmitting} onClick={() => setConfirmReset(true)}>
+                      {isSubmitting ? "Resetting..." : "Reset to default tiers"}
+                    </button>
+                  </Form>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="cc-side">
+            <div className="cc-card">
+              <div className="cc-card__head"><h2>About price margins</h2></div>
+              <div className="cc-card__body">
+                <p className="cc-p cc-muted">
+                  Margins adjust the final price based on the calculated subtotal (fabric, fill, shipping and labour).
+                  Use a positive percentage to raise prices on smaller orders and a negative one to discount larger orders.
+                </p>
+                <div className="cc-calc">
+                  <div><span>Final price</span><span>Subtotal + (Subtotal × Margin %)</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div className="cc-card">
+              <div className="cc-card__head"><h2>How the defaults work</h2></div>
+              <div className="cc-card__body" style={{ gap: 10 }}>
+                <div>
+                  <div className="cc-label">Smaller orders (price goes up)</div>
+                  <div className="cc-muted cc-small cc-num">$0–$30 → +100%</div>
+                  <div className="cc-muted cc-small cc-num">$31–$50 → +90%</div>
+                  <div className="cc-muted cc-small">…</div>
+                </div>
+                <div>
+                  <div className="cc-label">Break-even</div>
+                  <div className="cc-muted cc-small cc-num">$276–$300 → 0% (no change)</div>
+                </div>
+                <div>
+                  <div className="cc-label">Larger orders (discount)</div>
+                  <div className="cc-muted cc-small cc-num">$301–$325 → −5%</div>
+                  <div className="cc-muted cc-small">…</div>
+                  <div className="cc-muted cc-small cc-num">$10,001–$20,000 → −75%</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <ConfirmModal
+        open={!!deleteTarget}
+        title="Delete this price tier?"
+        confirmLabel="Delete tier"
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+      >
+        <p className="cc-p">
+          {deleteTarget && `$${deleteTarget.minPrice.toLocaleString()} – $${deleteTarget.maxPrice.toLocaleString()} will no longer get a margin adjustment. `}
+          This can’t be undone.
+        </p>
+      </ConfirmModal>
+
+      <ConfirmModal
+        open={confirmReset}
+        title="Reset to default tiers?"
+        confirmLabel="Reset tiers"
+        onCancel={() => setConfirmReset(false)}
+        onConfirm={confirmResetTiers}
+      >
+        <p className="cc-p">All {priceTiers.length} current tiers will be deleted and replaced with the 28 default tiers.</p>
+      </ConfirmModal>
     </s-page>
   );
 }
