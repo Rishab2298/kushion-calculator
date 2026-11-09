@@ -492,7 +492,9 @@ CushionCalculator.prototype.updateMultiPiecePriceDisplay = function(d) {
   }
 
   // Update add to cart button state
-  var canAdd = d.pieceBreakdowns && d.pieceBreakdowns.length > 0 && this.selectedFabric && (d.total || 0) > 0;
+  var vis = this.config.sectionVisibility || {};
+  var fabricOk = vis.showFabricSection === false || this.selectedFabric;
+  var canAdd = d.pieceBreakdowns && d.pieceBreakdowns.length > 0 && fabricOk && (d.total || 0) > 0;
   document.getElementById('add-cart-btn-' + blockId).disabled = !canAdd;
 
   // Sync floating footer
