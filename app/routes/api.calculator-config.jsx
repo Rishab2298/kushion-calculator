@@ -467,6 +467,7 @@ export const loader = async ({ request }) => {
         allowedCategoryIds: profile.allowedCategoryIds ? JSON.parse(profile.allowedCategoryIds) : null,
         enableMultiPiece: profile.enableMultiPiece || false,
         enableWeatherproof: profile.enableWeatherproof || false,
+        isCoverProduct: profile.isCoverProduct || false,
         piecesLabel: profile.piecesLabel || "Pieces",
         pieces: (profile.pieces || []).map(p => ({
           id: p.id,

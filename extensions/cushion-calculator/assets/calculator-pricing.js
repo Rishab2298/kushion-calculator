@@ -255,7 +255,9 @@ CushionCalculator.prototype.calculateMultiPiecePrice = function() {
 
     // Check piece-level visibility before including costs (multi-piece is piece-dependent)
     var pc = piece.config || {};
+    // Like single-piece: a hidden Fill section charges its hidden value (if one is set), otherwise no fill
     var fillVisible = pc.showFillSection !== false;
+    var pieceFill = (fillVisible || pc.hiddenFillTypeId) ? piece.fill : null;
     var designVisible = pc.showDesignSection !== false;
     var pipingVisible = pc.showPipingSection !== false;
     var buttonVisible = pc.showButtonSection !== false;
@@ -266,7 +268,7 @@ CushionCalculator.prototype.calculateMultiPiecePrice = function() {
     var drawstringVisible = pc.showDrawstringSection !== false;
 
     var fabricCost = effectiveFabric ? surfaceArea * (parseFloat(effectiveFabric.pricePerSqInch) || 0) * conversionMultiplier : 0;
-    var fillCost = (fillVisible && piece.fill) ? volume * (parseFloat(piece.fill.pricePerCubicInch) || 0) * conversionMultiplier : 0;
+    var fillCost = pieceFill ? volume * (parseFloat(pieceFill.pricePerCubicInch) || 0) * conversionMultiplier : 0;
     var tiesCost = (tiesVisible && piece.ties) ? (parseFloat(piece.ties.price) || 0) * conversionMultiplier : 0;
     var fabricTiesCost = (fabricTiesVisible && piece.fabricTies) ? (parseFloat(piece.fabricTies.price) || 0) * conversionMultiplier : 0;
 
@@ -313,13 +315,13 @@ CushionCalculator.prototype.calculateMultiPiecePrice = function() {
     var pieceTotalBeforeDeductions = piecePreMargin + pieceMarginAmt;
 
     // 4. Covers only check (30% deduction from raw material cost)
-    var isCoversOnly = fillVisible && piece.fill && piece.fill.name &&
+    var isCoversOnly = pieceFill && pieceFill.name &&
       piece.fill.name.toLowerCase().indexOf('covers only') !== -1;
     var rawMaterialCost = fabricCost + fillCost;
     var coversOnlyDeduction = isCoversOnly ? rawMaterialCost * 0.30 : 0;
 
     // 5. Apply discounts (fabric discount from shared fabric, fill discount per piece)
-    var fillDiscountPct = (fillVisible && piece.fill && piece.fill.discountEnabled) ? (parseFloat(piece.fill.discountPercent) || 0) : 0;
+    var fillDiscountPct = (pieceFill && pieceFill.discountEnabled) ? (parseFloat(pieceFill.discountPercent) || 0) : 0;
     var pieceFabricDiscountAmt = pieceTotalBeforeDeductions * (fabricDiscountPct / 100);
     var pieceFillDiscountAmt = pieceTotalBeforeDeductions * (fillDiscountPct / 100);
 
@@ -363,7 +365,7 @@ CushionCalculator.prototype.calculateMultiPiecePrice = function() {
         .map(function(fl) { return (fl.label || fl.key) + ' ' + piece.dimensions[fl.key] + '"'; }).join(' × '),
       fabricName: effectiveFabric ? effectiveFabric.name : '',
       fabricRate: effectiveFabric ? effectiveFabric.pricePerSqInch : 0,
-      fillRate: (fillVisible && piece.fill) ? piece.fill.pricePerCubicInch : 0,
+      fillRate: pieceFill ? pieceFill.pricePerCubicInch : 0,
       tiesPrice: (tiesVisible && piece.ties) ? piece.ties.price : 0,
       fabricTiesPrice: (fabricTiesVisible && piece.fabricTies) ? piece.fabricTies.price : 0,
       preMargin: piecePreMargin,
@@ -378,7 +380,7 @@ CushionCalculator.prototype.calculateMultiPiecePrice = function() {
       finalPrice: pieceFinalPrice,
       // Names for display
       shapeName: piece.shape ? piece.shape.name : '',
-      fillName: piece.fill ? piece.fill.name : '',
+      fillName: pieceFill ? pieceFill.name : '',
       pipingName: piece.piping ? piece.piping.name : '',
       buttonName: piece.button ? piece.button.name : '',
       antiSkidName: piece.antiSkid ? piece.antiSkid.name : '',
@@ -416,10 +418,12 @@ CushionCalculator.prototype.updateMultiPiecePriceDisplay = function(d) {
   var rate = function(v) { return '$' + num(v, 4); };
   var conv = num(d.conversionMultiplier || 1, 4);
   // Muted second line under a breakdown label showing the configuration and inputs behind it
+  var esc = function(text) {
+    return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  };
   var det = function(text) {
     if (!text) return '';
-    var safe = String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    return '<span class="kraft2026zion-bd-detail">' + safe + '</span>';
+    return '<span class="kraft2026zion-bd-detail">' + esc(text) + '</span>';
   };
 
   // Update main price displays
@@ -435,7 +439,7 @@ CushionCalculator.prototype.updateMultiPiecePriceDisplay = function(d) {
       // Piece-by-piece breakdown with expandable detail (now shows final price per piece)
       d.pieceBreakdowns.forEach(function(pb, idx) {
         html += '<div class="kraft2026zion-mp-breakdown-piece" data-piece-toggle="' + idx + '">' +
-          '<div class="kraft2026zion-mp-breakdown-piece-name"><span class="kraft2026zion-mp-piece-arrow">&#9662;</span> ' + pb.name + '</div>' +
+          '<div class="kraft2026zion-mp-breakdown-piece-name"><span class="kraft2026zion-mp-piece-arrow">&#9662;</span> ' + esc(pb.name) + '</div>' +
           '<div class="kraft2026zion-mp-breakdown-piece-price">' + f(pb.finalPrice) + '</div>' +
           '</div>';
         html += '<div class="kraft2026zion-mp-piece-detail" id="mp-piece-detail-' + blockId + '-' + idx + '" style="display: none;">';
@@ -443,54 +447,54 @@ CushionCalculator.prototype.updateMultiPiecePriceDisplay = function(d) {
         // Raw costs section
         html += '<div class="kraft2026zion-mp-detail-section">Raw Costs</div>';
         var pieceBaseText = f(pb.pieceBase);
-        html += '<div class="kraft2026zion-mp-detail-row"><span>Shape' + det(pb.shapeName + (pb.dimensionsText ? ' · ' + pb.dimensionsText : '')) + '</span><span></span></div>';
-        html += '<div class="kraft2026zion-mp-detail-row"><span>Fabric Cost' + det(pb.fabricName
+        html += '<div class="kraft2026zion-mp-detail-row"><span>Shape' + '</span>' + det(pb.shapeName + (pb.dimensionsText ? ' · ' + pb.dimensionsText : '')) + '<span></span></div>';
+        html += '<div class="kraft2026zion-mp-detail-row"><span>Fabric Cost' + '</span>' + det(pb.fabricName
           ? pb.fabricName + ' · ' + num(pb.surfaceArea, 2) + ' sq in' + (pb.isWeatherproof ? ' (no base)' : '') + ' × ' + rate(pb.fabricRate) + '/sq in × ' + conv
-          : 'No fabric') + '</span><span>' + f(pb.fabricCost) + '</span></div>';
-        html += '<div class="kraft2026zion-mp-detail-row"><span>Fill Cost' + (pb.fillName ? ' (' + pb.fillName + ')' : '') + det(pb.fillCost > 0
+          : 'No fabric') + '<span>' + f(pb.fabricCost) + '</span></div>';
+        html += '<div class="kraft2026zion-mp-detail-row"><span>Fill Cost' + (pb.fillName ? ' (' + esc(pb.fillName) + ')' : '') + '</span>' + det(pb.fillName
           ? num(pb.volume, 2) + ' cu in × ' + rate(pb.fillRate) + '/cu in × ' + conv
-          : '') + '</span><span>' + f(pb.fillCost) + '</span></div>';
+          : '') + '<span>' + f(pb.fillCost) + '</span></div>';
         if (pb.designCost > 0) {
-          html += '<div class="kraft2026zion-mp-detail-row"><span>Design' + (pb.designName ? ' (' + pb.designName + ')' : '') + ' ' + pb.designPct + '%' + det(pb.designPct + '% of fabric ' + f(pb.fabricCost)) + '</span><span>' + f(pb.designCost) + '</span></div>';
+          html += '<div class="kraft2026zion-mp-detail-row"><span>Design' + (pb.designName ? ' (' + esc(pb.designName) + ')' : '') + ' ' + pb.designPct + '%' + '</span>' + det(pb.designPct + '% of fabric ' + f(pb.fabricCost)) + '<span>' + f(pb.designCost) + '</span></div>';
         }
         if (pb.pipingCost > 0) {
-          html += '<div class="kraft2026zion-mp-detail-row"><span>Piping' + (pb.pipingName ? ' (' + pb.pipingName + ')' : '') + ' ' + pb.pipingPct + '%' + det(pb.pipingPct + '% of ' + pieceBaseText) + '</span><span>' + f(pb.pipingCost) + '</span></div>';
+          html += '<div class="kraft2026zion-mp-detail-row"><span>Piping' + (pb.pipingName ? ' (' + esc(pb.pipingName) + ')' : '') + ' ' + pb.pipingPct + '%' + '</span>' + det(pb.pipingPct + '% of ' + pieceBaseText) + '<span>' + f(pb.pipingCost) + '</span></div>';
         }
         if (pb.buttonCost > 0) {
-          html += '<div class="kraft2026zion-mp-detail-row"><span>Button' + (pb.buttonName ? ' (' + pb.buttonName + ')' : '') + ' ' + pb.buttonPct + '%' + det(pb.buttonPct + '% of ' + pieceBaseText) + '</span><span>' + f(pb.buttonCost) + '</span></div>';
+          html += '<div class="kraft2026zion-mp-detail-row"><span>Button' + (pb.buttonName ? ' (' + esc(pb.buttonName) + ')' : '') + ' ' + pb.buttonPct + '%' + '</span>' + det(pb.buttonPct + '% of ' + pieceBaseText) + '<span>' + f(pb.buttonCost) + '</span></div>';
         }
         if (pb.antiSkidCost > 0) {
-          html += '<div class="kraft2026zion-mp-detail-row"><span>Anti-Skid' + (pb.antiSkidName ? ' (' + pb.antiSkidName + ')' : '') + ' ' + pb.antiSkidPct + '%' + det(pb.antiSkidPct + '% of ' + pieceBaseText) + '</span><span>' + f(pb.antiSkidCost) + '</span></div>';
+          html += '<div class="kraft2026zion-mp-detail-row"><span>Anti-Skid' + (pb.antiSkidName ? ' (' + esc(pb.antiSkidName) + ')' : '') + ' ' + pb.antiSkidPct + '%' + '</span>' + det(pb.antiSkidPct + '% of ' + pieceBaseText) + '<span>' + f(pb.antiSkidCost) + '</span></div>';
         }
         if (pb.tiesCost > 0) {
-          html += '<div class="kraft2026zion-mp-detail-row"><span>Ties' + (pb.tiesName ? ' (' + pb.tiesName + ')' : '') + det(f(pb.tiesPrice) + ' × ' + conv) + '</span><span>' + f(pb.tiesCost) + '</span></div>';
+          html += '<div class="kraft2026zion-mp-detail-row"><span>Ties' + (pb.tiesName ? ' (' + esc(pb.tiesName) + ')' : '') + '</span>' + det(f(pb.tiesPrice) + ' × ' + conv) + '<span>' + f(pb.tiesCost) + '</span></div>';
         }
         if (pb.fabricTiesCost > 0) {
-          html += '<div class="kraft2026zion-mp-detail-row"><span>Fabric Ties' + (pb.fabricTiesName ? ' (' + pb.fabricTiesName + ')' : '') + det(f(pb.fabricTiesPrice) + ' × ' + conv) + '</span><span>' + f(pb.fabricTiesCost) + '</span></div>';
+          html += '<div class="kraft2026zion-mp-detail-row"><span>Fabric Ties' + (pb.fabricTiesName ? ' (' + esc(pb.fabricTiesName) + ')' : '') + '</span>' + det(f(pb.fabricTiesPrice) + ' × ' + conv) + '<span>' + f(pb.fabricTiesCost) + '</span></div>';
         }
         if (pb.rodPocketCost > 0) {
-          html += '<div class="kraft2026zion-mp-detail-row"><span>Rod Pocket' + (pb.rodPocketName ? ' (' + pb.rodPocketName + ')' : '') + ' ' + pb.rodPocketPct + '%' + det(pb.rodPocketPct + '% of ' + pieceBaseText) + '</span><span>' + f(pb.rodPocketCost) + '</span></div>';
+          html += '<div class="kraft2026zion-mp-detail-row"><span>Rod Pocket' + (pb.rodPocketName ? ' (' + esc(pb.rodPocketName) + ')' : '') + ' ' + pb.rodPocketPct + '%' + '</span>' + det(pb.rodPocketPct + '% of ' + pieceBaseText) + '<span>' + f(pb.rodPocketCost) + '</span></div>';
         }
         if (pb.drawstringCost > 0) {
-          html += '<div class="kraft2026zion-mp-detail-row"><span>Drawstring' + (pb.drawstringName ? ' (' + pb.drawstringName + ')' : '') + ' ' + pb.drawstringPct + '%' + det(pb.drawstringPct + '% of ' + pieceBaseText) + '</span><span>' + f(pb.drawstringCost) + '</span></div>';
+          html += '<div class="kraft2026zion-mp-detail-row"><span>Drawstring' + (pb.drawstringName ? ' (' + esc(pb.drawstringName) + ')' : '') + ' ' + pb.drawstringPct + '%' + '</span>' + det(pb.drawstringPct + '% of ' + pieceBaseText) + '<span>' + f(pb.drawstringCost) + '</span></div>';
         }
         html += '<div class="kraft2026zion-mp-detail-row mp-detail-subtotal"><span>Piece Subtotal</span><span>' + f(pb.subtotal) + '</span></div>';
 
         // Markups section
         html += '<div class="kraft2026zion-mp-detail-section">Markups</div>';
         if ((d.profilePct || 0) > 0) {
-          html += '<div class="kraft2026zion-mp-detail-row"><span>Profile (' + d.profilePct + '%)' + det(d.profilePct + '% of ' + pieceBaseText + ' (fabric + fill)') + '</span><span>+' + f(pb.profileCost) + '</span></div>';
+          html += '<div class="kraft2026zion-mp-detail-row"><span>Profile (' + d.profilePct + '%)' + '</span>' + det(d.profilePct + '% of ' + pieceBaseText + ' (fabric + fill)') + '<span>+' + f(pb.profileCost) + '</span></div>';
         }
         var shipLabel = pb.flatRateApplied ? 'flat' : (d.shippingPct || 0) + '%';
         var labourLabel = pb.flatRateApplied ? 'flat' : (d.labourPct || 0) + '%';
         var flatText = pb.flatRateApplied ? 'fabric + fill ' + pieceBaseText + ' is under ' + f(d.flatThreshold) + ', so flat rate' : '';
-        html += '<div class="kraft2026zion-mp-detail-row"><span>Shipping (' + shipLabel + ')' + det(flatText || ((d.shippingPct || 0) + '% of ' + f(pb.shippingLabourBase))) + '</span><span>+' + f(pb.shippingCost) + '</span></div>';
-        html += '<div class="kraft2026zion-mp-detail-row"><span>Labour (' + labourLabel + ')' + det(flatText || ((d.labourPct || 0) + '% of ' + f(pb.shippingLabourBase))) + '</span><span>+' + f(pb.labourCost) + '</span></div>';
+        html += '<div class="kraft2026zion-mp-detail-row"><span>Shipping (' + shipLabel + ')' + '</span>' + det(flatText || ((d.shippingPct || 0) + '% of ' + f(pb.shippingLabourBase))) + '<span>+' + f(pb.shippingCost) + '</span></div>';
+        html += '<div class="kraft2026zion-mp-detail-row"><span>Labour (' + labourLabel + ')' + '</span>' + det(flatText || ((d.labourPct || 0) + '% of ' + f(pb.shippingLabourBase))) + '<span>+' + f(pb.labourCost) + '</span></div>';
         html += '<div class="kraft2026zion-mp-detail-row mp-detail-subtotal"><span>Pre-Margin</span><span>' + f(pb.preMargin) + '</span></div>';
 
         if ((pb.marginPct || 0) !== 0) {
           var sign = pb.marginPct > 0 ? '+' : '';
-          html += '<div class="kraft2026zion-mp-detail-row"><span>Margin (' + sign + pb.marginPct.toFixed(2) + '%)' + det('of ' + f(pb.preMargin)) + '</span><span>' + (pb.marginAmt >= 0 ? '+' : '') + f(pb.marginAmt) + '</span></div>';
+          html += '<div class="kraft2026zion-mp-detail-row"><span>Margin (' + sign + pb.marginPct.toFixed(2) + '%)' + '</span>' + det('of ' + f(pb.preMargin)) + '<span>' + (pb.marginAmt >= 0 ? '+' : '') + f(pb.marginAmt) + '</span></div>';
         }
 
         // Deductions section (if any)
@@ -498,7 +502,7 @@ CushionCalculator.prototype.updateMultiPiecePriceDisplay = function(d) {
         if (hasDeductions) {
           html += '<div class="kraft2026zion-mp-detail-section">Deductions</div>';
           if (pb.isCoversOnly) {
-            html += '<div class="kraft2026zion-mp-detail-row mp-detail-discount"><span>Covers Only (-30%)' + det('30% of ' + pieceBaseText + ' (fabric + fill)') + '</span><span>-' + f(pb.coversOnlyDeduction) + '</span></div>';
+            html += '<div class="kraft2026zion-mp-detail-row mp-detail-discount"><span>Covers Only (-30%)' + '</span>' + det('30% of ' + pieceBaseText + ' (fabric + fill)') + '<span>-' + f(pb.coversOnlyDeduction) + '</span></div>';
           }
           if ((pb.fabricDiscountAmt || 0) > 0) {
             html += '<div class="kraft2026zion-mp-detail-row mp-detail-discount"><span>Fabric Discount (' + pb.fabricDiscountPct + '%)</span><span>-' + f(pb.fabricDiscountAmt) + '</span></div>';
@@ -513,9 +517,10 @@ CushionCalculator.prototype.updateMultiPiecePriceDisplay = function(d) {
       });
 
       html += '<div class="kraft2026zion-mp-breakdown-divider"></div>';
-      html += '<div class="kraft2026zion-mp-breakdown-row"><span>All Pieces Subtotal</span><span>' + f(d.piecesSubtotal) + '</span></div>';
-      html += '<div class="kraft2026zion-mp-breakdown-row mp-breakdown-total"><span>Unit Total</span><span>' + f(d.unitTotal) + '</span></div>';
-      html += '<div class="kraft2026zion-mp-breakdown-row mp-breakdown-total"><span>x ' + d.qty + '</span><span>' + f(d.total) + '</span></div>';
+      html += '<div class="kraft2026zion-mp-breakdown-row"><span>Materials + Add-ons</span>' + det('all pieces, before shipping, labour and margin') + '<span>' + f(d.piecesSubtotal) + '</span></div>';
+      html += '<div class="kraft2026zion-mp-breakdown-row mp-breakdown-total"><span>Unit Total</span>' +
+        det(d.pieceBreakdowns.map(function(pb) { return pb.name + ' ' + f(pb.finalPrice); }).join(' + ')) + '<span>' + f(d.unitTotal) + '</span></div>';
+      html += '<div class="kraft2026zion-mp-breakdown-row mp-breakdown-total"><span>Total (x' + d.qty + ')</span>' + det(f(d.unitTotal) + ' × ' + d.qty) + '<span>' + f(d.total) + '</span></div>';
     } else if (d.incomplete) {
       html = '<div class="kraft2026zion-mp-breakdown-incomplete">Complete all pieces to see price</div>';
     } else {
@@ -564,47 +569,47 @@ CushionCalculator.prototype.updatePriceDisplay = function(d) {
   // Design row
   var designRow = document.getElementById('bd-design-row-' + blockId);
   if (designRow) {
-    designRow.style.display = (d.designPct || 0) > 0 ? 'flex' : 'none';
+    designRow.style.display = (d.designPct || 0) > 0 ? '' : 'none';
     document.getElementById('bd-design-pct-' + blockId).textContent = d.designPct || 0;
     document.getElementById('bd-design-' + blockId).textContent = f(d.designCost);
   }
   var pipingRow = document.getElementById('bd-piping-row-' + blockId);
-  pipingRow.style.display = (d.pipingPct || 0) > 0 ? 'flex' : 'none';
+  pipingRow.style.display = (d.pipingPct || 0) > 0 ? '' : 'none';
   document.getElementById('bd-piping-pct-' + blockId).textContent = d.pipingPct || 0;
   document.getElementById('bd-piping-' + blockId).textContent = f(d.pipingCost);
   var buttonRow = document.getElementById('bd-button-row-' + blockId);
-  buttonRow.style.display = (d.buttonPct || 0) > 0 ? 'flex' : 'none';
+  buttonRow.style.display = (d.buttonPct || 0) > 0 ? '' : 'none';
   document.getElementById('bd-button-pct-' + blockId).textContent = d.buttonPct || 0;
   document.getElementById('bd-button-' + blockId).textContent = f(d.buttonCost);
   var antiskidRow = document.getElementById('bd-antiskid-row-' + blockId);
-  antiskidRow.style.display = (d.antiSkidPct || 0) > 0 ? 'flex' : 'none';
+  antiskidRow.style.display = (d.antiSkidPct || 0) > 0 ? '' : 'none';
   document.getElementById('bd-antiskid-pct-' + blockId).textContent = d.antiSkidPct || 0;
   document.getElementById('bd-antiskid-' + blockId).textContent = f(d.antiSkidCost);
   // Bottom Rod Pocket row
   var rodpocketRow = document.getElementById('bd-rodpocket-row-' + blockId);
   if (rodpocketRow) {
-    rodpocketRow.style.display = (d.rodPocketPct || 0) > 0 ? 'flex' : 'none';
+    rodpocketRow.style.display = (d.rodPocketPct || 0) > 0 ? '' : 'none';
     document.getElementById('bd-rodpocket-pct-' + blockId).textContent = d.rodPocketPct || 0;
     document.getElementById('bd-rodpocket-' + blockId).textContent = f(d.rodPocketCost);
   }
   var tiesRow = document.getElementById('bd-ties-row-' + blockId);
-  tiesRow.style.display = (d.tiesCost || 0) > 0 ? 'flex' : 'none';
+  tiesRow.style.display = (d.tiesCost || 0) > 0 ? '' : 'none';
   document.getElementById('bd-ties-' + blockId).textContent = f(d.tiesCost);
   // Fabric Ties row
   var fabrictiesRow = document.getElementById('bd-fabricties-row-' + blockId);
   if (fabrictiesRow) {
-    fabrictiesRow.style.display = (d.fabricTiesCost || 0) > 0 ? 'flex' : 'none';
+    fabrictiesRow.style.display = (d.fabricTiesCost || 0) > 0 ? '' : 'none';
     document.getElementById('bd-fabricties-' + blockId).textContent = f(d.fabricTiesCost);
   }
   // Drawstring row
   var drawstringRow = document.getElementById('bd-drawstring-row-' + blockId);
   if (drawstringRow) {
-    drawstringRow.style.display = (d.drawstringPct || 0) > 0 ? 'flex' : 'none';
+    drawstringRow.style.display = (d.drawstringPct || 0) > 0 ? '' : 'none';
     document.getElementById('bd-drawstring-pct-' + blockId).textContent = d.drawstringPct || 0;
     document.getElementById('bd-drawstring-' + blockId).textContent = f(d.drawstringCost);
   }
   var profileRow = document.getElementById('bd-profile-row-' + blockId);
-  profileRow.style.display = (d.profilePct || 0) > 0 ? 'flex' : 'none';
+  profileRow.style.display = (d.profilePct || 0) > 0 ? '' : 'none';
   document.getElementById('bd-profile-pct-' + blockId).textContent = d.profilePct || 0;
   document.getElementById('bd-profile-' + blockId).textContent = f(d.profileCost);
   var shippingLabelEl = document.getElementById('bd-shipping-label-' + blockId);
@@ -621,7 +626,7 @@ CushionCalculator.prototype.updatePriceDisplay = function(d) {
   document.getElementById('bd-pretotal-' + blockId).textContent = f(d.preTotalUnit);
   var marginRow = document.getElementById('bd-margin-row-' + blockId);
   if ((d.marginPct || 0) !== 0) {
-    marginRow.style.display = 'flex';
+    marginRow.style.display = '';
     var sign = d.marginPct > 0 ? '+' : '';
     document.getElementById('bd-margin-pct-' + blockId).textContent = sign + d.marginPct;
     document.getElementById('bd-margin-' + blockId).textContent = (d.marginAmt >= 0 ? '+' : '') + f(d.marginAmt);
@@ -633,7 +638,7 @@ CushionCalculator.prototype.updatePriceDisplay = function(d) {
   var discountRow = document.getElementById('bd-discount-row-' + blockId);
   if (discountRow) {
     if ((d.discountPct || 0) > 0) {
-      discountRow.style.display = 'flex';
+      discountRow.style.display = '';
       document.getElementById('bd-discount-pct-' + blockId).textContent = d.discountPct;
       document.getElementById('bd-discount-' + blockId).textContent = '-' + f(d.discountAmt);
     } else {
@@ -644,7 +649,7 @@ CushionCalculator.prototype.updatePriceDisplay = function(d) {
   var coversOnlyRow = document.getElementById('bd-coversonly-row-' + blockId);
   if (coversOnlyRow) {
     if (d.isCoversOnly) {
-      coversOnlyRow.style.display = 'flex';
+      coversOnlyRow.style.display = '';
       document.getElementById('bd-coversonly-' + blockId).textContent = '-' + f(d.coversOnlyDeduction);
     } else {
       coversOnlyRow.style.display = 'none';
@@ -654,7 +659,7 @@ CushionCalculator.prototype.updatePriceDisplay = function(d) {
   var panelsRow = document.getElementById('bd-panels-row-' + blockId);
   if (panelsRow) {
     if ((d.panelCount || 1) > 1) {
-      panelsRow.style.display = 'flex';
+      panelsRow.style.display = '';
       document.getElementById('bd-panels-count-' + blockId).textContent = d.panelCount;
     } else {
       panelsRow.style.display = 'none';
@@ -687,16 +692,16 @@ CushionCalculator.prototype.updateBreakdownDetails = function(d) {
   var rate = function(v) { return '$' + num(v, 4); };
   var name = function(o) { return o && o.name ? o.name : ''; };
 
-  // Put the detail on its own muted line under the label of the row holding valueId
+  // Put the detail in its own cell between the label and the amount of the row holding valueId
   var setDetail = function(valueId, text) {
     var valueEl = document.getElementById(valueId + '-' + blockId);
-    var label = valueEl && valueEl.parentNode ? valueEl.parentNode.firstElementChild : null;
-    if (!label || label === valueEl) return;
-    var el = label.querySelector('.kraft2026zion-bd-detail');
+    var row = valueEl ? valueEl.parentNode : null;
+    if (!row || row.firstElementChild === valueEl) return;
+    var el = row.querySelector('.kraft2026zion-bd-detail');
     if (!el) {
       el = document.createElement('span');
       el.className = 'kraft2026zion-bd-detail';
-      label.appendChild(el);
+      row.insertBefore(el, valueEl);
     }
     el.textContent = text || '';
     el.style.display = text ? 'block' : 'none';

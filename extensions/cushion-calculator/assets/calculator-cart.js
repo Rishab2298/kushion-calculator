@@ -231,7 +231,10 @@ CushionCalculator.prototype.addMultiPieceToCart = async function() {
     // Base properties always shown
     properties[prefix + ' - Shape'] = piece.shape.name;
     properties[prefix + ' - Dimensions'] = dimStr;
-    if (piece.fill) properties[prefix + ' - Fill'] = piece.fill.name;
+    // Same rule as pricing: a hidden Fill section only counts when it has a hidden value
+    var pc = piece.config || {};
+    var pieceFill = (pc.showFillSection !== false || pc.hiddenFillTypeId) ? piece.fill : null;
+    if (pieceFill) properties[prefix + ' - Fill'] = pieceFill.name;
 
     // Conditionally add optional properties only if section is visible AND something is selected
     if (visibility.showDesignSection !== false && piece.design) {
@@ -262,7 +265,7 @@ CushionCalculator.prototype.addMultiPieceToCart = async function() {
     // Store per-piece IDs in configData (server-side)
     var pieceConfig = {
       shapeId: piece.shape.id,
-      fillId: piece.fill ? piece.fill.id : 'none'
+      fillId: pieceFill ? pieceFill.id : 'none'
     };
     if (visibility.showDesignSection !== false) pieceConfig.designId = piece.design ? piece.design.id : 'none';
     if (visibility.showPipingSection !== false) pieceConfig.pipingId = piece.piping ? piece.piping.id : 'none';

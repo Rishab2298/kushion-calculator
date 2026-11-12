@@ -529,6 +529,9 @@ model CalculatorProfile {
   // Weatherproof mode - uses surface area without base formula
   enableWeatherproof Boolean @default(false)
 
+  // Cover product - dimension fields labelled "Thickness" show as "Height" on the storefront
+  isCoverProduct Boolean @default(false)
+
   // Section visibility toggles (used for single-piece mode or as defaults)
   showShapeSection      Boolean @default(true)
   showDimensionsSection Boolean @default(true)

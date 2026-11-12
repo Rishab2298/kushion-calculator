@@ -60,6 +60,7 @@ export const action = async ({ request }) => {
         enableMultiPiece: formData.get("enableMultiPiece") === "true",
         piecesLabel: formData.get("piecesLabel") || null,
         enableWeatherproof: formData.get("enableWeatherproof") === "true",
+        isCoverProduct: formData.get("isCoverProduct") === "true",
         showShapeSection: formData.get("showShapeSection") === "true",
         showDimensionsSection: formData.get("showDimensionsSection") === "true",
         showFillSection: formData.get("showFillSection") === "true",
@@ -171,6 +172,7 @@ export const action = async ({ request }) => {
         enableMultiPiece: formData.get("enableMultiPiece") === "true",
         piecesLabel: formData.get("piecesLabel") || null,
         enableWeatherproof: formData.get("enableWeatherproof") === "true",
+        isCoverProduct: formData.get("isCoverProduct") === "true",
         showShapeSection: formData.get("showShapeSection") === "true",
         showDimensionsSection: formData.get("showDimensionsSection") === "true",
         showFillSection: formData.get("showFillSection") === "true",
@@ -328,6 +330,7 @@ export default function Profiles() {
     enableMultiPiece: false,
     piecesLabel: "",
     enableWeatherproof: false,
+    isCoverProduct: false,
     pieces: [],
     showShapeSection: true,
     showDimensionsSection: true,
@@ -467,6 +470,7 @@ export default function Profiles() {
     enableMultiPiece: profile.enableMultiPiece || false,
     piecesLabel: profile.piecesLabel || "",
     enableWeatherproof: profile.enableWeatherproof || false,
+    isCoverProduct: profile.isCoverProduct || false,
     pieces: (profile.pieces || []).map(p => ({
       id: p.id,
       name: p.name,
@@ -608,6 +612,7 @@ export default function Profiles() {
     data.append("enableMultiPiece", form.enableMultiPiece.toString());
     data.append("piecesLabel", form.piecesLabel);
     data.append("enableWeatherproof", form.enableWeatherproof.toString());
+    data.append("isCoverProduct", form.isCoverProduct.toString());
     // Convert pieces array with proper JSON stringified arrays for allowedIds
     const piecesForSubmit = form.pieces.map(p => ({
       ...p,
@@ -1020,6 +1025,7 @@ export default function Profiles() {
                                 ? <Badge tone="warning">{profile.pieces?.length || 0}-piece set</Badge>
                                 : <span className="cc-muted">Single piece</span>}
                               {profile.enableWeatherproof && <Badge tone="info">Weatherproof</Badge>}
+                              {profile.isCoverProduct && <Badge tone="info">Cover</Badge>}
                             </div>
                           </td>
                           <td>
@@ -1106,6 +1112,13 @@ export default function Profiles() {
                   onChange={(v) => setField("enableWeatherproof", v)}
                   label="Weatherproof cover"
                   help="The cover leaves the base open, so fabric is priced on surface area without the base."
+                />
+                <Checkbox
+                  id="profile-cover-product"
+                  checked={form.isCoverProduct}
+                  onChange={(v) => setField("isCoverProduct", v)}
+                  label="Cover product"
+                  help={'Shows "Height" instead of "Thickness" in the dimensions, e.g. for table and chair covers. Pricing is unchanged.'}
                 />
               </div>
             </div>

@@ -69,6 +69,17 @@ CushionCalculator.prototype.init = async function() {
     if (!response.ok) throw new Error('Failed to load config');
     this.config = await response.json();
 
+    // Cover products measure height, not cushion thickness: relabel those dimension fields
+    // once here so the inputs, breakdown and cart/order details all read "Height".
+    if (this.config.profile && this.config.profile.isCoverProduct) {
+      var hiddenShape = this.config.hiddenValues && this.config.hiddenValues.shape;
+      (this.config.shapes || []).concat(hiddenShape ? [hiddenShape] : []).forEach(function(shape) {
+        (shape.inputFields || []).forEach(function(field) {
+          if (field.label) field.label = field.label.replace(/thickness/gi, function(m) { return m === m.toUpperCase() ? 'HEIGHT' : (m[0] === 'T' ? 'Height' : 'height'); });
+        });
+      });
+    }
+
     // Check for multi-piece mode
     this.isMultiPieceMode = this.config.profile && this.config.profile.enableMultiPiece && this.config.profile.pieces && this.config.profile.pieces.length > 0;
 
